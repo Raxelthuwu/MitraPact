@@ -18,16 +18,16 @@ from Backend.moduloEventos.services import (
 )
 
 # Service singletons
-eventoSvc           = EventoService()
-eventoTipoSvc       = EventoTipoService()
-asignacionSvc       = AsignacionService()
-disponibilidadSvc   = DisponibilidadService()
-coberturaSvc        = CoberturaService()
-observacionSvc      = ObservacionService()
-participacionSvc    = ParticipacionExternaService()
-materialSvc         = MaterialPublicitarioService()
-estadoMaterialSvc   = EstadoMaterialService()
-territorioSvc       = TerritorioService()
+eventoSvc         = EventoService()
+eventoTipoSvc     = EventoTipoService()
+asignacionSvc     = AsignacionService()
+disponibilidadSvc = DisponibilidadService()
+coberturaSvc      = CoberturaService()
+observacionSvc    = ObservacionService()
+participacionSvc  = ParticipacionExternaService()
+materialSvc       = MaterialPublicitarioService()
+estadoMaterialSvc = EstadoMaterialService()
+territorioSvc     = TerritorioService()
 
 
 # =============================================================================
@@ -60,7 +60,9 @@ async def evento_crear(request: HttpRequest) -> HttpResponse:
 
         if not datos["nombre"] or not datos["fecha"]:
             messages.error(request, "El nombre y la fecha son obligatorios.")
-            return render(request, "eventos/evento_form.html", {"barrios": barrios, "datos": datos})
+            return render(request, "eventos/evento_form.html", {
+                "barrios": barrios, "datos": datos,
+            })
 
         evento = await eventoSvc.crear(datos)
         messages.success(request, "Evento creado exitosamente.")
@@ -75,14 +77,14 @@ async def evento_detalle(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
         messages.error(request, "Evento no encontrado.")
         return redirect("eventos:evento_lista")
 
-    tipos          = await eventoTipoSvc.listar_por_evento(pk)
-    asignaciones   = await asignacionSvc.listar(pk)
-    coberturas     = await coberturaSvc.listar(pk)
-    observaciones  = await observacionSvc.listar(pk)
-    participacion  = await participacionSvc.obtener(pk)
-    material       = await materialSvc.obtener(pk)
-    estados_mat    = await estadoMaterialSvc.listar(pk)
-    promedio_mat   = await estadoMaterialSvc.promedio_estado(pk)
+    tipos         = await eventoTipoSvc.listar_por_evento(pk)
+    asignaciones  = await asignacionSvc.listar(pk)
+    coberturas    = await coberturaSvc.listar(pk)
+    observaciones = await observacionSvc.listar(pk)
+    participacion = await participacionSvc.obtener(pk)
+    material      = await materialSvc.obtener(pk)
+    estados_mat   = await estadoMaterialSvc.listar(pk)
+    promedio_mat  = await estadoMaterialSvc.promedio_estado(pk)
 
     return render(request, "eventos/evento_detalle.html", {
         "evento":        evento,
@@ -197,14 +199,14 @@ async def asignacion_manual(request: HttpRequest, evento_pk: uuid.UUID) -> HttpR
                 "evento": evento, "disponibles": disponibles,
             })
 
-        # Advertencia territorial (RF-EV-23)
-        tiene_participacion = await disponibilidadSvc.advertencia_territorial(
-            uuid.UUID(simpatizante_id), evento_pk
+        # RF-EV-23: advertencia territorial con ventana de 30 días por defecto
+        tiene_alerta = await disponibilidadSvc.advertencia_territorial(
+            uuid.UUID(simpatizante_id), evento_pk, dias=30
         )
-        if tiene_participacion:
+        if tiene_alerta:
             messages.warning(
                 request,
-                "Advertencia: esta persona participó recientemente en actividades del mismo sector."
+                "Advertencia: esta persona participó recientemente en actividades del mismo sector.",
             )
 
         await asignacionSvc.asignar_manual(evento_pk, uuid.UUID(simpatizante_id), rol)
@@ -232,7 +234,10 @@ async def asignacion_automatica(request: HttpRequest, evento_pk: uuid.UUID) -> H
             excluir_sector_reciente=excluir_sector_reciente,
         )
 
-        messages.success(request, f"Asignación automática completada: {len(asignados)} personas asignadas.")
+        messages.success(
+            request,
+            f"Asignación automática completada: {len(asignados)} personas asignadas.",
+        )
         return redirect("eventos:asignacion_lista", evento_pk=evento_pk)
 
     return render(request, "eventos/asignacion_automatica.html", {"evento": evento})
@@ -278,7 +283,6 @@ async def cobertura_agregar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpR
         datos = {
             "ocupacion":  request.POST.get("ocupacion", "").strip(),
             "requeridos": int(request.POST.get("requeridos", 0)),
-            "asignados":  int(request.POST.get("asignados", 0)),
         }
         if not datos["ocupacion"]:
             messages.error(request, "La ocupación es obligatoria.")
@@ -320,8 +324,9 @@ async def asistencia_registrar(request: HttpRequest, evento_pk: uuid.UUID) -> Ht
     asignaciones = await asignacionSvc.listar(evento_pk)
 
     if request.method == "POST":
+        # Clave correcta: id de la asignación (no del simpatizante)
         asistencias = {
-            a["simpatizante_id"]: request.POST.get(f"asistio_{a['simpatizante_id']}") == "on"
+            a["id"]: request.POST.get(f"asistio_{a['id']}") == "on"
             for a in asignaciones
         }
         actualizados = await asignacionSvc.registrar_asistencia(evento_pk, asistencias)
@@ -347,10 +352,10 @@ async def participacion_externa_registrar(request: HttpRequest, evento_pk: uuid.
 # =============================================================================
 
 async def material_detalle(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento       = await eventoSvc.obtener(evento_pk)
-    material     = await materialSvc.obtener(evento_pk)
-    estados      = await estadoMaterialSvc.listar(evento_pk)
-    promedio     = await estadoMaterialSvc.promedio_estado(evento_pk)
+    evento   = await eventoSvc.obtener(evento_pk)
+    material = await materialSvc.obtener(evento_pk)
+    estados  = await estadoMaterialSvc.listar(evento_pk)
+    promedio = await estadoMaterialSvc.promedio_estado(evento_pk)
 
     return render(request, "eventos/material.html", {
         "evento":   evento,
@@ -385,17 +390,16 @@ async def estado_material_registrar(request: HttpRequest, evento_pk: uuid.UUID) 
 
 async def estado_material_cargar_csv(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
     if request.method == "POST" and request.FILES.get("archivo_csv"):
-        archivo = request.FILES["archivo_csv"]
+        archivo   = request.FILES["archivo_csv"]
         contenido = archivo.read().decode("utf-8")
         resultado = await estadoMaterialSvc.cargar_csv(contenido)
 
-        if resultado["errores"]:
-            for error in resultado["errores"]:
-                messages.warning(request, error)
+        for error in resultado["errores"]:
+            messages.warning(request, error)
 
         messages.success(
             request,
-            f"CSV procesado: {resultado['procesados']} registros importados."
+            f"CSV procesado: {resultado['registrados']} registros importados.",
         )
 
     return redirect("eventos:material_detalle", evento_pk=evento_pk)

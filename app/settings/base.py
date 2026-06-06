@@ -31,13 +31,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
-ROOT_URLCONF = 'pactoHistoricoMitraPact.urls'
+ROOT_URLCONF = 'app.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'Frontend' / 'Templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -49,8 +48,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'pactoHistoricoMitraPact.wsgi.application'
-ASGI_APPLICATION = 'pactoHistoricoMitraPact.asgi.application'
+WSGI_APPLICATION = 'app.wsgi.application'
+ASGI_APPLICATION = 'app.asgi.application'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -65,8 +64,13 @@ USE_I18N = True
 USE_TZ = True
 logging.info(f"Configuración regional establecida: Idioma={LANGUAGE_CODE} | Zona Horaria={TIME_ZONE}")
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'Frontend' / 'Styles',
+]
+
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
