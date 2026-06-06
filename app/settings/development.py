@@ -39,7 +39,8 @@ DATABASES = {
         'PORT':     os.environ.get('PGPORT', '5432'),
         'CONN_MAX_AGE': 600, 
         'OPTIONS': {
-            'sslmode': 'require',       
+            'sslmode': 'require',
+            'options': '-c search_path=gestion_eventos,estadistico_territorial,busqueda_semantica,public'       
         },
     }
 }
