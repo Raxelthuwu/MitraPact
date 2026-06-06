@@ -1,17 +1,19 @@
+import asyncio
 import logging
 import chromadb
 
-# Configuración inicial para visualizar los logs en la consola
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class ChromaService:
     def __init__(self, persistDir: str):
-        logging.info(f"[ChromaService] Inicializando cliente persistente en: '{persistDir}'")
+        logging.info(f"[ChromaService] Inicializando cliente asíncrono en: '{persistDir}'")
         self.client = chromadb.PersistentClient(path=persistDir)
         logging.info("[ChromaService] Cliente de ChromaDB conectado.")
 
     def getOrCreateCollection(self, name: str, metadata: dict = None):
+        #Mantiene un comportamiento síncrono al ser una asignación de referencia local.
         logging.info(f"[Colección] Obteniendo o creando colección: '{name}'")
         collection = self.client.get_or_create_collection(
             name=name,
@@ -23,10 +25,13 @@ class ChromaService:
     # FRAGMENTOS_VEC
 
 
-    def upsertFragmento(self, fragmentoId: str, embedding: list, documentoId: str, pagina: int):
-        logging.info(f"[Fragmentos] Insertando/Actualizando fragmento_id: '{fragmentoId}' para documento_id: '{documentoId}' (Pág. {pagina})")
+    async def upsertFragmento(self, fragmentoId: str, embedding: list, documentoId: str, pagina: int):
+        logging.info(f"[Fragmentos] Insertando/Actualizando fragmento_id: '{fragmentoId}' para documento_id: '{documentoId}' (Pág. {pagina}) de forma asíncrona.")
         col = self.getOrCreateCollection("fragmentos_vec")
-        col.upsert(
+        
+        # Pasamos el método síncrono .upsert a un hilo secundario
+        await asyncio.to_thread(
+            col.upsert,
             ids=[fragmentoId],
             embeddings=[embedding],
             documents=[""],
@@ -36,22 +41,27 @@ class ChromaService:
                 "pagina":       pagina
             }]
         )
-        logging.info(f"[Fragmentos] Upsert completado con éxito para fragmento_id: '{fragmentoId}'")
+        logging.info(f"[Fragmentos] Upsert asíncrono completado con éxito para fragmento_id: '{fragmentoId}'")
 
-    def queryFragmentos(self, queryEmbedding: list, nResults: int = 5):
-        logging.info(f"[Fragmentos] Ejecutando consulta general por similitud. n_results: {nResults}")
+    async def queryFragmentos(self, queryEmbedding: list, nResults: int = 5):
+        logging.info(f"[Fragmentos] Ejecutando consulta general asíncrona por similitud. n_results: {nResults}")
         col = self.getOrCreateCollection("fragmentos_vec")
-        resultados = col.query(
+        
+        # Pasamos la lectura en disco a un hilo secundario
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults
         )
-        logging.info(f"[Fragmentos] Consulta general finalizada.")
+        logging.info(f"[Fragmentos] Consulta general asíncrona finalizada.")
         return resultados
 
-    def queryFragmentosPorDocumento(self, documentoId: str, queryEmbedding: list, nResults: int = 5):
-        logging.info(f"[Fragmentos] Ejecutando consulta filtrada por documento_id: '{documentoId}'. n_results: {nResults}")
+    async def queryFragmentosPorDocumento(self, documentoId: str, queryEmbedding: list, nResults: int = 5):
+        logging.info(f"[Fragmentos] Ejecutando consulta asíncrona filtrada por documento_id: '{documentoId}'. n_results: {nResults}")
         col = self.getOrCreateCollection("fragmentos_vec")
-        resultados = col.query(
+        
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults,
             where={"documento_id": documentoId}
@@ -59,16 +69,19 @@ class ChromaService:
         logging.info(f"[Fragmentos] Consulta por documento finalizada.")
         return resultados
 
-    def deleteFragmentosByDocumento(self, documentoId: str):
-        logging.info(f"[Fragmentos] Solicitud de eliminación para todos los fragmentos del documento_id: '{documentoId}'")
+    async def deleteFragmentosByDocumento(self, documentoId: str):
+        logging.info(f"[Fragmentos] Solicitud asíncrona de eliminación para todos los fragmentos del documento_id: '{documentoId}'")
         col = self.getOrCreateCollection("fragmentos_vec")
-        resultados = col.get(where={"documento_id": documentoId})
+        
+        # .get() accede a disco -> hilo secundario
+        resultados = await asyncio.to_thread(col.get, where={"documento_id": documentoId})
         
         if resultados and resultados["ids"]:
             cantidad = len(resultados["ids"])
-            logging.info(f"[Fragmentos] Se encontraron {cantidad} fragmentos asociados. Procediendo a eliminar...")
-            col.delete(ids=resultados["ids"])
-            logging.info(f"[Fragmentos] Eliminación completada con éxito.")
+            logging.info(f"[Fragmentos] Se encontraron {cantidad} fragmentos asociados. Eliminando de forma asíncrona en disco...")
+            # .delete() escribe en disco -> hilo secundario
+            await asyncio.to_thread(col.delete, ids=resultados["ids"])
+            logging.info(f"[Fragmentos] Eliminación asíncrona completada con éxito.")
         else:
             logging.warning(f"[Fragmentos] No se encontraron fragmentos para el documento_id: '{documentoId}'")
 
@@ -77,10 +90,12 @@ class ChromaService:
 
     # OPINIONES_VEC
 
-    def upsertOpinion(self, encuestaId: str, embedding: list, barrioId: str, inclinacionVoto: int):
-        logging.info(f"[Opiniones] Insertando/Actualizando encuesta_id: '{encuestaId}' en barrio_id: '{barrioId}'")
+    async def upsertOpinion(self, encuestaId: str, embedding: list, barrioId: str, inclinacionVoto: int):
+        logging.info(f"[Opiniones] Insertando/Actualizando encuesta_id: '{encuestaId}' en barrio_id: '{barrioId}' de forma asíncrona.")
         col = self.getOrCreateCollection("opiniones_vec")
-        col.upsert(
+        
+        await asyncio.to_thread(
+            col.upsert,
             ids=[encuestaId],
             embeddings=[embedding],
             documents=[""],
@@ -90,22 +105,26 @@ class ChromaService:
                 "inclinacion_voto": inclinacionVoto
             }]
         )
-        logging.info(f"[Opiniones] Upsert completado con éxito para encuesta_id: '{encuestaId}'")
+        logging.info(f"[Opiniones] Upsert asíncrono completado con éxito para encuesta_id: '{encuestaId}'")
 
-    def queryOpinionesPorTema(self, queryEmbedding: list, nResults: int = 10):
-        logging.info(f"[Opiniones] Buscando opiniones por tema (similitud). n_results: {nResults}")
+    async def queryOpinionesPorTema(self, queryEmbedding: list, nResults: int = 10):
+        logging.info(f"[Opiniones] Buscando opiniones asíncronamente por tema (similitud). n_results: {nResults}")
         col = self.getOrCreateCollection("opiniones_vec")
-        resultados = col.query(
+        
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults
         )
-        logging.info(f"[Opiniones] Búsqueda por tema finalizada.")
+        logging.info(f"[Opiniones] Búsqueda asíncrona por tema finalizada.")
         return resultados
 
-    def queryOpinionesPorBarrio(self, queryEmbedding: list, barrioId: str, nResults: int = 10):
-        logging.info(f"[Opiniones] Buscando opiniones filtradas por barrio_id: '{barrioId}'. n_results: {nResults}")
+    async def queryOpinionesPorBarrio(self, queryEmbedding: list, barrioId: str, nResults: int = 10):
+        logging.info(f"[Opiniones] Buscando opiniones asíncronamente filtradas por barrio_id: '{barrioId}'. n_results: {nResults}")
         col = self.getOrCreateCollection("opiniones_vec")
-        resultados = col.query(
+        
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults,
             where={"barrio_id": barrioId}
@@ -117,10 +136,12 @@ class ChromaService:
     # ARGUMENTOS_VEC
 
 
-    def upsertArgumento(self, argumentoId: str, embedding: list, tema: str, problematicaCod: int, barrioId: str):
-        logging.info(f"[Argumentos] Insertando/Actualizando argumento_id: '{argumentoId}' (Tema: '{tema}', Problemática: {problematicaCod})")
+    async def upsertArgumento(self, argumentoId: str, embedding: list, tema: str, problematicaCod: int, barrioId: str):
+        logging.info(f"[Argumentos] Insertando/Actualizando argumento_id: '{argumentoId}' (Tema: '{tema}', Problemática: {problematicaCod}) de forma asíncrona.")
         col = self.getOrCreateCollection("argumentos_vec")
-        col.upsert(
+        
+        await asyncio.to_thread(
+            col.upsert,
             ids=[argumentoId],
             embeddings=[embedding],
             documents=[""],
@@ -131,12 +152,14 @@ class ChromaService:
                 "barrio_id":        barrioId
             }]
         )
-        logging.info(f"[Argumentos] Upsert completado con éxito para argumento_id: '{argumentoId}'")
+        logging.info(f"[Argumentos] Upsert asíncrono completado con éxito para argumento_id: '{argumentoId}'")
 
-    def queryArgumentosFrecuentes(self, queryEmbedding: list, tema: str, nResults: int = 10):
-        logging.info(f"[Argumentos] Buscando argumentos frecuentes para el tema: '{tema}'. n_results: {nResults}")
+    async def queryArgumentosFrecuentes(self, queryEmbedding: list, tema: str, nResults: int = 10):
+        logging.info(f"[Argumentos] Buscando argumentos frecuentes asíncronamente para el tema: '{tema}'. n_results: {nResults}")
         col = self.getOrCreateCollection("argumentos_vec")
-        resultados = col.query(
+        
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults,
             where={"tema": tema}
@@ -144,10 +167,12 @@ class ChromaService:
         logging.info(f"[Argumentos] Búsqueda de argumentos frecuentes finalizada.")
         return resultados
 
-    def queryArgumentosPorProblematica(self, queryEmbedding: list, problematicaCod: int, nResults: int = 10):
-        logging.info(f"[Argumentos] Buscando argumentos por problematica_cod: {problematicaCod}. n_results: {nResults}")
+    async def queryArgumentosPorProblematica(self, queryEmbedding: list, problematicaCod: int, nResults: int = 10):
+        logging.info(f"[Argumentos] Buscando argumentos asíncronamente por problematica_cod: {problematicaCod}. n_results: {nResults}")
         col = self.getOrCreateCollection("argumentos_vec")
-        resultados = col.query(
+        
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults,
             where={"problematica_cod": problematicaCod}
@@ -155,10 +180,12 @@ class ChromaService:
         logging.info(f"[Argumentos] Búsqueda por problemática finalizada.")
         return resultados
 
-    def queryArgumentosPorBarrioYProblematica(self, queryEmbedding: list, barrioId: str, problematicaCod: int, nResults: int = 5):
-        logging.info(f"[Argumentos] Buscando argumentos con filtro compuesto ($and) -> barrio_id: '{barrioId}' AND problematica_cod: {problematicaCod}")
+    async def queryArgumentosPorBarrioYProblematica(self, queryEmbedding: list, barrioId: str, problematicaCod: int, nResults: int = 5):
+        logging.info(f"[Argumentos] Buscando argumentos asíncronamente con filtro compuesto ($and) -> barrio_id: '{barrioId}' AND problematica_cod: {problematicaCod}")
         col = self.getOrCreateCollection("argumentos_vec")
-        resultados = col.query(
+        
+        resultados = await asyncio.to_thread(
+            col.query,
             query_embeddings=[queryEmbedding],
             n_results=nResults,
             where={
@@ -174,8 +201,8 @@ class ChromaService:
 
     # QUERY GENÉRICO
 
-    def query(self, collectionName: str, queryEmbedding: list, nResults: int = 5, where: dict = None):
-        logging.info(f"[Query Genérico] Solicitud en colección: '{collectionName}' | n_results: {nResults} | Filtros: {where}")
+    async def query(self, collectionName: str, queryEmbedding: list, nResults: int = 5, where: dict = None):
+        logging.info(f"[Query Genérico] Solicitud asíncrona en colección: '{collectionName}' | n_results: {nResults} | Filtros: {where}")
         col = self.getOrCreateCollection(collectionName)
         params = {
             "query_embeddings": [queryEmbedding],
@@ -184,6 +211,6 @@ class ChromaService:
         if where:
             params["where"] = where
         
-        resultados = col.query(**params)
-        logging.info(f"[Query Genérico] Ejecución completada para colección: '{collectionName}'")
+        resultados = await asyncio.to_thread(col.query, **params)
+        logging.info(f"[Query Genérico] Ejecución asíncrona completada para colección: '{collectionName}'")
         return resultados
