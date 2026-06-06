@@ -48,6 +48,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'pactoHistoricoMitraPact.wsgi.application'
+ASGI_APPLICATION = 'pactoHistoricoMitraPact.asgi.application'
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
