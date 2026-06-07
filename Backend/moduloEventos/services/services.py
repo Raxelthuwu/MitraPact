@@ -1,695 +1,696 @@
 import csv
 import io
-import uuid
+import logging
 from typing import Any, Dict, List, Optional
 
-from asgiref.sync import sync_to_async
-from django.utils import timezone
+from django.db import transaction
 
 from Backend.moduloEventos.interfaces import (
+    IBarrioService,
+    ISectorService,
+    IPuntoInteresService,
+    ICoordinadorService,
+    ISimpatizanteService,
+    IHorarioDisponibleService,
     IEventoService,
-    IEventoTipoService,
-    IDisponibilidadService,
     IAsignacionService,
     ICoberturaService,
     IObservacionService,
     IParticipacionExternaService,
     IMaterialPublicitarioService,
     IEstadoMaterialService,
-    ITerritorioService,
+    IAuditoriaService,
 )
 from Backend.moduloEventos.models import (
-    Asignacion,
     Barrio,
-    Cobertura,
-    EstadoMaterial,
+    Sector,
+    PuntoInteres,
+    Coordinador,
+    Simpatizante,
+    HorarioDisponible,
     Evento,
     EventoTipo,
-    MaterialPublicitario,
+    Asignacion,
+    Cobertura,
     Observacion,
     ParticipacionExterna,
-    PuntoInteres,
-    Sector,
-    Simpatizante,
+    MaterialPublicitario,
+    EstadoMaterial,
+    Auditoria,
 )
 
-DIAS_MAP = {
-    0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves",
-    4: "Viernes", 5: "Sábado", 6: "Domingo"
-}
+logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers internos de serialización
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _str_fields(obj: Dict[str, Any]) -> Dict[str, Any]:
+    """Convierte UUID y datetime a str para respuestas JSON-friendly."""
+    import datetime, uuid
+    result = {}
+    for k, v in obj.items():
+        if isinstance(v, uuid.UUID):
+            result[k] = str(v)
+        elif isinstance(v, (datetime.date, datetime.time, datetime.datetime)):
+            result[k] = str(v)
+        else:
+            result[k] = v
+    return result
+
+
+def _serialize(obj: Optional[Dict]) -> Optional[Dict]:
+    if obj is None:
+        return None
+    return _str_fields(obj)
+
+
+def _serialize_list(objs: List[Dict]) -> List[Dict]:
+    return [_str_fields(o) for o in objs]
 
 
 # =============================================================================
-# EventoService
+# BARRIO
 # =============================================================================
+
+class BarrioService(IBarrioService):
+
+    def listar_barrios(self) -> List[Dict[str, Any]]:
+        return _serialize_list(Barrio.get_all())
+
+    def obtener_barrio(self, barrio_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(Barrio.get_by_id(barrio_id))
+
+    def crear_barrio(self, nombre: str) -> Dict[str, Any]:
+        barrio_id = Barrio.create(nombre)
+        return _serialize(Barrio.get_by_id(barrio_id))
+
+    def actualizar_barrio(self, barrio_id: str, nombre: str) -> Optional[Dict[str, Any]]:
+        Barrio.update(barrio_id, nombre)
+        return _serialize(Barrio.get_by_id(barrio_id))
+
+    def eliminar_barrio(self, barrio_id: str) -> bool:
+        return Barrio.delete(barrio_id)
+
+
+# =============================================================================
+# SECTOR
+# =============================================================================
+
+class SectorService(ISectorService):
+
+    def listar_sectores(self, barrio_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        if barrio_id:
+            return _serialize_list(Sector.get_by_barrio(barrio_id))
+        return _serialize_list(Sector.get_all())
+
+    def obtener_sector(self, sector_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(Sector.get_by_id(sector_id))
+
+    def crear_sector(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
+        sector_id = Sector.create(nombre, barrio_id)
+        return _serialize(Sector.get_by_id(sector_id))
+
+    def actualizar_sector(
+        self, sector_id: str, nombre: str, barrio_id: str
+    ) -> Optional[Dict[str, Any]]:
+        Sector.update(sector_id, nombre, barrio_id)
+        return _serialize(Sector.get_by_id(sector_id))
+
+    def eliminar_sector(self, sector_id: str) -> bool:
+        return Sector.delete(sector_id)
+
+
+# =============================================================================
+# PUNTO DE INTERÉS
+# =============================================================================
+
+class PuntoInteresService(IPuntoInteresService):
+
+    def listar_puntos(self, sector_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(PuntoInteres.get_by_sector(sector_id))
+
+    def obtener_punto(self, punto_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(PuntoInteres.get_by_id(punto_id))
+
+    def crear_punto(self, nombre: str, sector_id: str) -> Dict[str, Any]:
+        punto_id = PuntoInteres.create(nombre, sector_id)
+        return _serialize(PuntoInteres.get_by_id(punto_id))
+
+    def actualizar_punto(
+        self, punto_id: str, nombre: str, sector_id: str
+    ) -> Optional[Dict[str, Any]]:
+        PuntoInteres.update(punto_id, nombre, sector_id)
+        return _serialize(PuntoInteres.get_by_id(punto_id))
+
+    def eliminar_punto(self, punto_id: str) -> bool:
+        return PuntoInteres.delete(punto_id)
+
+
+# =============================================================================
+# COORDINADOR
+# =============================================================================
+
+class CoordinadorService(ICoordinadorService):
+
+    @staticmethod
+    def _hash(password_plano: str) -> str:
+        import hashlib
+        return hashlib.sha256(password_plano.encode()).hexdigest()
+
+    def listar_coordinadores(self) -> List[Dict[str, Any]]:
+        return _serialize_list(Coordinador.get_all())
+
+    def obtener_coordinador(self, coordinador_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(Coordinador.get_by_id(coordinador_id))
+
+    def crear_coordinador(
+        self, nombre: str, email: str, password_plano: str
+    ) -> Dict[str, Any]:
+        coordinador_id = Coordinador.create(nombre, email, self._hash(password_plano))
+        return _serialize(Coordinador.get_by_id(coordinador_id))
+
+    def actualizar_coordinador(
+        self, coordinador_id: str, nombre: str, email: str
+    ) -> Optional[Dict[str, Any]]:
+        Coordinador.update(coordinador_id, nombre, email)
+        return _serialize(Coordinador.get_by_id(coordinador_id))
+
+    def cambiar_password(self, coordinador_id: str, password_plano: str) -> bool:
+        return Coordinador.update_password(coordinador_id, self._hash(password_plano))
+
+
+# =============================================================================
+# SIMPATIZANTE
+# =============================================================================
+
+class SimpatizanteService(ISimpatizanteService):
+
+    def listar_simpatizantes(
+        self, barrio_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        if barrio_id:
+            return _serialize_list(Simpatizante.get_by_barrio(barrio_id))
+        return _serialize_list(Simpatizante.get_all())
+
+    def obtener_simpatizante(self, simpatizante_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(Simpatizante.get_by_id(simpatizante_id))
+
+    def crear_simpatizante(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        simpatizante_id = Simpatizante.create(
+            nombre=payload["nombre"],
+            cedula=payload["cedula"],
+            telefono=payload.get("telefono"),
+            edad=payload["edad"],
+            ocupacion=payload["ocupacion"],
+            lugar_votacion=payload["lugar_votacion"],
+            puesto_votacion=payload["puesto_votacion"],
+            mesa_votacion=payload["mesa_votacion"],
+            opinion_politica=payload.get("opinion_politica"),
+            barrio_id=payload.get("barrio_id"),
+        )
+        return _serialize(Simpatizante.get_by_id(simpatizante_id))
+
+    def actualizar_simpatizante(
+        self, simpatizante_id: str, payload: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        Simpatizante.update(simpatizante_id, payload)
+        return _serialize(Simpatizante.get_by_id(simpatizante_id))
+
+    def eliminar_simpatizante(self, simpatizante_id: str) -> bool:
+        return Simpatizante.delete(simpatizante_id)
+
+
+# =============================================================================
+# HORARIO DISPONIBLE
+# =============================================================================
+
+class HorarioDisponibleService(IHorarioDisponibleService):
+
+    def listar_horarios(self, simpatizante_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(HorarioDisponible.get_by_simpatizante(simpatizante_id))
+
+    def crear_horario(
+        self,
+        simpatizante_id: str,
+        dia_semana: str,
+        hora_inicio: str,
+        hora_fin: str,
+    ) -> Dict[str, Any]:
+        from django.db import connection
+        horario_id = HorarioDisponible.create(
+            simpatizante_id, dia_semana, hora_inicio, hora_fin
+        )
+        rows = _serialize_list(HorarioDisponible.get_by_simpatizante(simpatizante_id))
+        return next(r for r in rows if r["id"] == horario_id)
+
+    def eliminar_horario(self, horario_id: str) -> bool:
+        return HorarioDisponible.delete(horario_id)
+
+    def consultar_disponibles_para_evento(
+        self,
+        fecha: str,
+        dia_semana: str,
+        hora_inicio: str,
+        hora_fin: str,
+    ) -> List[Dict[str, Any]]:
+        return _serialize_list(
+            HorarioDisponible.get_disponibles_para_evento(
+                fecha, dia_semana, hora_inicio, hora_fin
+            )
+        )
+
+
+# =============================================================================
+# EVENTO  (RF-EV-01 al RF-EV-05)
+# =============================================================================
+
 class EventoService(IEventoService):
 
-    def _serializar(self, obj: Evento) -> Dict[str, Any]:
-        return {
-            "id": str(obj.id),
-            "nombre": obj.nombre,
-            "descripcion": obj.descripcion,
-            "fecha": obj.fecha.isoformat() if obj.fecha else None,
-            "hora_inicio": obj.hora_inicio.isoformat() if obj.hora_inicio else None,
-            "hora_fin": obj.hora_fin.isoformat() if obj.hora_fin else None,
-            "duracion_min": obj.duracion_min,
-            "objetivo": obj.objetivo,
-            "resultado_esperado": obj.resultado_esperado,
-            "resultado_obtenido": obj.resultado_obtenido,
-            "capacidad": obj.capacidad,
-            "estado": obj.estado,
-            "coordinador_id": str(obj.coordinador_id) if obj.coordinador_id else None,
-            "barrio_id": str(obj.barrio_id) if obj.barrio_id else None,
-            "sector_id": str(obj.sector_id) if obj.sector_id else None,
-            "punto_interes_id": str(obj.punto_interes_id) if obj.punto_interes_id else None,
-        }
+    def listar_eventos(self) -> List[Dict[str, Any]]:
+        eventos = _serialize_list(Evento.get_all())
+        for ev in eventos:
+            ev["tipos"] = _serialize_list(EventoTipo.get_by_evento(ev["id"]))
+        return eventos
 
-    async def listar(self) -> List[Dict[str, Any]]:
-        eventos = await sync_to_async(list)(
-            Evento.objects.select_related(
-                "coordinador", "barrio", "sector", "punto_interes"
-            ).order_by("-fecha", "hora_inicio")
-        )
-        return [self._serializar(e) for e in eventos]
-
-    async def obtener(self, pk: uuid.UUID) -> Optional[Dict[str, Any]]:
-        try:
-            evento = await sync_to_async(Evento.objects.get)(pk=pk)
-            return self._serializar(evento)
-        except Evento.DoesNotExist:
+    def obtener_evento(self, evento_id: str) -> Optional[Dict[str, Any]]:
+        ev = _serialize(Evento.get_by_id(evento_id))
+        if ev is None:
             return None
+        ev["tipos"] = _serialize_list(EventoTipo.get_by_evento(evento_id))
+        return ev
 
-    async def crear(self, datos: Dict[str, Any]) -> Dict[str, Any]:
-        def _crear():
-            evento = Evento.objects.create(
-                nombre=datos["nombre"],
-                descripcion=datos.get("descripcion"),
-                fecha=datos["fecha"],
-                hora_inicio=datos["hora_inicio"],
-                hora_fin=datos["hora_fin"],
-                duracion_min=datos.get("duracion_min"),
-                objetivo=datos.get("objetivo"),
-                resultado_esperado=datos.get("resultado_esperado"),
-                capacidad=datos.get("capacidad", 0),
-                estado=Evento.Estado.PLANIFICADO,
-                coordinador_id=datos.get("coordinador_id"),
-                barrio_id=datos.get("barrio_id"),
-                sector_id=datos.get("sector_id"),
-                punto_interes_id=datos.get("punto_interes_id"),
-            )
-            return self._serializar(evento)
-        return await sync_to_async(_crear)()
-
-    async def actualizar(self, pk: uuid.UUID, datos: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        def _actualizar():
-            try:
-                evento = Evento.objects.get(pk=pk)
-                if evento.estado in [Evento.Estado.EN_EJECUCION, Evento.Estado.FINALIZADO]:
-                    raise ValueError(
-                        "No es posible modificar un evento en ejecución o que ya se encuentra finalizado."
-                    )
-                for key, val in datos.items():
-                    if hasattr(evento, key):
-                        setattr(evento, key, val)
-                evento.save()
-                return self._serializar(evento)
-            except Evento.DoesNotExist:
-                return None
-        return await sync_to_async(_actualizar)()
-
-    async def cambiar_estado(self, pk: uuid.UUID, estado: str) -> Optional[Dict[str, Any]]:
-        def _cambiar():
-            try:
-                evento = Evento.objects.get(pk=pk)
-                if estado in Evento.Estado.values:
-                    evento.estado = estado
-                    evento.save()
-                return self._serializar(evento)
-            except Evento.DoesNotExist:
-                return None
-        return await sync_to_async(_cambiar)()
-
-
-# =============================================================================
-# EventoTipoService
-# =============================================================================
-class EventoTipoService(IEventoTipoService):
-
-    async def listar_por_evento(self, evento_pk: uuid.UUID) -> List[Dict[str, Any]]:
-        tipos = await sync_to_async(list)(
-            EventoTipo.objects.filter(evento_id=evento_pk)
+    @transaction.atomic
+    def crear_evento(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        tipos = payload.pop("tipos", [])
+        evento_id = Evento.create(
+            nombre=payload["nombre"],
+            descripcion=payload.get("descripcion"),
+            fecha=payload["fecha"],
+            hora_inicio=payload["hora_inicio"],
+            hora_fin=payload["hora_fin"],
+            duracion_min=payload.get("duracion_min"),
+            objetivo=payload.get("objetivo"),
+            resultado_esperado=payload.get("resultado_esperado"),
+            resultado_obtenido=None,
+            capacidad=payload.get("capacidad", 0),
+            estado=payload.get("estado", "PLANIFICADO"),
+            coordinador_id=payload["coordinador_id"],
+            barrio_id=payload.get("barrio_id"),
         )
-        return [{"id": str(t.id), "tipo": t.tipo} for t in tipos]
+        for tipo in tipos:
+            EventoTipo.create(evento_id, tipo)
+        return self.obtener_evento(evento_id)
 
-    async def agregar(self, evento_pk: uuid.UUID, tipo: str) -> Dict[str, Any]:
-        def _agregar():
-            t = EventoTipo.objects.create(evento_id=evento_pk, tipo=tipo)
-            return {"id": str(t.id), "tipo": t.tipo}
-        return await sync_to_async(_agregar)()
+    @transaction.atomic
+    def actualizar_evento(
+        self, evento_id: str, payload: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        tipos = payload.pop("tipos", None)
+        Evento.update(evento_id, payload)
+        if tipos is not None:
+            EventoTipo.delete_by_evento(evento_id)
+            for tipo in tipos:
+                EventoTipo.create(evento_id, tipo)
+        return self.obtener_evento(evento_id)
 
-    async def eliminar(self, pk: uuid.UUID) -> bool:
-        def _eliminar():
-            count, _ = EventoTipo.objects.filter(pk=pk).delete()
-            return count > 0
-        return await sync_to_async(_eliminar)()
+    def actualizar_estado(
+        self, evento_id: str, estado: str
+    ) -> Optional[Dict[str, Any]]:
+        estados_validos = {"PLANIFICADO", "EN_EJECUCION", "FINALIZADO", "CANCELADO"}
+        if estado not in estados_validos:
+            raise ValueError(f"Estado inválido. Opciones: {estados_validos}")
+        Evento.update_estado(evento_id, estado)
+        return self.obtener_evento(evento_id)
 
+    def eliminar_evento(self, evento_id: str) -> bool:
+        return Evento.delete(evento_id)
 
-# =============================================================================
-# DisponibilidadService
-# =============================================================================
-class DisponibilidadService(IDisponibilidadService):
+    def agregar_tipo(self, evento_id: str, tipo: str) -> Dict[str, Any]:
+        tipo_id = EventoTipo.create(evento_id, tipo)
+        return {"id": tipo_id, "evento_id": evento_id, "tipo": tipo}
 
-    async def simpatizantes_disponibles(
-        self, evento_pk: uuid.UUID
-    ) -> List[Dict[str, Any]]:
-        """
-        RF-EV-06 & RF-EV-22: Retorna simpatizantes con horario compatible y sin
-        cruces activos en el mismo día/horario del evento.
-        """
-        def _consultar():
-            try:
-                evento = Evento.objects.get(pk=evento_pk)
-            except Evento.DoesNotExist:
-                return []
-
-            dia_nombre = DIAS_MAP[evento.fecha.weekday()]
-
-            simpatizantes_qs = Simpatizante.objects.filter(
-                horarios__dia_semana=dia_nombre,
-                horarios__hora_inicio__lte=evento.hora_inicio,
-                horarios__hora_fin__gte=evento.hora_fin,
-            )
-
-            excluir_ids = Asignacion.objects.filter(
-                evento__fecha=evento.fecha,
-                evento__hora_inicio__lt=evento.hora_fin,
-                evento__hora_fin__gt=evento.hora_inicio,
-            ).values_list("simpatizante_id", flat=True)
-
-            simpatizantes = simpatizantes_qs.exclude(id__in=excluir_ids).distinct()
-
-            resultado = []
-            for s in simpatizantes:
-                alerta = self._verificar_advertencia_territorial_sincrono(s.id, evento_pk)
-                resultado.append({
-                    "id": str(s.id),
-                    "nombre": s.nombre,
-                    "cedula": s.cedula,
-                    "ocupacion": s.ocupacion,
-                    "alerta_territorial": alerta,
-                })
-            return resultado
-
-        return await sync_to_async(_consultar)()
-
-    def _verificar_advertencia_territorial_sincrono(
-        self, simpatizante_pk: uuid.UUID, evento_pk: uuid.UUID
-    ) -> bool:
-        """Lógica sincrónica reutilizable para la verificación territorial."""
-        try:
-            evento = Evento.objects.get(pk=evento_pk)
-        except Evento.DoesNotExist:
-            return False
-        return Asignacion.objects.filter(
-            simpatizante_id=simpatizante_pk,
-            evento__sector_id=evento.sector_id,
-            asistio=True,
-        ).exists()
-
-    async def advertencia_territorial(
-        self, simpatizante_pk: uuid.UUID, evento_pk: uuid.UUID, dias: int
-    ) -> bool:
-        """
-        RF-EV-23: Devuelve True si el simpatizante asistió a un evento en el mismo
-        sector dentro de los últimos `dias` días.
-        """
-        def _verificar():
-            try:
-                evento = Evento.objects.get(pk=evento_pk)
-            except Evento.DoesNotExist:
-                return False
-
-            desde = evento.fecha - __import__("datetime").timedelta(days=dias)
-            return Asignacion.objects.filter(
-                simpatizante_id=simpatizante_pk,
-                evento__sector_id=evento.sector_id,
-                evento__fecha__gte=desde,
-                evento__fecha__lt=evento.fecha,
-                asistio=True,
-            ).exists()
-
-        return await sync_to_async(_verificar)()
+    def eliminar_tipo(self, tipo_id: str) -> bool:
+        return EventoTipo.delete(tipo_id)
 
 
 # =============================================================================
-# AsignacionService
+# ASIGNACIÓN  (RF-EV-07 al RF-EV-14, RF-EV-23)
 # =============================================================================
+
 class AsignacionService(IAsignacionService):
 
-    async def listar(self, evento_pk: uuid.UUID) -> List[Dict[str, Any]]:
-        asigs = await sync_to_async(list)(
-            Asignacion.objects.filter(evento_id=evento_pk).select_related("simpatizante")
-        )
-        return [{
-            "id": str(a.id),
-            "simpatizante_id": str(a.simpatizante_id),
-            "nombre": a.simpatizante.nombre,
-            "ocupacion": a.simpatizante.ocupacion,
-            "rol": a.rol,
-            "metodo": a.metodo,
-            "asistio": a.asistio,
-        } for a in asigs]
+    def listar_asignaciones(self, evento_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(Asignacion.get_by_evento(evento_id))
 
-    async def asignar_manual(
+    @transaction.atomic
+    def asignar_manual(
         self,
-        evento_pk: uuid.UUID,
-        simpatizante_pk: uuid.UUID,
-        rol: str,
+        evento_id: str,
+        simpatizante_id: str,
+        rol: Optional[str],
     ) -> Dict[str, Any]:
-        def _asignar():
-            simpatizante = Simpatizante.objects.get(pk=simpatizante_pk)
-            asig, _ = Asignacion.objects.get_or_create(
-                evento_id=evento_pk,
-                simpatizante_id=simpatizante_pk,
-                defaults={"rol": rol, "metodo": Asignacion.Metodo.MANUAL},
-            )
-            CoberturaService()._calcular_sincrono(evento_pk, simpatizante.ocupacion)
-            return {"id": str(asig.id), "rol": asig.rol, "metodo": asig.metodo}
-        return await sync_to_async(_asignar)()
+        if Asignacion.existe(evento_id, simpatizante_id):
+            raise ValueError("El simpatizante ya está asignado a este evento.")
+        asignacion_id = Asignacion.create(evento_id, simpatizante_id, rol, "MANUAL")
+        simpatizante = Simpatizante.get_by_id(simpatizante_id)
+        if simpatizante:
+            Cobertura.incrementar_asignados(evento_id, simpatizante["ocupacion"])
+        return _serialize(Asignacion.get_by_id(asignacion_id))
 
-    async def asignar_automatico(
+    @transaction.atomic
+    def asignar_automatico(
         self,
-        evento_pk: uuid.UUID,
-        usar_disponibilidad: bool,
-        usar_ocupacion: Optional[str],
-        excluir_sector_reciente: bool,
+        evento_id: str,
+        criterios: Dict[str, bool],
     ) -> List[Dict[str, Any]]:
         """
-        RF-EV-22 & RF-EV-23: Asignación automática con soporte de filtros por
-        disponibilidad, ocupación y control territorial.
+        RF-EV-08 — Asignación automática respetando los criterios configurables.
+        Criterios soportados:
+          - usar_horario (bool): filtra por compatibilidad de horario
+          - usar_ocupacion (bool): prioriza la ocupación requerida por cobertura
+          - usar_participacion_previa (bool): excluye quienes ya participaron en el sector
         """
-        def _auto():
-            try:
-                evento = Evento.objects.get(pk=evento_pk)
-            except Evento.DoesNotExist:
-                return []
+        evento = Evento.get_by_id(evento_id)
+        if not evento:
+            raise ValueError("Evento no encontrado.")
 
-            # Obtener candidatos base según disponibilidad horaria
-            if usar_disponibilidad:
-                dia_nombre = DIAS_MAP[evento.fecha.weekday()]
-                simpatizantes_qs = Simpatizante.objects.filter(
-                    horarios__dia_semana=dia_nombre,
-                    horarios__hora_inicio__lte=evento.hora_inicio,
-                    horarios__hora_fin__gte=evento.hora_fin,
+        # Candidatos base: todos los simpatizantes del barrio del evento
+        if evento["barrio_id"]:
+            candidatos = Simpatizante.get_by_barrio(evento["barrio_id"])
+        else:
+            candidatos = Simpatizante.get_all()
+
+        # Filtro por horario (RF-EV-22)
+        if criterios.get("usar_horario", True):
+            import datetime
+            fecha_dt = evento["fecha"]
+            if isinstance(fecha_dt, str):
+                fecha_dt = datetime.date.fromisoformat(fecha_dt)
+            dia_semana = fecha_dt.strftime("%A").upper()
+            disponibles_ids = {
+                str(d["id"])
+                for d in HorarioDisponible.get_disponibles_para_evento(
+                    str(fecha_dt),
+                    dia_semana,
+                    str(evento["hora_inicio"]),
+                    str(evento["hora_fin"]),
                 )
-                excluir_ids = Asignacion.objects.filter(
-                    evento__fecha=evento.fecha,
-                    evento__hora_inicio__lt=evento.hora_fin,
-                    evento__hora_fin__gt=evento.hora_inicio,
-                ).values_list("simpatizante_id", flat=True)
-                simpatizantes_qs = simpatizantes_qs.exclude(id__in=excluir_ids).distinct()
-            else:
-                simpatizantes_qs = Simpatizante.objects.all()
+            }
+            candidatos = [c for c in candidatos if str(c["id"]) in disponibles_ids]
 
-            if usar_ocupacion:
-                simpatizantes_qs = simpatizantes_qs.filter(
-                    ocupacion__iexact=usar_ocupacion
+        # Filtro por participación previa en el sector (RF-EV-23)
+        if criterios.get("usar_participacion_previa", True):
+            sin_conflicto = []
+            for c in candidatos:
+                sectores_recientes = Asignacion.get_sectores_recientes_simpatizante(
+                    str(c["id"])
                 )
-
-            candidatos = list(simpatizantes_qs)
-
-            # Aplicar exclusión territorial si se solicita
-            if excluir_sector_reciente:
-                disp_svc = DisponibilidadService()
-                candidatos = [
-                    s for s in candidatos
-                    if not disp_svc._verificar_advertencia_territorial_sincrono(
-                        s.id, evento_pk
+                if not sectores_recientes:
+                    sin_conflicto.append(c)
+                else:
+                    logger.info(
+                        "[AsignacionService] Simpatizante %s omitido por participación territorial reciente.",
+                        c["id"],
                     )
-                ]
+            candidatos = sin_conflicto
 
-            coberturas = Cobertura.objects.filter(evento_id=evento_pk)
-            cobertura_svc = CoberturaService()
-            nuevas = []
+        # Excluir ya asignados
+        ya_asignados = {
+            str(a["simpatizante_id"])
+            for a in Asignacion.get_by_evento(evento_id)
+        }
+        candidatos = [c for c in candidatos if str(c["id"]) not in ya_asignados]
 
-            for cob in coberturas:
-                faltantes = cob.requeridos - cob.asignados
-                if faltantes <= 0:
-                    continue
+        # Ordenar por ocupación si se usa cobertura
+        if criterios.get("usar_ocupacion", True):
+            coberturas = {c["ocupacion"]: c["requeridos"] for c in Cobertura.get_by_evento(evento_id)}
+            candidatos.sort(
+                key=lambda c: coberturas.get(c["ocupacion"], 0),
+                reverse=True,
+            )
 
-                viables = [
-                    c for c in candidatos
-                    if c.ocupacion.lower() == cob.ocupacion.lower()
-                ]
+        # Asignar hasta completar capacidad del evento
+        capacidad = evento.get("capacidad", 0)
+        asignados = []
+        for candidato in candidatos:
+            if capacidad and len(asignados) >= capacidad:
+                break
+            asignacion_id = Asignacion.create(
+                evento_id, str(candidato["id"]), None, "AUTOMATICO"
+            )
+            Cobertura.incrementar_asignados(evento_id, candidato["ocupacion"])
+            asignados.append(_serialize(Asignacion.get_by_id(asignacion_id)))
 
-                for candidato in viables[:faltantes]:
-                    asig, created = Asignacion.objects.get_or_create(
-                        evento_id=evento_pk,
-                        simpatizante_id=candidato.id,
-                        defaults={
-                            "rol": Asignacion.Rol.STAFF,
-                            "metodo": Asignacion.Metodo.AUTOMATICO,
-                        },
-                    )
-                    if created:
-                        nuevas.append({
-                            "id": str(asig.id),
-                            "simpatizante_id": str(asig.simpatizante_id),
-                            "rol": asig.rol,
-                            "metodo": asig.metodo,
-                        })
+        return asignados
 
-                cobertura_svc._calcular_sincrono(evento_pk, cob.ocupacion)
-
-            return nuevas
-
-        return await sync_to_async(_auto)()
-
-    async def actualizar(
-        self, pk: uuid.UUID, datos: Dict[str, Any]
+    def actualizar_rol(
+        self, asignacion_id: str, rol: str
     ) -> Optional[Dict[str, Any]]:
-        def _actualizar():
-            try:
-                asig = Asignacion.objects.get(pk=pk)
-                for key, val in datos.items():
-                    if hasattr(asig, key):
-                        setattr(asig, key, val)
-                asig.save()
-                return {"id": str(asig.id), "rol": asig.rol, "metodo": asig.metodo}
-            except Asignacion.DoesNotExist:
-                return None
-        return await sync_to_async(_actualizar)()
+        Asignacion.update_rol(asignacion_id, rol)
+        return _serialize(Asignacion.get_by_id(asignacion_id))
 
-    async def eliminar(self, pk: uuid.UUID) -> bool:
-        def _eliminar():
-            try:
-                asig = Asignacion.objects.select_related("simpatizante").get(pk=pk)
-                evento_id = asig.evento_id
-                ocupacion = asig.simpatizante.ocupacion
-                asig.delete()
-                CoberturaService()._calcular_sincrono(evento_id, ocupacion)
-                return True
-            except Asignacion.DoesNotExist:
-                return False
-        return await sync_to_async(_eliminar)()
+    def remover_asignacion(self, asignacion_id: str) -> bool:
+        return Asignacion.delete(asignacion_id)
 
-    async def registrar_asistencia(
-        self, evento_pk: uuid.UUID, asistencias: Dict[str, bool]
-    ) -> int:
-        """
-        Registra asistencia en bloque.
-        `asistencias` es un dict {str(asignacion_pk): bool}.
-        Devuelve el número de registros actualizados.
-        """
-        def _registrar():
-            actualizados = 0
-            for asig_pk_str, asistio in asistencias.items():
-                try:
-                    asig = Asignacion.objects.get(
-                        pk=uuid.UUID(asig_pk_str), evento_id=evento_pk
-                    )
-                    asig.asistio = asistio
-                    asig.save(update_fields=["asistio"])
-                    actualizados += 1
-                except (Asignacion.DoesNotExist, ValueError):
-                    continue
-            return actualizados
-        return await sync_to_async(_registrar)()
+    def registrar_asistencia(
+        self, asignacion_id: str, asistio: bool
+    ) -> Optional[Dict[str, Any]]:
+        Asignacion.registrar_asistencia(asignacion_id, asistio)
+        return _serialize(Asignacion.get_by_id(asignacion_id))
+
+    def verificar_participacion_territorial(
+        self, simpatizante_id: str, evento_id: str
+    ) -> Dict[str, Any]:
+        """RF-EV-23 — Advierte si hay participación reciente en el mismo sector."""
+        evento = Evento.get_by_id(evento_id)
+        if not evento:
+            return {"advertencia": False, "sectores": []}
+        sectores_recientes = Asignacion.get_sectores_recientes_simpatizante(simpatizante_id)
+        advertencia = len(sectores_recientes) > 0
+        return {
+            "advertencia": advertencia,
+            "sectores": sectores_recientes,
+            "mensaje": (
+                "Esta persona participó recientemente en actividades del mismo sector."
+                if advertencia
+                else "Sin participación territorial reciente."
+            ),
+        }
 
 
 # =============================================================================
-# CoberturaService
+# COBERTURA  (RF-EV-11)
 # =============================================================================
+
 class CoberturaService(ICoberturaService):
 
-    async def listar(self, evento_pk: uuid.UUID) -> List[Dict[str, Any]]:
-        cobs = await sync_to_async(list)(
-            Cobertura.objects.filter(evento_id=evento_pk)
-        )
-        return [{
-            "id": str(c.id),
-            "ocupacion": c.ocupacion,
-            "requeridos": c.requeridos,
-            "asignados": c.asignados,
-        } for c in cobs]
+    def listar_cobertura(self, evento_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(Cobertura.get_by_evento(evento_id))
 
-    async def agregar(
-        self, evento_pk: uuid.UUID, datos: Dict[str, Any]
+    def registrar_cobertura(
+        self, evento_id: str, ocupacion: str, requeridos: int
     ) -> Dict[str, Any]:
-        def _agregar():
-            cob = Cobertura.objects.create(
-                evento_id=evento_pk,
-                ocupacion=datos["ocupacion"],
-                requeridos=datos.get("requeridos", 0),
-                asignados=0,
+        cobertura_id = Cobertura.create(evento_id, ocupacion, requeridos)
+        rows = _serialize_list(Cobertura.get_by_evento(evento_id))
+        return next(r for r in rows if r["id"] == cobertura_id)
+
+    def actualizar_cobertura(
+        self,
+        cobertura_id: str,
+        ocupacion: str,
+        requeridos: int,
+        asignados: int,
+    ) -> Optional[Dict[str, Any]]:
+        Cobertura.update(cobertura_id, ocupacion, requeridos, asignados)
+        # Reconstruimos el objeto desde la BD
+        from django.db import connection
+        import db
+        from Backend.moduloEventos.models import _fetchone
+        with connection.cursor() as cur:
+            cur.execute(
+                f"SELECT id, evento_id, ocupacion, requeridos, asignados FROM {db.cobertura} WHERE id = %s",
+                [cobertura_id],
             )
-            return {
-                "id": str(cob.id),
-                "ocupacion": cob.ocupacion,
-                "requeridos": cob.requeridos,
-                "asignados": cob.asignados,
-            }
-        return await sync_to_async(_agregar)()
+            return _serialize(_fetchone(cur))
 
-    async def eliminar(self, pk: uuid.UUID) -> bool:
-        def _eliminar():
-            count, _ = Cobertura.objects.filter(pk=pk).delete()
-            return count > 0
-        return await sync_to_async(_eliminar)()
-
-    def _calcular_sincrono(self, evento_pk: uuid.UUID, ocupacion: str) -> None:
-        """RF-EV-11: Recalcula y persiste el conteo real de asignados."""
-        conteo = Asignacion.objects.filter(
-            evento_id=evento_pk,
-            simpatizante__ocupacion__iexact=ocupacion,
-        ).count()
-        Cobertura.objects.filter(
-            evento_id=evento_pk,
-            ocupacion__iexact=ocupacion,
-        ).update(asignados=conteo)
-
-    async def sincronizar_conteo(self, evento_pk: uuid.UUID, ocupacion: str) -> None:
-        await sync_to_async(self._calcular_sincrono)(evento_pk, ocupacion)
+    def eliminar_cobertura(self, cobertura_id: str) -> bool:
+        return Cobertura.delete(cobertura_id)
 
 
 # =============================================================================
-# ObservacionService
+# OBSERVACIÓN  (RF-EV-12, RF-EV-13)
 # =============================================================================
+
 class ObservacionService(IObservacionService):
 
-    async def listar(self, evento_pk: uuid.UUID) -> List[Dict[str, Any]]:
-        obs = await sync_to_async(list)(
-            Observacion.objects.filter(evento_id=evento_pk).order_by("registrado_en")
-        )
-        return [{
-            "id": str(o.id),
-            "momento": o.momento,
-            "contenido": o.contenido,
-            "registrado_en": o.registrado_en.isoformat() if o.registrado_en else None,
-        } for o in obs]
+    MOMENTOS_VALIDOS = {"INICIAL", "FINAL"}
 
-    async def agregar(
-        self, evento_pk: uuid.UUID, momento: str, contenido: str
+    def listar_observaciones(self, evento_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(Observacion.get_by_evento(evento_id))
+
+    def registrar_observacion(
+        self, evento_id: str, momento: str, contenido: str
     ) -> Dict[str, Any]:
-        def _agregar():
-            obs = Observacion.objects.create(
-                evento_id=evento_pk,
-                momento=momento,
-                contenido=contenido,
-                registrado_en=timezone.now(),
-            )
-            return {
-                "id": str(obs.id),
-                "momento": obs.momento,
-                "contenido": obs.contenido,
-            }
-        return await sync_to_async(_agregar)()
+        if momento not in self.MOMENTOS_VALIDOS:
+            raise ValueError(f"momento debe ser uno de: {self.MOMENTOS_VALIDOS}")
+        obs_id = Observacion.create(evento_id, momento, contenido)
+        rows = _serialize_list(Observacion.get_by_evento(evento_id))
+        return next(r for r in rows if r["id"] == obs_id)
+
+    def eliminar_observacion(self, observacion_id: str) -> bool:
+        return Observacion.delete(observacion_id)
 
 
 # =============================================================================
-# ParticipacionExternaService
+# PARTICIPACIÓN EXTERNA  (RF-EV-18)
 # =============================================================================
+
 class ParticipacionExternaService(IParticipacionExternaService):
 
-    async def obtener(self, evento_pk: uuid.UUID) -> Optional[Dict[str, Any]]:
-        try:
-            part = await sync_to_async(ParticipacionExterna.objects.get)(
-                evento_id=evento_pk
-            )
-            return {"id": str(part.id), "cantidad": part.cantidad, "notas": part.notas}
-        except ParticipacionExterna.DoesNotExist:
-            return None
+    def obtener_participacion(self, evento_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(ParticipacionExterna.get_by_evento(evento_id))
 
-    async def registrar(
-        self, evento_pk: uuid.UUID, cantidad: int, notas: Optional[str]
+    def registrar_participacion(
+        self, evento_id: str, cantidad: int, notas: Optional[str]
     ) -> Dict[str, Any]:
-        def _reg():
-            part, _ = ParticipacionExterna.objects.update_or_create(
-                evento_id=evento_pk,
-                defaults={"cantidad": cantidad, "notas": notas},
+        existente = ParticipacionExterna.get_by_evento(evento_id)
+        if existente:
+            ParticipacionExterna.update(str(existente["id"]), cantidad, notas)
+            return _serialize(ParticipacionExterna.get_by_evento(evento_id))
+        ParticipacionExterna.create(evento_id, cantidad, notas)
+        return _serialize(ParticipacionExterna.get_by_evento(evento_id))
+
+    def actualizar_participacion(
+        self,
+        participacion_id: str,
+        cantidad: int,
+        notas: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        ParticipacionExterna.update(participacion_id, cantidad, notas)
+        from django.db import connection
+        import db
+        from Backend.moduloEventos.models import _fetchone
+        with connection.cursor() as cur:
+            cur.execute(
+                f"SELECT id, evento_id, cantidad, notas FROM {db.participacion_externa} WHERE id = %s",
+                [participacion_id],
             )
-            return {"id": str(part.id), "cantidad": part.cantidad, "notas": part.notas}
-        return await sync_to_async(_reg)()
+            return _serialize(_fetchone(cur))
 
 
 # =============================================================================
-# MaterialPublicitarioService
+# MATERIAL PUBLICITARIO  (RF-EV-19)
 # =============================================================================
+
 class MaterialPublicitarioService(IMaterialPublicitarioService):
 
-    async def obtener(self, evento_pk: uuid.UUID) -> Optional[Dict[str, Any]]:
-        try:
-            mat = await sync_to_async(MaterialPublicitario.objects.get)(
-                evento_id=evento_pk
-            )
-            return {
-                "id": str(mat.id),
-                "entregado": mat.entregado,
-                "restante": mat.restante,
-            }
-        except MaterialPublicitario.DoesNotExist:
-            return None
+    def obtener_material(self, evento_id: str) -> Optional[Dict[str, Any]]:
+        return _serialize(MaterialPublicitario.get_by_evento(evento_id))
 
-    async def registrar(
-        self, evento_pk: uuid.UUID, entregado: int, restante: int
+    def registrar_material(
+        self, evento_id: str, entregado: int, restante: int
     ) -> Dict[str, Any]:
-        def _reg():
-            mat, _ = MaterialPublicitario.objects.update_or_create(
-                evento_id=evento_pk,
-                defaults={"entregado": entregado, "restante": restante},
+        existente = MaterialPublicitario.get_by_evento(evento_id)
+        if existente:
+            MaterialPublicitario.update(str(existente["id"]), entregado, restante)
+            return _serialize(MaterialPublicitario.get_by_evento(evento_id))
+        MaterialPublicitario.create(evento_id, entregado, restante)
+        return _serialize(MaterialPublicitario.get_by_evento(evento_id))
+
+    def actualizar_material(
+        self, material_id: str, entregado: int, restante: int
+    ) -> Optional[Dict[str, Any]]:
+        MaterialPublicitario.update(material_id, entregado, restante)
+        from django.db import connection
+        import db
+        from Backend.moduloEventos.models import _fetchone
+        with connection.cursor() as cur:
+            cur.execute(
+                f"SELECT id, evento_id, entregado, restante FROM {db.material_publicitario} WHERE id = %s",
+                [material_id],
             )
-            return {
-                "id": str(mat.id),
-                "entregado": mat.entregado,
-                "restante": mat.restante,
-            }
-        return await sync_to_async(_reg)()
+            return _serialize(_fetchone(cur))
 
 
 # =============================================================================
-# EstadoMaterialService
+# ESTADO MATERIAL  (RF-EV-20, RF-EV-21, RF-EV-22)
 # =============================================================================
+
 class EstadoMaterialService(IEstadoMaterialService):
 
-    async def listar(self, evento_pk: uuid.UUID) -> List[Dict[str, Any]]:
-        est = await sync_to_async(list)(
-            EstadoMaterial.objects.filter(evento_id=evento_pk).order_by("-registrado_en")
-        )
-        return [{
-            "id": str(e.id),
-            "estado": e.estado,
-            "notas": e.notas,
-            "registrado_en": e.registrado_en.isoformat() if e.registrado_en else None,
-        } for e in est]
+    ESTADOS_VALIDOS = {"CONSERVADO", "DETERIORADO", "RETIRADO", "VANDALIZADO"}
 
-    async def registrar(
-        self, evento_pk: uuid.UUID, estado: str, notas: Optional[str]
+    def listar_estados(self, evento_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(EstadoMaterial.get_by_evento(evento_id))
+
+    def registrar_estado(
+        self, evento_id: str, estado: str, notas: Optional[str]
     ) -> Dict[str, Any]:
-        def _reg():
-            obj = EstadoMaterial.objects.create(
-                evento_id=evento_pk,
-                estado=estado,
-                notas=notas,
-                registrado_en=timezone.now(),
-            )
-            return {"id": str(obj.id), "estado": obj.estado}
-        return await sync_to_async(_reg)()
+        estado_upper = estado.upper()
+        if estado_upper not in self.ESTADOS_VALIDOS:
+            raise ValueError(f"Estado inválido. Opciones: {self.ESTADOS_VALIDOS}")
+        estado_id = EstadoMaterial.create(evento_id, estado_upper, notas)
+        rows = _serialize_list(EstadoMaterial.get_by_evento(evento_id))
+        return next(r for r in rows if r["id"] == estado_id)
 
-    async def cargar_csv(self, contenido: str) -> Dict[str, Any]:
-        def _procesar():
-            lector = csv.reader(io.StringIO(contenido.strip()))
-            creados, errores = 0, []
-            escala_map = {
-                "5": EstadoMaterial.Estado.CONSERVADO,
-                "4": EstadoMaterial.Estado.CONSERVADO,
-                "3": EstadoMaterial.Estado.DETERIORADO,
-                "2": EstadoMaterial.Estado.RETIRADO,
-                "1": EstadoMaterial.Estado.VANDALIZADO,
-            }
-            for idx, fila in enumerate(lector, start=1):
-                if not fila or len(fila) < 2:
-                    errores.append(f"Fila {idx}: Estructura inválida.")
-                    continue
-                evento_num, escala_num = fila[0].strip(), fila[1].strip()
-                notas = fila[2].strip() if len(fila) > 2 else None
-                try:
-                    evento = Evento.objects.filter(
-                        nombre__icontains=evento_num
-                    ).first()
-                    if not evento:
-                        try:
-                            evento = Evento.objects.filter(
-                                pk=uuid.UUID(evento_num)
-                            ).first()
-                        except ValueError:
-                            evento = None
-                    if not evento:
-                        errores.append(f"Fila {idx}: Evento '{evento_num}' no encontrado.")
-                        continue
-                    estado_str = escala_map.get(escala_num)
-                    if not estado_str:
-                        errores.append(
-                            f"Fila {idx}: Escala numérica '{escala_num}' fuera de rango (1-5)."
-                        )
-                        continue
-                    EstadoMaterial.objects.create(
-                        evento=evento,
-                        estado=estado_str,
-                        notas=notas,
-                        registrado_en=timezone.now(),
-                    )
-                    creados += 1
-                except Exception as ex:
-                    errores.append(f"Fila {idx}: Error inesperado ({str(ex)}).")
-            return {"registrados": creados, "errores": errores}
-        return await sync_to_async(_procesar)()
+    @transaction.atomic
+    def cargar_desde_csv(self, archivo_csv: Any) -> Dict[str, Any]:
+        """
+        RF-EV-21 — Procesa un archivo CSV con columnas:
+        numero_evento (evento_id UUID), estado (1-5), notas.
+        """
+        if hasattr(archivo_csv, "read"):
+            contenido = archivo_csv.read()
+            if isinstance(contenido, bytes):
+                contenido = contenido.decode("utf-8")
+        else:
+            contenido = archivo_csv
 
-    async def promedio_estado(self, evento_pk: uuid.UUID) -> Dict[str, Any]:
-        def _promedio():
-            qs = EstadoMaterial.objects.filter(evento_id=evento_pk)
-            total = qs.count()
-            if total == 0:
-                return {"promedio": 0.0, "total_muestras": 0}
-            pesos = {
-                EstadoMaterial.Estado.CONSERVADO: 5.0,
-                EstadoMaterial.Estado.DETERIORADO: 3.0,
-                EstadoMaterial.Estado.RETIRADO: 2.0,
-                EstadoMaterial.Estado.VANDALIZADO: 1.0,
-            }
-            suma = sum(pesos.get(e.estado, 0.0) for e in qs)
-            return {"promedio": round(suma / total, 2), "total_muestras": total}
-        return await sync_to_async(_promedio)()
+        lector = csv.DictReader(io.StringIO(contenido))
+        filas_ok: List[Dict[str, Any]] = []
+        errores: List[str] = []
+
+        for i, fila in enumerate(lector, start=2):
+            try:
+                evento_id = fila.get("numero_evento", "").strip()
+                estado_raw = fila.get("estado", "").strip()
+                notas = fila.get("notas", "").strip() or None
+
+                if not evento_id:
+                    raise ValueError("numero_evento vacío")
+                if not estado_raw:
+                    raise ValueError("estado vacío")
+
+                estado_num = int(estado_raw)
+                if not (1 <= estado_num <= 5):
+                    raise ValueError(f"estado debe ser 1-5, se recibió {estado_num}")
+
+                filas_ok.append({"evento_id": evento_id, "estado": str(estado_num), "notas": notas})
+            except Exception as exc:
+                errores.append(f"Fila {i}: {exc}")
+
+        insertados = EstadoMaterial.bulk_create_from_csv(filas_ok)
+        return {
+            "insertados": insertados,
+            "errores": errores,
+            "total_procesadas": len(filas_ok) + len(errores),
+        }
+
+    def calcular_promedio_estado(self, evento_id: str) -> Optional[float]:
+        return EstadoMaterial.promedio_estado_numerico(evento_id)
 
 
 # =============================================================================
-# TerritorioService
+# AUDITORÍA
 # =============================================================================
-class TerritorioService(ITerritorioService):
 
-    async def listar_barrios(self) -> List[Dict[str, Any]]:
-        barrios = await sync_to_async(list)(Barrio.objects.order_by("nombre"))
-        return [{"id": str(b.id), "nombre": b.nombre} for b in barrios]
+class AuditoriaService(IAuditoriaService):
 
-    async def listar_sectores(
-        self, barrio_pk: Optional[uuid.UUID] = None
+    def historial_registro(
+        self, tabla: str, registro_id: str
     ) -> List[Dict[str, Any]]:
-        qs = Sector.objects.select_related("barrio").order_by("nombre")
-        if barrio_pk:
-            qs = qs.filter(barrio_id=barrio_pk)
-        sectores = await sync_to_async(list)(qs)
-        return [
-            {"id": str(s.id), "nombre": s.nombre, "barrio_id": str(s.barrio_id)}
-            for s in sectores
-        ]
+        return _serialize_list(Auditoria.get_by_tabla_registro(tabla, registro_id))
 
-    async def listar_puntos_interes(
-        self, sector_pk: Optional[uuid.UUID] = None
-    ) -> List[Dict[str, Any]]:
-        qs = PuntoInteres.objects.select_related("sector").order_by("nombre")
-        if sector_pk:
-            qs = qs.filter(sector_id=sector_pk)
-        puntos = await sync_to_async(list)(qs)
-        return [
-            {"id": str(p.id), "nombre": p.nombre, "sector_id": str(p.sector_id)}
-            for p in puntos
-        ]
+    def registros_recientes(self, limit: int = 50) -> List[Dict[str, Any]]:
+        return _serialize_list(Auditoria.get_recientes(limit))

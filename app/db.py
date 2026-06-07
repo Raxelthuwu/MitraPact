@@ -6,6 +6,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 logging.info("[DbTables] Inicializando mapeo de tablas de la base de datos...")
 
+import sys
+import os
+
+# Esto añade la carpeta raíz (MITRAPACT) al path de Python si no lo está ya
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
+from app import db
+
 # ESQUEMAS
 
 # busqueda_semantica

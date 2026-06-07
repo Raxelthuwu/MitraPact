@@ -1,0 +1,33 @@
+from .services import (
+    BarrioService,
+    SectorService,
+    PuntoInteresService,
+    CoordinadorService,
+    SimpatizanteService,
+    HorarioDisponibleService,
+    EventoService,
+    AsignacionService,
+    CoberturaService,
+    ObservacionService,
+    ParticipacionExternaService,
+    MaterialPublicitarioService,
+    EstadoMaterialService,
+    AuditoriaService,
+)
+
+__all__ = [
+    "BarrioService",
+    "SectorService",
+    "PuntoInteresService",
+    "CoordinadorService",
+    "SimpatizanteService",
+    "HorarioDisponibleService",
+    "EventoService",
+    "AsignacionService",
+    "CoberturaService",
+    "ObservacionService",
+    "ParticipacionExternaService",
+    "MaterialPublicitarioService",
+    "EstadoMaterialService",
+    "AuditoriaService",
+]

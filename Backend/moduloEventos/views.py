@@ -1,405 +1,640 @@
-import uuid
+import json
+import logging
+from typing import Callable
 
-from django.contrib import messages
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect, render
+from django.http import JsonResponse
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from Backend.moduloEventos.services import (
+    BarrioService,
+    SectorService,
+    PuntoInteresService,
+    CoordinadorService,
+    SimpatizanteService,
+    HorarioDisponibleService,
+    EventoService,
     AsignacionService,
     CoberturaService,
-    DisponibilidadService,
-    EstadoMaterialService,
-    EventoService,
-    EventoTipoService,
-    MaterialPublicitarioService,
     ObservacionService,
     ParticipacionExternaService,
-    TerritorioService,
+    MaterialPublicitarioService,
+    EstadoMaterialService,
+    AuditoriaService,
 )
 
-# Service singletons
-eventoSvc         = EventoService()
-eventoTipoSvc     = EventoTipoService()
-asignacionSvc     = AsignacionService()
-disponibilidadSvc = DisponibilidadService()
-coberturaSvc      = CoberturaService()
-observacionSvc    = ObservacionService()
-participacionSvc  = ParticipacionExternaService()
-materialSvc       = MaterialPublicitarioService()
-estadoMaterialSvc = EstadoMaterialService()
-territorioSvc     = TerritorioService()
+logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Instancias de servicios (singleton ligero — sin estado mutable)
+# ─────────────────────────────────────────────────────────────────────────────
+_barrio_svc             = BarrioService()
+_sector_svc             = SectorService()
+_punto_svc              = PuntoInteresService()
+_coordinador_svc        = CoordinadorService()
+_simpatizante_svc       = SimpatizanteService()
+_horario_svc            = HorarioDisponibleService()
+_evento_svc             = EventoService()
+_asignacion_svc         = AsignacionService()
+_cobertura_svc          = CoberturaService()
+_observacion_svc        = ObservacionService()
+_participacion_svc      = ParticipacionExternaService()
+_material_svc           = MaterialPublicitarioService()
+_estado_material_svc    = EstadoMaterialService()
+_auditoria_svc          = AuditoriaService()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _ok(data=None, status: int = 200) -> JsonResponse:
+    return JsonResponse({"ok": True, "data": data}, status=status)
+
+
+def _err(mensaje: str, status: int = 400) -> JsonResponse:
+    return JsonResponse({"ok": False, "error": mensaje}, status=status)
+
+
+def _body(request) -> dict:
+    try:
+        return json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def _handle(func: Callable) -> JsonResponse:
+    """Envuelve la lógica de cada handler para capturar excepciones comunes."""
+    try:
+        return func()
+    except ValueError as exc:
+        return _err(str(exc), 400)
+    except Exception as exc:
+        logger.exception("[moduloEventos] Error inesperado: %s", exc)
+        return _err("Error interno del servidor.", 500)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Decorador CSRF exento para todas las vistas (API interna)
+# ─────────────────────────────────────────────────────────────────────────────
+csrf_exempt_cbv = method_decorator(csrf_exempt, name="dispatch")
 
 
 # =============================================================================
-# EVENTOS
+# BARRIO
 # =============================================================================
 
-async def evento_lista(request: HttpRequest) -> HttpResponse:
-    eventos = await eventoSvc.listar()
-    return render(request, "eventos/evento_lista.html", {"eventos": eventos})
+@csrf_exempt_cbv
+class BarrioListView(View):
+    """GET /eventos/barrios/  — POST /eventos/barrios/"""
+
+    def get(self, request):
+        return _handle(lambda: _ok(_barrio_svc.listar_barrios()))
+
+    def post(self, request):
+        data = _body(request)
+        return _handle(lambda: _ok(_barrio_svc.crear_barrio(data["nombre"]), 201))
 
 
-async def evento_crear(request: HttpRequest) -> HttpResponse:
-    barrios = await territorioSvc.listar_barrios()
+@csrf_exempt_cbv
+class BarrioDetailView(View):
+    """GET|PUT|DELETE /eventos/barrios/<barrio_id>/"""
 
-    if request.method == "POST":
-        datos = {
-            "nombre":             request.POST.get("nombre", "").strip(),
-            "descripcion":        request.POST.get("descripcion", "").strip() or None,
-            "fecha":              request.POST.get("fecha"),
-            "hora_inicio":        request.POST.get("hora_inicio"),
-            "hora_fin":           request.POST.get("hora_fin"),
-            "duracion_min":       request.POST.get("duracion_min") or None,
-            "objetivo":           request.POST.get("objetivo", "").strip() or None,
-            "resultado_esperado": request.POST.get("resultado_esperado", "").strip() or None,
-            "capacidad":          int(request.POST.get("capacidad", 0)),
-            "estado":             request.POST.get("estado", "PLANIFICADO"),
-            "coordinador_id":     request.POST.get("coordinador_id") or None,
-            "barrio_id":          request.POST.get("barrio_id") or None,
-        }
+    def get(self, request, barrio_id):
+        def _():
+            obj = _barrio_svc.obtener_barrio(barrio_id)
+            return _ok(obj) if obj else _err("Barrio no encontrado.", 404)
+        return _handle(_)
 
-        if not datos["nombre"] or not datos["fecha"]:
-            messages.error(request, "El nombre y la fecha son obligatorios.")
-            return render(request, "eventos/evento_form.html", {
-                "barrios": barrios, "datos": datos,
-            })
+    def put(self, request, barrio_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_barrio_svc.actualizar_barrio(barrio_id, data["nombre"])))
 
-        evento = await eventoSvc.crear(datos)
-        messages.success(request, "Evento creado exitosamente.")
-        return redirect("eventos:evento_detalle", pk=evento["id"])
-
-    return render(request, "eventos/evento_form.html", {"barrios": barrios})
-
-
-async def evento_detalle(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
-    evento = await eventoSvc.obtener(pk)
-    if not evento:
-        messages.error(request, "Evento no encontrado.")
-        return redirect("eventos:evento_lista")
-
-    tipos         = await eventoTipoSvc.listar_por_evento(pk)
-    asignaciones  = await asignacionSvc.listar(pk)
-    coberturas    = await coberturaSvc.listar(pk)
-    observaciones = await observacionSvc.listar(pk)
-    participacion = await participacionSvc.obtener(pk)
-    material      = await materialSvc.obtener(pk)
-    estados_mat   = await estadoMaterialSvc.listar(pk)
-    promedio_mat  = await estadoMaterialSvc.promedio_estado(pk)
-
-    return render(request, "eventos/evento_detalle.html", {
-        "evento":        evento,
-        "tipos":         tipos,
-        "asignaciones":  asignaciones,
-        "coberturas":    coberturas,
-        "observaciones": observaciones,
-        "participacion": participacion,
-        "material":      material,
-        "estados_mat":   estados_mat,
-        "promedio_mat":  promedio_mat,
-    })
-
-
-async def evento_editar(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
-    evento  = await eventoSvc.obtener(pk)
-    barrios = await territorioSvc.listar_barrios()
-
-    if not evento:
-        messages.error(request, "Evento no encontrado.")
-        return redirect("eventos:evento_lista")
-
-    if request.method == "POST":
-        datos = {
-            "nombre":             request.POST.get("nombre", "").strip(),
-            "descripcion":        request.POST.get("descripcion", "").strip() or None,
-            "fecha":              request.POST.get("fecha"),
-            "hora_inicio":        request.POST.get("hora_inicio"),
-            "hora_fin":           request.POST.get("hora_fin"),
-            "duracion_min":       request.POST.get("duracion_min") or None,
-            "objetivo":           request.POST.get("objetivo", "").strip() or None,
-            "resultado_esperado": request.POST.get("resultado_esperado", "").strip() or None,
-            "resultado_obtenido": request.POST.get("resultado_obtenido", "").strip() or None,
-            "capacidad":          int(request.POST.get("capacidad", 0)),
-            "estado":             request.POST.get("estado", evento["estado"]),
-            "barrio_id":          request.POST.get("barrio_id") or None,
-        }
-
-        actualizado = await eventoSvc.actualizar(pk, datos)
-        if actualizado:
-            messages.success(request, "Evento actualizado.")
-        return redirect("eventos:evento_detalle", pk=pk)
-
-    return render(request, "eventos/evento_form.html", {
-        "evento":  evento,
-        "barrios": barrios,
-        "editar":  True,
-    })
+    def delete(self, request, barrio_id):
+        return _handle(lambda: _ok({"eliminado": _barrio_svc.eliminar_barrio(barrio_id)}))
 
 
 # =============================================================================
-# TIPOS DE EVENTO
+# SECTOR
 # =============================================================================
 
-async def evento_tipo_agregar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        tipo = request.POST.get("tipo", "").strip()
-        if tipo:
-            await eventoTipoSvc.agregar(evento_pk, tipo)
-            messages.success(request, "Tipo agregado.")
-        else:
-            messages.error(request, "Debe seleccionar un tipo.")
-    return redirect("eventos:evento_detalle", pk=evento_pk)
+@csrf_exempt_cbv
+class SectorListView(View):
+    """GET /eventos/sectores/?barrio_id=  — POST /eventos/sectores/"""
+
+    def get(self, request):
+        barrio_id = request.GET.get("barrio_id")
+        return _handle(lambda: _ok(_sector_svc.listar_sectores(barrio_id)))
+
+    def post(self, request):
+        data = _body(request)
+        return _handle(lambda: _ok(_sector_svc.crear_sector(data["nombre"], data["barrio_id"]), 201))
 
 
-async def evento_tipo_eliminar(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
-    evento_pk = request.POST.get("evento_pk")
-    if request.method == "POST":
-        await eventoTipoSvc.eliminar(pk)
-        messages.success(request, "Tipo eliminado.")
-    return redirect("eventos:evento_detalle", pk=evento_pk)
+@csrf_exempt_cbv
+class SectorDetailView(View):
+    """GET|PUT|DELETE /eventos/sectores/<sector_id>/"""
 
+    def get(self, request, sector_id):
+        def _():
+            obj = _sector_svc.obtener_sector(sector_id)
+            return _ok(obj) if obj else _err("Sector no encontrado.", 404)
+        return _handle(_)
 
-# =============================================================================
-# DISPONIBILIDAD
-# =============================================================================
+    def put(self, request, sector_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_sector_svc.actualizar_sector(sector_id, data["nombre"], data["barrio_id"])))
 
-async def consultar_disponibilidad(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento      = await eventoSvc.obtener(evento_pk)
-    disponibles = await disponibilidadSvc.simpatizantes_disponibles(evento_pk)
-
-    return render(request, "eventos/disponibilidad.html", {
-        "evento":      evento,
-        "disponibles": disponibles,
-    })
+    def delete(self, request, sector_id):
+        return _handle(lambda: _ok({"eliminado": _sector_svc.eliminar_sector(sector_id)}))
 
 
 # =============================================================================
-# ASIGNACIÓN DE PERSONAL
+# PUNTO DE INTERÉS
 # =============================================================================
 
-async def asignacion_lista(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento       = await eventoSvc.obtener(evento_pk)
-    asignaciones = await asignacionSvc.listar(evento_pk)
-    return render(request, "eventos/asignacion_lista.html", {
-        "evento":       evento,
-        "asignaciones": asignaciones,
-    })
+@csrf_exempt_cbv
+class PuntoInteresListView(View):
+    """GET /eventos/puntos/?sector_id=  — POST /eventos/puntos/"""
+
+    def get(self, request):
+        sector_id = request.GET.get("sector_id", "")
+        return _handle(lambda: _ok(_punto_svc.listar_puntos(sector_id)))
+
+    def post(self, request):
+        data = _body(request)
+        return _handle(lambda: _ok(_punto_svc.crear_punto(data["nombre"], data["sector_id"]), 201))
 
 
-async def asignacion_manual(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento      = await eventoSvc.obtener(evento_pk)
-    disponibles = await disponibilidadSvc.simpatizantes_disponibles(evento_pk)
+@csrf_exempt_cbv
+class PuntoInteresDetailView(View):
+    """GET|PUT|DELETE /eventos/puntos/<punto_id>/"""
 
-    if request.method == "POST":
-        simpatizante_id = request.POST.get("simpatizante_id", "").strip()
-        rol             = request.POST.get("rol", "").strip()
+    def get(self, request, punto_id):
+        def _():
+            obj = _punto_svc.obtener_punto(punto_id)
+            return _ok(obj) if obj else _err("Punto de interés no encontrado.", 404)
+        return _handle(_)
 
-        if not simpatizante_id or not rol:
-            messages.error(request, "Debe seleccionar un simpatizante y un rol.")
-            return render(request, "eventos/asignacion_manual.html", {
-                "evento": evento, "disponibles": disponibles,
-            })
+    def put(self, request, punto_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_punto_svc.actualizar_punto(punto_id, data["nombre"], data["sector_id"])))
 
-        # RF-EV-23: advertencia territorial con ventana de 30 días por defecto
-        tiene_alerta = await disponibilidadSvc.advertencia_territorial(
-            uuid.UUID(simpatizante_id), evento_pk, dias=30
-        )
-        if tiene_alerta:
-            messages.warning(
-                request,
-                "Advertencia: esta persona participó recientemente en actividades del mismo sector.",
+    def delete(self, request, punto_id):
+        return _handle(lambda: _ok({"eliminado": _punto_svc.eliminar_punto(punto_id)}))
+
+
+# =============================================================================
+# COORDINADOR
+# =============================================================================
+
+@csrf_exempt_cbv
+class CoordinadorListView(View):
+    """GET /eventos/coordinadores/  — POST /eventos/coordinadores/"""
+
+    def get(self, request):
+        return _handle(lambda: _ok(_coordinador_svc.listar_coordinadores()))
+
+    def post(self, request):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _coordinador_svc.crear_coordinador(
+                data["nombre"], data["email"], data["password"]
+            ), 201
+        ))
+
+
+@csrf_exempt_cbv
+class CoordinadorDetailView(View):
+    """GET|PUT|DELETE /eventos/coordinadores/<coordinador_id>/"""
+
+    def get(self, request, coordinador_id):
+        def _():
+            obj = _coordinador_svc.obtener_coordinador(coordinador_id)
+            return _ok(obj) if obj else _err("Coordinador no encontrado.", 404)
+        return _handle(_)
+
+    def put(self, request, coordinador_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _coordinador_svc.actualizar_coordinador(coordinador_id, data["nombre"], data["email"])
+        ))
+
+    def delete(self, request, coordinador_id):
+        return _err("Los coordinadores no se pueden eliminar.", 405)
+
+
+@csrf_exempt_cbv
+class CoordinadorPasswordView(View):
+    """POST /eventos/coordinadores/<coordinador_id>/password/"""
+
+    def post(self, request, coordinador_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            {"actualizado": _coordinador_svc.cambiar_password(coordinador_id, data["password"])}
+        ))
+
+
+# =============================================================================
+# SIMPATIZANTE
+# =============================================================================
+
+@csrf_exempt_cbv
+class SimpatizanteListView(View):
+    """GET /eventos/simpatizantes/?barrio_id=  — POST /eventos/simpatizantes/"""
+
+    def get(self, request):
+        barrio_id = request.GET.get("barrio_id")
+        return _handle(lambda: _ok(_simpatizante_svc.listar_simpatizantes(barrio_id)))
+
+    def post(self, request):
+        data = _body(request)
+        return _handle(lambda: _ok(_simpatizante_svc.crear_simpatizante(data), 201))
+
+
+@csrf_exempt_cbv
+class SimpatizanteDetailView(View):
+    """GET|PUT|DELETE /eventos/simpatizantes/<simpatizante_id>/"""
+
+    def get(self, request, simpatizante_id):
+        def _():
+            obj = _simpatizante_svc.obtener_simpatizante(simpatizante_id)
+            return _ok(obj) if obj else _err("Simpatizante no encontrado.", 404)
+        return _handle(_)
+
+    def put(self, request, simpatizante_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_simpatizante_svc.actualizar_simpatizante(simpatizante_id, data)))
+
+    def delete(self, request, simpatizante_id):
+        return _handle(lambda: _ok({"eliminado": _simpatizante_svc.eliminar_simpatizante(simpatizante_id)}))
+
+
+# =============================================================================
+# HORARIO DISPONIBLE
+# =============================================================================
+
+@csrf_exempt_cbv
+class HorarioListView(View):
+    """
+    GET  /eventos/simpatizantes/<simpatizante_id>/horarios/
+    POST /eventos/simpatizantes/<simpatizante_id>/horarios/
+    """
+
+    def get(self, request, simpatizante_id):
+        return _handle(lambda: _ok(_horario_svc.listar_horarios(simpatizante_id)))
+
+    def post(self, request, simpatizante_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _horario_svc.crear_horario(
+                simpatizante_id,
+                data["dia_semana"],
+                data["hora_inicio"],
+                data["hora_fin"],
+            ), 201
+        ))
+
+
+@csrf_exempt_cbv
+class HorarioDetailView(View):
+    """DELETE /eventos/horarios/<horario_id>/"""
+
+    def delete(self, request, horario_id):
+        return _handle(lambda: _ok({"eliminado": _horario_svc.eliminar_horario(horario_id)}))
+
+
+@csrf_exempt_cbv
+class DisponiblesParaEventoView(View):
+    """
+    GET /eventos/<evento_id>/disponibles/
+    RF-EV-06 — Consulta de disponibilidad para un evento.
+    """
+
+    def get(self, request, evento_id):
+        def _():
+            ev = _evento_svc.obtener_evento(evento_id)
+            if not ev:
+                return _err("Evento no encontrado.", 404)
+            import datetime
+            fecha = ev["fecha"]
+            if isinstance(fecha, str):
+                fecha_dt = datetime.date.fromisoformat(fecha)
+            else:
+                fecha_dt = fecha
+            dia_semana = fecha_dt.strftime("%A").upper()
+            disponibles = _horario_svc.consultar_disponibles_para_evento(
+                str(fecha_dt), dia_semana, str(ev["hora_inicio"]), str(ev["hora_fin"])
             )
-
-        await asignacionSvc.asignar_manual(evento_pk, uuid.UUID(simpatizante_id), rol)
-        messages.success(request, "Personal asignado exitosamente.")
-        return redirect("eventos:asignacion_lista", evento_pk=evento_pk)
-
-    return render(request, "eventos/asignacion_manual.html", {
-        "evento":      evento,
-        "disponibles": disponibles,
-    })
-
-
-async def asignacion_automatica(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento = await eventoSvc.obtener(evento_pk)
-
-    if request.method == "POST":
-        usar_disponibilidad     = request.POST.get("usar_disponibilidad") == "on"
-        ocupacion               = request.POST.get("ocupacion", "").strip() or None
-        excluir_sector_reciente = request.POST.get("excluir_sector_reciente") == "on"
-
-        asignados = await asignacionSvc.asignar_automatico(
-            evento_pk,
-            usar_disponibilidad=usar_disponibilidad,
-            usar_ocupacion=ocupacion,
-            excluir_sector_reciente=excluir_sector_reciente,
-        )
-
-        messages.success(
-            request,
-            f"Asignación automática completada: {len(asignados)} personas asignadas.",
-        )
-        return redirect("eventos:asignacion_lista", evento_pk=evento_pk)
-
-    return render(request, "eventos/asignacion_automatica.html", {"evento": evento})
-
-
-async def asignacion_editar(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        evento_pk = request.POST.get("evento_pk")
-        datos = {
-            "rol":     request.POST.get("rol", "").strip() or None,
-            "asistio": request.POST.get("asistio") == "on",
-        }
-        await asignacionSvc.actualizar(pk, datos)
-        messages.success(request, "Asignación actualizada.")
-        return redirect("eventos:asignacion_lista", evento_pk=evento_pk)
-
-    return redirect("eventos:evento_lista")
-
-
-async def asignacion_eliminar(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        evento_pk = request.POST.get("evento_pk")
-        await asignacionSvc.eliminar(pk)
-        messages.success(request, "Asignación eliminada.")
-        return redirect("eventos:asignacion_lista", evento_pk=evento_pk)
-    return redirect("eventos:evento_lista")
+            return _ok(disponibles)
+        return _handle(_)
 
 
 # =============================================================================
-# COBERTURA
+# EVENTO  (RF-EV-01 al RF-EV-05)
 # =============================================================================
 
-async def cobertura_lista(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento     = await eventoSvc.obtener(evento_pk)
-    coberturas = await coberturaSvc.listar(evento_pk)
-    return render(request, "eventos/cobertura_lista.html", {
-        "evento": evento, "coberturas": coberturas,
-    })
+@csrf_exempt_cbv
+class EventoListView(View):
+    """GET /eventos/  — POST /eventos/"""
+
+    def get(self, request):
+        return _handle(lambda: _ok(_evento_svc.listar_eventos()))
+
+    def post(self, request):
+        data = _body(request)
+        return _handle(lambda: _ok(_evento_svc.crear_evento(data), 201))
 
 
-async def cobertura_agregar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        datos = {
-            "ocupacion":  request.POST.get("ocupacion", "").strip(),
-            "requeridos": int(request.POST.get("requeridos", 0)),
-        }
-        if not datos["ocupacion"]:
-            messages.error(request, "La ocupación es obligatoria.")
-        else:
-            await coberturaSvc.agregar(evento_pk, datos)
-            messages.success(request, "Cobertura registrada.")
-    return redirect("eventos:cobertura_lista", evento_pk=evento_pk)
+@csrf_exempt_cbv
+class EventoDetailView(View):
+    """GET|PUT|DELETE /eventos/<evento_id>/"""
+
+    def get(self, request, evento_id):
+        def _():
+            obj = _evento_svc.obtener_evento(evento_id)
+            return _ok(obj) if obj else _err("Evento no encontrado.", 404)
+        return _handle(_)
+
+    def put(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_evento_svc.actualizar_evento(evento_id, data)))
+
+    def delete(self, request, evento_id):
+        return _handle(lambda: _ok({"eliminado": _evento_svc.eliminar_evento(evento_id)}))
 
 
-async def cobertura_eliminar(request: HttpRequest, pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        evento_pk = request.POST.get("evento_pk")
-        await coberturaSvc.eliminar(pk)
-        messages.success(request, "Cobertura eliminada.")
-        return redirect("eventos:cobertura_lista", evento_pk=evento_pk)
-    return redirect("eventos:evento_lista")
+@csrf_exempt_cbv
+class EventoEstadoView(View):
+    """PATCH /eventos/<evento_id>/estado/  — RF-EV-04"""
+
+    def patch(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_evento_svc.actualizar_estado(evento_id, data["estado"])))
 
 
-# =============================================================================
-# REGISTRO OPERATIVO
-# =============================================================================
+@csrf_exempt_cbv
+class EventoTipoListView(View):
+    """
+    GET  /eventos/<evento_id>/tipos/
+    POST /eventos/<evento_id>/tipos/
+    RF-EV-05
+    """
 
-async def observacion_agregar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        momento   = request.POST.get("momento", "").strip()
-        contenido = request.POST.get("contenido", "").strip()
+    def get(self, request, evento_id):
+        def _():
+            ev = _evento_svc.obtener_evento(evento_id)
+            return _ok(ev["tipos"] if ev else [])
+        return _handle(_)
 
-        if not momento or not contenido:
-            messages.error(request, "El momento y el contenido son obligatorios.")
-        else:
-            await observacionSvc.agregar(evento_pk, momento, contenido)
-            messages.success(request, "Observación registrada.")
-
-    return redirect("eventos:evento_detalle", pk=evento_pk)
-
-
-async def asistencia_registrar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento       = await eventoSvc.obtener(evento_pk)
-    asignaciones = await asignacionSvc.listar(evento_pk)
-
-    if request.method == "POST":
-        # Clave correcta: id de la asignación (no del simpatizante)
-        asistencias = {
-            a["id"]: request.POST.get(f"asistio_{a['id']}") == "on"
-            for a in asignaciones
-        }
-        actualizados = await asignacionSvc.registrar_asistencia(evento_pk, asistencias)
-        messages.success(request, f"Asistencia registrada para {actualizados} personas.")
-        return redirect("eventos:evento_detalle", pk=evento_pk)
-
-    return render(request, "eventos/asistencia.html", {
-        "evento": evento, "asignaciones": asignaciones,
-    })
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_evento_svc.agregar_tipo(evento_id, data["tipo"]), 201))
 
 
-async def participacion_externa_registrar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        cantidad = int(request.POST.get("cantidad", 0))
-        notas    = request.POST.get("notas", "").strip() or None
-        await participacionSvc.registrar(evento_pk, cantidad, notas)
-        messages.success(request, "Participación externa registrada.")
-    return redirect("eventos:evento_detalle", pk=evento_pk)
+@csrf_exempt_cbv
+class EventoTipoDetailView(View):
+    """DELETE /eventos/tipos/<tipo_id>/  — RF-EV-05"""
+
+    def delete(self, request, tipo_id):
+        return _handle(lambda: _ok({"eliminado": _evento_svc.eliminar_tipo(tipo_id)}))
 
 
 # =============================================================================
-# MATERIAL PUBLICITARIO
+# ASIGNACIÓN  (RF-EV-07 al RF-EV-10, RF-EV-14, RF-EV-23)
 # =============================================================================
 
-async def material_detalle(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    evento   = await eventoSvc.obtener(evento_pk)
-    material = await materialSvc.obtener(evento_pk)
-    estados  = await estadoMaterialSvc.listar(evento_pk)
-    promedio = await estadoMaterialSvc.promedio_estado(evento_pk)
+@csrf_exempt_cbv
+class AsignacionListView(View):
+    """
+    GET  /eventos/<evento_id>/asignaciones/
+    POST /eventos/<evento_id>/asignaciones/       — asignación manual (RF-EV-07)
+    """
 
-    return render(request, "eventos/material.html", {
-        "evento":   evento,
-        "material": material,
-        "estados":  estados,
-        "promedio": promedio,
-    })
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_asignacion_svc.listar_asignaciones(evento_id)))
 
-
-async def material_registrar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        entregado = int(request.POST.get("entregado", 0))
-        restante  = int(request.POST.get("restante", 0))
-        await materialSvc.registrar(evento_pk, entregado, restante)
-        messages.success(request, "Material publicitario registrado.")
-    return redirect("eventos:material_detalle", evento_pk=evento_pk)
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _asignacion_svc.asignar_manual(
+                evento_id,
+                data["simpatizante_id"],
+                data.get("rol"),
+            ), 201
+        ))
 
 
-async def estado_material_registrar(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST":
-        estado = request.POST.get("estado", "").strip()
-        notas  = request.POST.get("notas", "").strip() or None
+@csrf_exempt_cbv
+class AsignacionAutomaticaView(View):
+    """POST /eventos/<evento_id>/asignaciones/automatica/  — RF-EV-08"""
 
-        if not estado:
-            messages.error(request, "El estado es obligatorio.")
-        else:
-            await estadoMaterialSvc.registrar(evento_pk, estado, notas)
-            messages.success(request, "Estado del material registrado.")
-
-    return redirect("eventos:material_detalle", evento_pk=evento_pk)
+    def post(self, request, evento_id):
+        data = _body(request)
+        criterios = data.get("criterios", {})
+        return _handle(lambda: _ok(_asignacion_svc.asignar_automatico(evento_id, criterios), 201))
 
 
-async def estado_material_cargar_csv(request: HttpRequest, evento_pk: uuid.UUID) -> HttpResponse:
-    if request.method == "POST" and request.FILES.get("archivo_csv"):
-        archivo   = request.FILES["archivo_csv"]
-        contenido = archivo.read().decode("utf-8")
-        resultado = await estadoMaterialSvc.cargar_csv(contenido)
+@csrf_exempt_cbv
+class AsignacionDetailView(View):
+    """PUT|DELETE /eventos/asignaciones/<asignacion_id>/  — RF-EV-09"""
 
-        for error in resultado["errores"]:
-            messages.warning(request, error)
+    def put(self, request, asignacion_id):
+        data = _body(request)
+        return _handle(lambda: _ok(_asignacion_svc.actualizar_rol(asignacion_id, data["rol"])))
 
-        messages.success(
-            request,
-            f"CSV procesado: {resultado['registrados']} registros importados.",
-        )
+    def delete(self, request, asignacion_id):
+        return _handle(lambda: _ok({"eliminado": _asignacion_svc.remover_asignacion(asignacion_id)}))
 
-    return redirect("eventos:material_detalle", evento_pk=evento_pk)
+
+@csrf_exempt_cbv
+class AsistenciaView(View):
+    """PATCH /eventos/asignaciones/<asignacion_id>/asistencia/  — RF-EV-14"""
+
+    def patch(self, request, asignacion_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _asignacion_svc.registrar_asistencia(asignacion_id, bool(data.get("asistio", False)))
+        ))
+
+
+@csrf_exempt_cbv
+class ParticipacionTerritorialView(View):
+    """
+    GET /eventos/<evento_id>/participacion-territorial/<simpatizante_id>/
+    RF-EV-23 — Verifica participación territorial reciente.
+    """
+
+    def get(self, request, evento_id, simpatizante_id):
+        return _handle(lambda: _ok(
+            _asignacion_svc.verificar_participacion_territorial(simpatizante_id, evento_id)
+        ))
+
+
+# =============================================================================
+# COBERTURA  (RF-EV-11)
+# =============================================================================
+
+@csrf_exempt_cbv
+class CoberturaListView(View):
+    """GET|POST /eventos/<evento_id>/cobertura/"""
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_cobertura_svc.listar_cobertura(evento_id)))
+
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _cobertura_svc.registrar_cobertura(evento_id, data["ocupacion"], int(data["requeridos"])), 201
+        ))
+
+
+@csrf_exempt_cbv
+class CoberturaDetailView(View):
+    """PUT|DELETE /eventos/cobertura/<cobertura_id>/"""
+
+    def put(self, request, cobertura_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _cobertura_svc.actualizar_cobertura(
+                cobertura_id,
+                data["ocupacion"],
+                int(data["requeridos"]),
+                int(data.get("asignados", 0)),
+            )
+        ))
+
+    def delete(self, request, cobertura_id):
+        return _handle(lambda: _ok({"eliminado": _cobertura_svc.eliminar_cobertura(cobertura_id)}))
+
+
+# =============================================================================
+# OBSERVACIÓN  (RF-EV-12, RF-EV-13)
+# =============================================================================
+
+@csrf_exempt_cbv
+class ObservacionListView(View):
+    """GET|POST /eventos/<evento_id>/observaciones/"""
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_observacion_svc.listar_observaciones(evento_id)))
+
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _observacion_svc.registrar_observacion(evento_id, data["momento"], data["contenido"]), 201
+        ))
+
+
+@csrf_exempt_cbv
+class ObservacionDetailView(View):
+    """DELETE /eventos/observaciones/<observacion_id>/"""
+
+    def delete(self, request, observacion_id):
+        return _handle(lambda: _ok({"eliminado": _observacion_svc.eliminar_observacion(observacion_id)}))
+
+
+# =============================================================================
+# PARTICIPACIÓN EXTERNA  (RF-EV-18)
+# =============================================================================
+
+@csrf_exempt_cbv
+class ParticipacionExternaView(View):
+    """GET|POST /eventos/<evento_id>/participacion-externa/"""
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_participacion_svc.obtener_participacion(evento_id)))
+
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _participacion_svc.registrar_participacion(evento_id, int(data["cantidad"]), data.get("notas")), 201
+        ))
+
+    def put(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _participacion_svc.actualizar_participacion(data["id"], int(data["cantidad"]), data.get("notas"))
+        ))
+
+
+# =============================================================================
+# MATERIAL PUBLICITARIO  (RF-EV-19)
+# =============================================================================
+
+@csrf_exempt_cbv
+class MaterialPublicitarioView(View):
+    """GET|POST|PUT /eventos/<evento_id>/material/"""
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_material_svc.obtener_material(evento_id)))
+
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _material_svc.registrar_material(evento_id, int(data["entregado"]), int(data["restante"])), 201
+        ))
+
+    def put(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _material_svc.actualizar_material(data["id"], int(data["entregado"]), int(data["restante"]))
+        ))
+
+
+# =============================================================================
+# ESTADO MATERIAL  (RF-EV-20, RF-EV-21, RF-EV-22)
+# =============================================================================
+
+@csrf_exempt_cbv
+class EstadoMaterialListView(View):
+    """GET|POST /eventos/<evento_id>/material/estado/"""
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_estado_material_svc.listar_estados(evento_id)))
+
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _estado_material_svc.registrar_estado(evento_id, data["estado"], data.get("notas")), 201
+        ))
+
+
+@csrf_exempt_cbv
+class EstadoMaterialCSVView(View):
+    """POST /eventos/material/estado/csv/  — RF-EV-21"""
+
+    def post(self, request):
+        archivo = request.FILES.get("archivo")
+        if not archivo:
+            return _err("Se requiere un archivo CSV.", 400)
+        return _handle(lambda: _ok(_estado_material_svc.cargar_desde_csv(archivo)))
+
+
+@csrf_exempt_cbv
+class PromedioEstadoMaterialView(View):
+    """GET /eventos/<evento_id>/material/estado/promedio/  — RF-EV-22"""
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok({
+            "evento_id": evento_id,
+            "promedio": _estado_material_svc.calcular_promedio_estado(evento_id),
+        }))
+
+
+# =============================================================================
+# AUDITORÍA
+# =============================================================================
+
+@csrf_exempt_cbv
+class AuditoriaView(View):
+    """GET /eventos/auditoria/?tabla=&registro_id=  — GET /eventos/auditoria/recientes/"""
+
+    def get(self, request):
+        tabla       = request.GET.get("tabla")
+        registro_id = request.GET.get("registro_id")
+        if tabla and registro_id:
+            return _handle(lambda: _ok(_auditoria_svc.historial_registro(tabla, registro_id)))
+        limit = int(request.GET.get("limit", 50))
+        return _handle(lambda: _ok(_auditoria_svc.registros_recientes(limit)))

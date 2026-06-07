@@ -1,57 +1,314 @@
 from django.urls import path
-from backend.moduloEventos import views
 
-app_name = 'eventos'
+from .views import (
+    BarrioListView,
+    BarrioDetailView,
+
+    SectorListView,
+    SectorDetailView,
+
+    PuntoInteresListView,
+    PuntoInteresDetailView,
+
+    CoordinadorListView,
+    CoordinadorDetailView,
+    CoordinadorPasswordView,
+
+    SimpatizanteListView,
+    SimpatizanteDetailView,
+
+    HorarioListView,
+    HorarioDetailView,
+    DisponiblesParaEventoView,
+
+    EventoListView,
+    EventoDetailView,
+    EventoEstadoView,
+    EventoTipoListView,
+    EventoTipoDetailView,
+
+    AsignacionListView,
+    AsignacionAutomaticaView,
+    AsignacionDetailView,
+    AsistenciaView,
+    ParticipacionTerritorialView,
+
+    CoberturaListView,
+    CoberturaDetailView,
+
+    ObservacionListView,
+    ObservacionDetailView,
+
+    ParticipacionExternaView,
+
+    MaterialPublicitarioView,
+
+    EstadoMaterialListView,
+    EstadoMaterialCSVView,
+    PromedioEstadoMaterialView,
+
+    AuditoriaView,
+)
 
 urlpatterns = [
 
-    # -------------------------------------------------------------------------
+    # =========================================================================
+    # BARRIOS
+    # =========================================================================
+
+    path(
+        "barrios/",
+        BarrioListView.as_view(),
+        name="barrio-list"
+    ),
+
+    path(
+        "barrios/<str:barrio_id>/",
+        BarrioDetailView.as_view(),
+        name="barrio-detail"
+    ),
+
+    # =========================================================================
+    # SECTORES
+    # =========================================================================
+
+    path(
+        "sectores/",
+        SectorListView.as_view(),
+        name="sector-list"
+    ),
+
+    path(
+        "sectores/<str:sector_id>/",
+        SectorDetailView.as_view(),
+        name="sector-detail"
+    ),
+
+    # =========================================================================
+    # PUNTOS DE INTERÉS
+    # =========================================================================
+
+    path(
+        "puntos/",
+        PuntoInteresListView.as_view(),
+        name="punto-list"
+    ),
+
+    path(
+        "puntos/<str:punto_id>/",
+        PuntoInteresDetailView.as_view(),
+        name="punto-detail"
+    ),
+
+    # =========================================================================
+    # COORDINADORES
+    # =========================================================================
+
+    path(
+        "coordinadores/",
+        CoordinadorListView.as_view(),
+        name="coordinador-list"
+    ),
+
+    path(
+        "coordinadores/<str:coordinador_id>/",
+        CoordinadorDetailView.as_view(),
+        name="coordinador-detail"
+    ),
+
+    path(
+        "coordinadores/<str:coordinador_id>/password/",
+        CoordinadorPasswordView.as_view(),
+        name="coordinador-password"
+    ),
+
+    # =========================================================================
+    # SIMPATIZANTES
+    # =========================================================================
+
+    path(
+        "simpatizantes/",
+        SimpatizanteListView.as_view(),
+        name="simpatizante-list"
+    ),
+
+    path(
+        "simpatizantes/<str:simpatizante_id>/",
+        SimpatizanteDetailView.as_view(),
+        name="simpatizante-detail"
+    ),
+
+    # =========================================================================
+    # HORARIOS
+    # =========================================================================
+
+    path(
+        "simpatizantes/<str:simpatizante_id>/horarios/",
+        HorarioListView.as_view(),
+        name="horario-list"
+    ),
+
+    path(
+        "horarios/<str:horario_id>/",
+        HorarioDetailView.as_view(),
+        name="horario-detail"
+    ),
+
+    path(
+        "<str:evento_id>/disponibles/",
+        DisponiblesParaEventoView.as_view(),
+        name="evento-disponibles"
+    ),
+
+    # =========================================================================
     # EVENTOS
-    # -------------------------------------------------------------------------
-    path('', views.evento_lista, name='evento_lista'),
-    path('crear/', views.evento_crear, name='evento_crear'),
-    path('<uuid:pk>/', views.evento_detalle, name='evento_detalle'),
-    path('<uuid:pk>/editar/', views.evento_editar, name='evento_editar'),
+    # =========================================================================
 
-    # -------------------------------------------------------------------------
-    # TIPOS DE EVENTO
-    # -------------------------------------------------------------------------
-    path('<uuid:evento_pk>/tipos/agregar/', views.evento_tipo_agregar, name='evento_tipo_agregar'),
-    path('tipos/<uuid:pk>/eliminar/', views.evento_tipo_eliminar, name='evento_tipo_eliminar'),
+    path(
+        "",
+        EventoListView.as_view(),
+        name="evento-list"
+    ),
 
-    # -------------------------------------------------------------------------
-    # ASIGNACIÓN DE PERSONAL
-    # -------------------------------------------------------------------------
-    path('<uuid:evento_pk>/asignaciones/', views.asignacion_lista, name='asignacion_lista'),
-    path('<uuid:evento_pk>/asignaciones/manual/', views.asignacion_manual, name='asignacion_manual'),
-    path('<uuid:evento_pk>/asignaciones/automatica/', views.asignacion_automatica, name='asignacion_automatica'),
-    path('asignaciones/<uuid:pk>/editar/', views.asignacion_editar, name='asignacion_editar'),
-    path('asignaciones/<uuid:pk>/eliminar/', views.asignacion_eliminar, name='asignacion_eliminar'),
+    path(
+        "<str:evento_id>/",
+        EventoDetailView.as_view(),
+        name="evento-detail"
+    ),
 
-    # -------------------------------------------------------------------------
+    path(
+        "<str:evento_id>/estado/",
+        EventoEstadoView.as_view(),
+        name="evento-estado"
+    ),
+
+    path(
+        "<str:evento_id>/tipos/",
+        EventoTipoListView.as_view(),
+        name="evento-tipos"
+    ),
+
+    path(
+        "tipos/<str:tipo_id>/",
+        EventoTipoDetailView.as_view(),
+        name="evento-tipo-detail"
+    ),
+
+    # =========================================================================
+    # ASIGNACIONES
+    # =========================================================================
+
+    path(
+        "<str:evento_id>/asignaciones/",
+        AsignacionListView.as_view(),
+        name="asignacion-list"
+    ),
+
+    path(
+        "<str:evento_id>/asignaciones/automatica/",
+        AsignacionAutomaticaView.as_view(),
+        name="asignacion-automatica"
+    ),
+
+    path(
+        "asignaciones/<str:asignacion_id>/",
+        AsignacionDetailView.as_view(),
+        name="asignacion-detail"
+    ),
+
+    path(
+        "asignaciones/<str:asignacion_id>/asistencia/",
+        AsistenciaView.as_view(),
+        name="asignacion-asistencia"
+    ),
+
+    path(
+        "<str:evento_id>/participacion-territorial/<str:simpatizante_id>/",
+        ParticipacionTerritorialView.as_view(),
+        name="participacion-territorial"
+    ),
+
+    # =========================================================================
     # COBERTURA
-    # -------------------------------------------------------------------------
-    path('<uuid:evento_pk>/cobertura/', views.cobertura_lista, name='cobertura_lista'),
-    path('<uuid:evento_pk>/cobertura/agregar/', views.cobertura_agregar, name='cobertura_agregar'),
-    path('cobertura/<uuid:pk>/eliminar/', views.cobertura_eliminar, name='cobertura_eliminar'),
+    # =========================================================================
 
-    # -------------------------------------------------------------------------
-    # REGISTRO OPERATIVO
-    # -------------------------------------------------------------------------
-    path('<uuid:evento_pk>/observaciones/agregar/', views.observacion_agregar, name='observacion_agregar'),
-    path('<uuid:evento_pk>/asistencia/', views.asistencia_registrar, name='asistencia_registrar'),
-    path('<uuid:evento_pk>/participacion-externa/', views.participacion_externa_registrar, name='participacion_externa_registrar'),
+    path(
+        "<str:evento_id>/cobertura/",
+        CoberturaListView.as_view(),
+        name="cobertura-list"
+    ),
 
-    # -------------------------------------------------------------------------
+    path(
+        "cobertura/<str:cobertura_id>/",
+        CoberturaDetailView.as_view(),
+        name="cobertura-detail"
+    ),
+
+    # =========================================================================
+    # OBSERVACIONES
+    # =========================================================================
+
+    path(
+        "<str:evento_id>/observaciones/",
+        ObservacionListView.as_view(),
+        name="observacion-list"
+    ),
+
+    path(
+        "observaciones/<str:observacion_id>/",
+        ObservacionDetailView.as_view(),
+        name="observacion-detail"
+    ),
+
+    # =========================================================================
+    # PARTICIPACIÓN EXTERNA
+    # =========================================================================
+
+    path(
+        "<str:evento_id>/participacion-externa/",
+        ParticipacionExternaView.as_view(),
+        name="participacion-externa"
+    ),
+
+    # =========================================================================
     # MATERIAL PUBLICITARIO
-    # -------------------------------------------------------------------------
-    path('<uuid:evento_pk>/material/', views.material_detalle, name='material_detalle'),
-    path('<uuid:evento_pk>/material/registrar/', views.material_registrar, name='material_registrar'),
-    path('<uuid:evento_pk>/material/estado/registrar/', views.estado_material_registrar, name='estado_material_registrar'),
-    path('<uuid:evento_pk>/material/estado/cargar-csv/', views.estado_material_cargar_csv, name='estado_material_cargar_csv'),
+    # =========================================================================
 
-    # -------------------------------------------------------------------------
-    # DISPONIBILIDAD DE SIMPATIZANTES
-    # -------------------------------------------------------------------------
-    path('<uuid:evento_pk>/disponibilidad/', views.consultar_disponibilidad, name='consultar_disponibilidad'),
+    path(
+        "<str:evento_id>/material/",
+        MaterialPublicitarioView.as_view(),
+        name="material-publicitario"
+    ),
+
+    # =========================================================================
+    # ESTADO MATERIAL
+    # =========================================================================
+
+    path(
+        "<str:evento_id>/material/estado/",
+        EstadoMaterialListView.as_view(),
+        name="estado-material-list"
+    ),
+
+    path(
+        "material/estado/csv/",
+        EstadoMaterialCSVView.as_view(),
+        name="estado-material-csv"
+    ),
+
+    path(
+        "<str:evento_id>/material/estado/promedio/",
+        PromedioEstadoMaterialView.as_view(),
+        name="estado-material-promedio"
+    ),
+
+    # =========================================================================
+    # AUDITORÍA
+    # =========================================================================
+
+    path(
+        "auditoria/",
+        AuditoriaView.as_view(),
+        name="auditoria"
+    ),
 ]
