@@ -9,27 +9,27 @@ from typing import Any, Dict, List, Optional
 class IBarrioService(ABC):
 
     @abstractmethod
-    def listar_barrios(self) -> List[Dict[str, Any]]:
+    async def listar_barrios(self) -> List[Dict[str, Any]]:
         """Retorna todos los barrios registrados."""
         pass
 
     @abstractmethod
-    def obtener_barrio(self, barrio_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_barrio(self, barrio_id: str) -> Optional[Dict[str, Any]]:
         """Retorna un barrio por su ID, o None si no existe."""
         pass
 
     @abstractmethod
-    def crear_barrio(self, nombre: str) -> Dict[str, Any]:
+    async def crear_barrio(self, nombre: str) -> Dict[str, Any]:
         """Crea un barrio y retorna su representación."""
         pass
 
     @abstractmethod
-    def actualizar_barrio(self, barrio_id: str, nombre: str) -> Optional[Dict[str, Any]]:
+    async def actualizar_barrio(self, barrio_id: str, nombre: str) -> Optional[Dict[str, Any]]:
         """Actualiza el nombre del barrio; retorna el barrio actualizado o None."""
         pass
 
     @abstractmethod
-    def eliminar_barrio(self, barrio_id: str) -> bool:
+    async def eliminar_barrio(self, barrio_id: str) -> bool:
         """Elimina un barrio; retorna True si la operación fue exitosa."""
         pass
 
@@ -37,26 +37,26 @@ class IBarrioService(ABC):
 class IPuntoInteresService(ABC):
 
     @abstractmethod
-    def listar_puntos(self, barrio_id: str) -> List[Dict[str, Any]]:
+    async def listar_puntos(self, barrio_id: str) -> List[Dict[str, Any]]:
         """Lista los puntos de interés de un barrio."""
         pass
 
     @abstractmethod
-    def obtener_punto(self, punto_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_punto(self, punto_id: str) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def crear_punto(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
+    async def crear_punto(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def actualizar_punto(
+    async def actualizar_punto(
         self, punto_id: str, nombre: str, barrio_id: str
     ) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def eliminar_punto(self, punto_id: str) -> bool:
+    async def eliminar_punto(self, punto_id: str) -> bool:
         pass
 
 
@@ -67,28 +67,28 @@ class IPuntoInteresService(ABC):
 class ICoordinadorService(ABC):
 
     @abstractmethod
-    def listar_coordinadores(self) -> List[Dict[str, Any]]:
+    async def listar_coordinadores(self) -> List[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def obtener_coordinador(self, coordinador_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_coordinador(self, coordinador_id: str) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def crear_coordinador(
+    async def crear_coordinador(
         self, nombre: str, email: str, password_plano: str
     ) -> Dict[str, Any]:
         """Hashea la contraseña internamente antes de persistir."""
         pass
 
     @abstractmethod
-    def actualizar_coordinador(
+    async def actualizar_coordinador(
         self, coordinador_id: str, nombre: str, email: str
     ) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def cambiar_password(
+    async def cambiar_password(
         self, coordinador_id: str, password_plano: str
     ) -> bool:
         pass
@@ -101,27 +101,27 @@ class ICoordinadorService(ABC):
 class ISimpatizanteService(ABC):
 
     @abstractmethod
-    def listar_simpatizantes(
+    async def listar_simpatizantes(
         self, barrio_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def obtener_simpatizante(self, simpatizante_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_simpatizante(self, simpatizante_id: str) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def crear_simpatizante(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def crear_simpatizante(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def actualizar_simpatizante(
+    async def actualizar_simpatizante(
         self, simpatizante_id: str, payload: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def eliminar_simpatizante(self, simpatizante_id: str) -> bool:
+    async def eliminar_simpatizante(self, simpatizante_id: str) -> bool:
         pass
 
 
@@ -132,12 +132,12 @@ class ISimpatizanteService(ABC):
 class IHorarioDisponibleService(ABC):
 
     @abstractmethod
-    def listar_horarios(self, simpatizante_id: str) -> List[Dict[str, Any]]:
+    async def listar_horarios(self, simpatizante_id: str) -> List[Dict[str, Any]]:
         """Retorna los horarios registrados de un simpatizante."""
         pass
 
     @abstractmethod
-    def crear_horario(
+    async def crear_horario(
         self,
         simpatizante_id: str,
         dia_semana: str,
@@ -147,11 +147,11 @@ class IHorarioDisponibleService(ABC):
         pass
 
     @abstractmethod
-    def eliminar_horario(self, horario_id: str) -> bool:
+    async def eliminar_horario(self, horario_id: str) -> bool:
         pass
 
     @abstractmethod
-    def consultar_disponibles_para_evento(
+    async def consultar_disponibles_para_evento(
         self,
         fecha: str,
         dia_semana: str,
@@ -172,17 +172,17 @@ class IHorarioDisponibleService(ABC):
 class IEventoService(ABC):
 
     @abstractmethod
-    def listar_eventos(self) -> List[Dict[str, Any]]:
+    async def listar_eventos(self) -> List[Dict[str, Any]]:
         """RF-EV-02 — Consulta de todos los eventos."""
         pass
 
     @abstractmethod
-    def obtener_evento(self, evento_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_evento(self, evento_id: str) -> Optional[Dict[str, Any]]:
         """RF-EV-02 — Consulta completa de un evento, incluye tipos y puntos de interés."""
         pass
 
     @abstractmethod
-    def crear_evento(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def crear_evento(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         RF-EV-01 — Crea un evento con sus tipos asociados.
         payload debe incluir la clave 'tipos' (lista de strings).
@@ -190,7 +190,7 @@ class IEventoService(ABC):
         pass
 
     @abstractmethod
-    def actualizar_evento(
+    async def actualizar_evento(
         self, evento_id: str, payload: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
@@ -200,23 +200,23 @@ class IEventoService(ABC):
         pass
 
     @abstractmethod
-    def actualizar_estado(
+    async def actualizar_estado(
         self, evento_id: str, estado: str
     ) -> Optional[Dict[str, Any]]:
         """RF-EV-04 — Cambia el estado del evento."""
         pass
 
     @abstractmethod
-    def eliminar_evento(self, evento_id: str) -> bool:
+    async def eliminar_evento(self, evento_id: str) -> bool:
         pass
 
     @abstractmethod
-    def agregar_tipo(self, evento_id: str, tipo: str) -> Dict[str, Any]:
+    async def agregar_tipo(self, evento_id: str, tipo: str) -> Dict[str, Any]:
         """RF-EV-05 — Agrega un tipo al evento."""
         pass
 
     @abstractmethod
-    def eliminar_tipo(self, tipo_id: str) -> bool:
+    async def eliminar_tipo(self, tipo_id: str) -> bool:
         """RF-EV-05 — Elimina un tipo del evento."""
         pass
 
@@ -228,12 +228,12 @@ class IEventoService(ABC):
 class IEventoPuntoInteresService(ABC):
 
     @abstractmethod
-    def listar_puntos_evento(self, evento_id: str) -> List[Dict[str, Any]]:
+    async def listar_puntos_evento(self, evento_id: str) -> List[Dict[str, Any]]:
         """Retorna los puntos de interés asociados a un evento."""
         pass
 
     @abstractmethod
-    def agregar_punto(self, evento_id: str, punto_interes_id: str) -> Dict[str, Any]:
+    async def agregar_punto(self, evento_id: str, punto_interes_id: str) -> Dict[str, Any]:
         """
         Asocia un punto de interés al evento.
         El trigger de BD valida que el punto pertenezca al mismo barrio del evento.
@@ -241,12 +241,12 @@ class IEventoPuntoInteresService(ABC):
         pass
 
     @abstractmethod
-    def remover_punto(self, evento_punto_interes_id: str) -> bool:
+    async def remover_punto(self, evento_punto_interes_id: str) -> bool:
         """Desvincula un punto de interés del evento."""
         pass
 
     @abstractmethod
-    def reemplazar_puntos(
+    async def reemplazar_puntos(
         self, evento_id: str, punto_interes_ids: List[str]
     ) -> List[Dict[str, Any]]:
         """Reemplaza todos los puntos de interés del evento por la lista indicada."""
@@ -260,12 +260,12 @@ class IEventoPuntoInteresService(ABC):
 class IAsignacionService(ABC):
 
     @abstractmethod
-    def listar_asignaciones(self, evento_id: str) -> List[Dict[str, Any]]:
+    async def listar_asignaciones(self, evento_id: str) -> List[Dict[str, Any]]:
         """RF-EV-09 — Lista integrantes asignados al evento."""
         pass
 
     @abstractmethod
-    def asignar_manual(
+    async def asignar_manual(
         self,
         evento_id: str,
         simpatizante_id: str,
@@ -275,7 +275,7 @@ class IAsignacionService(ABC):
         pass
 
     @abstractmethod
-    def asignar_automatico(
+    async def asignar_automatico(
         self,
         evento_id: str,
         criterios: Dict[str, bool],
@@ -287,26 +287,26 @@ class IAsignacionService(ABC):
         pass
 
     @abstractmethod
-    def actualizar_rol(
+    async def actualizar_rol(
         self, asignacion_id: str, rol: str
     ) -> Optional[Dict[str, Any]]:
         """RF-EV-09 — Actualiza el rol de un integrante."""
         pass
 
     @abstractmethod
-    def remover_asignacion(self, asignacion_id: str) -> bool:
+    async def remover_asignacion(self, asignacion_id: str) -> bool:
         """RF-EV-09 — Remueve un integrante del evento."""
         pass
 
     @abstractmethod
-    def registrar_asistencia(
+    async def registrar_asistencia(
         self, asignacion_id: str, asistio: bool
     ) -> Optional[Dict[str, Any]]:
         """RF-EV-14 — Registra si el integrante asistió."""
         pass
 
     @abstractmethod
-    def verificar_participacion_territorial(
+    async def verificar_participacion_territorial(
         self, simpatizante_id: str, evento_id: str
     ) -> Dict[str, Any]:
         """
@@ -323,18 +323,18 @@ class IAsignacionService(ABC):
 class ICoberturaService(ABC):
 
     @abstractmethod
-    def listar_cobertura(self, evento_id: str) -> List[Dict[str, Any]]:
+    async def listar_cobertura(self, evento_id: str) -> List[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def registrar_cobertura(
+    async def registrar_cobertura(
         self, evento_id: str, ocupacion: str, requeridos: int
     ) -> Dict[str, Any]:
         """RF-EV-11 — Registra la cobertura de personal requerida."""
         pass
 
     @abstractmethod
-    def actualizar_cobertura(
+    async def actualizar_cobertura(
         self,
         cobertura_id: str,
         ocupacion: str,
@@ -344,7 +344,7 @@ class ICoberturaService(ABC):
         pass
 
     @abstractmethod
-    def eliminar_cobertura(self, cobertura_id: str) -> bool:
+    async def eliminar_cobertura(self, cobertura_id: str) -> bool:
         pass
 
 
@@ -355,11 +355,11 @@ class ICoberturaService(ABC):
 class IObservacionService(ABC):
 
     @abstractmethod
-    def listar_observaciones(self, evento_id: str) -> List[Dict[str, Any]]:
+    async def listar_observaciones(self, evento_id: str) -> List[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def registrar_observacion(
+    async def registrar_observacion(
         self, evento_id: str, momento: str, contenido: str
     ) -> Dict[str, Any]:
         """
@@ -369,25 +369,25 @@ class IObservacionService(ABC):
         pass
 
     @abstractmethod
-    def eliminar_observacion(self, observacion_id: str) -> bool:
+    async def eliminar_observacion(self, observacion_id: str) -> bool:
         pass
 
 
 class IParticipacionExternaService(ABC):
 
     @abstractmethod
-    def obtener_participacion(self, evento_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_participacion(self, evento_id: str) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def registrar_participacion(
+    async def registrar_participacion(
         self, evento_id: str, cantidad: int, notas: Optional[str]
     ) -> Dict[str, Any]:
         """RF-EV-18 — Registra participación externa del evento."""
         pass
 
     @abstractmethod
-    def actualizar_participacion(
+    async def actualizar_participacion(
         self,
         participacion_id: str,
         cantidad: int,
@@ -403,18 +403,18 @@ class IParticipacionExternaService(ABC):
 class IMaterialPublicitarioService(ABC):
 
     @abstractmethod
-    def obtener_material(self, evento_id: str) -> Optional[Dict[str, Any]]:
+    async def obtener_material(self, evento_id: str) -> Optional[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def registrar_material(
+    async def registrar_material(
         self, evento_id: str, entregado: int, restante: int
     ) -> Dict[str, Any]:
         """RF-EV-19 — Registra cantidades de material publicitario."""
         pass
 
     @abstractmethod
-    def actualizar_material(
+    async def actualizar_material(
         self, material_id: str, entregado: int, restante: int
     ) -> Optional[Dict[str, Any]]:
         pass
@@ -423,18 +423,18 @@ class IMaterialPublicitarioService(ABC):
 class IEstadoMaterialService(ABC):
 
     @abstractmethod
-    def listar_estados(self, evento_id: str) -> List[Dict[str, Any]]:
+    async def listar_estados(self, evento_id: str) -> List[Dict[str, Any]]:
         pass
 
     @abstractmethod
-    def registrar_estado(
+    async def registrar_estado(
         self, evento_id: str, estado: str, notas: Optional[str]
     ) -> Dict[str, Any]:
         """RF-EV-20 — Registra el estado observado del material."""
         pass
 
     @abstractmethod
-    def cargar_desde_csv(
+    async def cargar_desde_csv(
         self, archivo_csv: Any
     ) -> Dict[str, Any]:
         """
@@ -445,7 +445,7 @@ class IEstadoMaterialService(ABC):
         pass
 
     @abstractmethod
-    def calcular_promedio_estado(self, evento_id: str) -> Optional[float]:
+    async def calcular_promedio_estado(self, evento_id: str) -> Optional[float]:
         """RF-EV-22 — Promedio numérico del estado total del material."""
         pass
 
@@ -457,13 +457,13 @@ class IEstadoMaterialService(ABC):
 class IAuditoriaService(ABC):
 
     @abstractmethod
-    def historial_registro(
+    async def historial_registro(
         self, tabla: str, registro_id: str
     ) -> List[Dict[str, Any]]:
         """Retorna el historial de cambios de un registro específico."""
         pass
 
     @abstractmethod
-    def registros_recientes(self, limit: int = 50) -> List[Dict[str, Any]]:
+    async def registros_recientes(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Retorna los últimos N registros de auditoría."""
         pass
