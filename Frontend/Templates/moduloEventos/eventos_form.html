@@ -11,8 +11,8 @@
 {% endblock %}
 
 {% block topbar_extra %}
-  <a href="{% url 'evento-list' %}" class="btn btn-ghost btn-sm">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+  <a href="{% url 'eventos_frontend' %}" class="btn btn-ghost btn-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15">
       <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
     </svg>
     Volver
@@ -26,7 +26,7 @@
   <!-- ── Sección 1: Información básica ── -->
   <div class="form-section">
     <div class="form-section-title">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18">
         <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
       </svg>
       Información General
@@ -41,17 +41,16 @@
       <div class="form-group col-span-2">
         <label class="form-label">Tipos de evento <span style="color:var(--danger)">*</span></label>
         <div class="tipo-checkboxes" id="tiposContainer">
-          <!-- Se genera dinámicamente para poder agregar más en el futuro -->
           {% for tipo in tipos_disponibles %}
-            <label class="tipo-check-label" onclick="toggleTipo(this)">
+            <label class="tipo-check-label">
               <input type="checkbox" value="{{ tipo }}">{{ tipo }}
             </label>
           {% empty %}
-            <label class="tipo-check-label" onclick="toggleTipo(this)"><input type="checkbox" value="Recolección de datos">Recolección de datos</label>
-            <label class="tipo-check-label" onclick="toggleTipo(this)"><input type="checkbox" value="Encuestas">Encuestas</label>
-            <label class="tipo-check-label" onclick="toggleTipo(this)"><input type="checkbox" value="Movilización">Movilización</label>
-            <label class="tipo-check-label" onclick="toggleTipo(this)"><input type="checkbox" value="Publicidad">Publicidad</label>
-            <label class="tipo-check-label" onclick="toggleTipo(this)"><input type="checkbox" value="Actividad comunitaria">Actividad comunitaria</label>
+            <label class="tipo-check-label"><input type="checkbox" value="Recolección de datos">Recolección de datos</label>
+            <label class="tipo-check-label"><input type="checkbox" value="Encuestas">Encuestas</label>
+            <label class="tipo-check-label"><input type="checkbox" value="Movilización">Movilización</label>
+            <label class="tipo-check-label"><input type="checkbox" value="Publicidad">Publicidad</label>
+            <label class="tipo-check-label"><input type="checkbox" value="Actividad comunitaria">Actividad comunitaria</label>
           {% endfor %}
         </div>
         <div class="form-hint">Selecciona uno o más tipos</div>
@@ -67,7 +66,7 @@
   <!-- ── Sección 2: Ubicación ── -->
   <div class="form-section">
     <div class="form-section-title">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0 1 15 0Z"/>
       </svg>
@@ -94,7 +93,7 @@
   <!-- ── Sección 3: Fecha y Horario ── -->
   <div class="form-section">
     <div class="form-section-title">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
       </svg>
       Fecha y Horario
@@ -137,7 +136,7 @@
   <!-- ── Sección 4: Objetivos ── -->
   <div class="form-section">
     <div class="form-section-title">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="18" height="18">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
       </svg>
       Objetivos y Resultados
@@ -157,9 +156,9 @@
 
   <!-- ── Botones ── -->
   <div style="display:flex;gap:12px;justify-content:flex-end;padding-bottom:8px;">
-    <a href="{% url 'evento-list' %}" class="btn btn-ghost">Cancelar</a>
+    <a href="{% url 'eventos_frontend' %}" class="btn btn-ghost">Cancelar</a>
     <button class="btn btn-primary" id="btnGuardar" onclick="guardar()">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
       </svg>
       {% if evento_id %}Guardar cambios{% else %}Crear evento{% endif %}
@@ -168,17 +167,16 @@
 
 </div>
 
-<!-- Toast -->
 <div class="toast-container" id="toastContainer"></div>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const API        = '/eventos/';
-  const EVENTO_ID  = '{{ evento_id|default:"" }}';  // vacío si es creación
+  const API       = '/eventos/api/';
+  const API_BASE  = '/eventos/';
+  const EVENTO_ID = '{{ evento_id|default:"" }}';
 
-  // ── Toast ──────────────────────────────────────────────
   function toast(msg, tipo = 'success') {
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
@@ -188,13 +186,17 @@
     setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3500);
   }
 
-  // ── Tipo checkboxes ────────────────────────────────────
-  function toggleTipo(lbl) {
-    lbl.classList.toggle('checked');
-    lbl.querySelector('input').checked = lbl.classList.contains('checked');
-  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.tipo-check-label').forEach(lbl => {
+      lbl.addEventListener('click', function(e) {
+        e.preventDefault();
+        const cb = this.querySelector('input[type="checkbox"]');
+        cb.checked = !cb.checked;
+        this.classList.toggle('checked', cb.checked);
+      });
+    });
+  });
 
-  // ── Duración automática ────────────────────────────────
   function calcDuracion() {
     const hi = document.getElementById('horaInicio').value;
     const hf = document.getElementById('horaFin').value;
@@ -208,7 +210,6 @@
     }
   }
 
-  // ── Cargar barrios ─────────────────────────────────────
   async function cargarBarrios(seleccionado = '') {
     const sel = document.getElementById('barrioSelect');
     try {
@@ -225,7 +226,6 @@
     } catch { toast('Error cargando barrios', 'error'); }
   }
 
-  // ── Cargar puntos de interés ───────────────────────────
   async function cargarPuntos(barrioId, seleccionado = '') {
     const sel = document.getElementById('puntoSelect');
     sel.disabled = true;
@@ -247,7 +247,6 @@
     } catch { sel.innerHTML = '<option value="">Error cargando puntos</option>'; }
   }
 
-  // ── Cargar datos existentes (modo edición) ─────────────
   async function cargarEvento() {
     if (!EVENTO_ID) return;
     try {
@@ -256,21 +255,22 @@
       const ev = d.data;
       if (!ev) return;
 
-      document.getElementById('nombre').value           = ev.nombre || '';
-      document.getElementById('descripcion').value      = ev.descripcion || '';
-      document.getElementById('fecha').value            = ev.fecha || '';
-      document.getElementById('horaInicio').value       = (ev.hora_inicio || '').slice(0,5);
-      document.getElementById('horaFin').value          = (ev.hora_fin || '').slice(0,5);
-      document.getElementById('duracion').value         = ev.duracion_min || '';
-      document.getElementById('capacidad').value        = ev.capacidad || '';
-      document.getElementById('estadoSelect').value     = ev.estado || 'PLANIFICADO';
-
-      document.getElementById('objetivo').value         = ev.objetivo || '';
+      document.getElementById('nombre').value            = ev.nombre || '';
+      document.getElementById('descripcion').value       = ev.descripcion || '';
+      document.getElementById('fecha').value             = ev.fecha || '';
+      document.getElementById('horaInicio').value        = (ev.hora_inicio || '').slice(0,5);
+      document.getElementById('horaFin').value           = (ev.hora_fin || '').slice(0,5);
+      document.getElementById('duracion').value          = ev.duracion_min || '';
+      document.getElementById('capacidad').value         = ev.capacidad || '';
+      document.getElementById('estadoSelect').value      = ev.estado || 'PLANIFICADO';
+      document.getElementById('objetivo').value          = ev.objetivo || '';
       document.getElementById('resultadoEsperado').value = ev.resultado_esperado || '';
+
+      // Conservar el coordinador_id original del evento
+      window._coordinadorId = ev.coordinador_id || null;
 
       await cargarBarrios(ev.barrio_id || '');
 
-      // Tipos
       const rTipos = await fetch(`${API}${EVENTO_ID}/tipos/`);
       const dTipos = await rTipos.json();
       const tiposActivos = (dTipos.data || []).map(t => t.tipo);
@@ -281,18 +281,16 @@
           lbl.querySelector('input').checked = true;
         }
       });
-
     } catch { toast('Error cargando datos del evento', 'error'); }
   }
 
-  // ── Validación ─────────────────────────────────────────
   function validar() {
     const campos = [
-      { id: 'nombre',      msg: 'El nombre es obligatorio' },
-      { id: 'fecha',       msg: 'La fecha es obligatoria' },
-      { id: 'horaInicio',  msg: 'La hora de inicio es obligatoria' },
-      { id: 'horaFin',     msg: 'La hora de fin es obligatoria' },
-      { id: 'barrioSelect',msg: 'El barrio es obligatorio' },
+      { id: 'nombre',       msg: 'El nombre es obligatorio' },
+      { id: 'fecha',        msg: 'La fecha es obligatoria' },
+      { id: 'horaInicio',   msg: 'La hora de inicio es obligatoria' },
+      { id: 'horaFin',      msg: 'La hora de fin es obligatoria' },
+      { id: 'barrioSelect', msg: 'El barrio es obligatorio' },
     ];
     for (const c of campos) {
       const el = document.getElementById(c.id);
@@ -304,21 +302,22 @@
       }
       el.classList.remove('is-invalid');
     }
-    const tipos = [...document.querySelectorAll('.tipo-check-label.checked')];
-    if (!tipos.length) {
+    if (!document.querySelectorAll('.tipo-check-label.checked').length) {
       toast('Selecciona al menos un tipo de evento', 'error');
       return false;
     }
     return true;
   }
 
-  // ── Guardar ────────────────────────────────────────────
   async function guardar() {
     if (!validar()) return;
 
     const btn = document.getElementById('btnGuardar');
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner"></div> Guardando…';
+
+    const tipos = [...document.querySelectorAll('.tipo-check-label.checked')]
+                    .map(l => l.querySelector('input').value);
 
     const payload = {
       nombre:             document.getElementById('nombre').value.trim(),
@@ -332,16 +331,14 @@
       objetivo:           document.getElementById('objetivo').value.trim(),
       resultado_esperado: document.getElementById('resultadoEsperado').value.trim(),
       barrio_id:          document.getElementById('barrioSelect').value,
+      coordinador_id:     window._coordinadorId || null,
+      tipos:              tipos,   // ← los tipos van directo en el payload del evento
     };
-
-    const tipos = [...document.querySelectorAll('.tipo-check-label.checked')]
-                    .map(l => l.querySelector('input').value);
 
     try {
       let eventoId = EVENTO_ID;
 
       if (EVENTO_ID) {
-        // Edición: PUT
         const r = await fetch(`${API}${EVENTO_ID}/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -349,38 +346,22 @@
         });
         if (!r.ok) throw new Error(await r.text());
       } else {
-        // Creación: POST
         const r = await fetch(API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const d = await r.json();
+        console.log('[guardar] respuesta crear evento:', d);
         if (!r.ok || !d.ok) throw new Error(d.error || 'Error creando evento');
-        eventoId = d.data;
+        // d.data puede ser el objeto completo o solo el id
+        eventoId = (d.data && typeof d.data === 'object') ? d.data.id : d.data;
+        console.log('[guardar] eventoId extraído:', eventoId);
       }
-
-      // Sincronizar tipos: borrar los viejos y crear los nuevos
-      if (EVENTO_ID) {
-        // Obtener tipos actuales y borrarlos
-        const rT = await fetch(`${API}${eventoId}/tipos/`);
-        const dT = await rT.json();
-        await Promise.all((dT.data || []).map(t =>
-          fetch(`${API}tipos/${t.id}/`, { method: 'DELETE' })
-        ));
-      }
-      await Promise.all(tipos.map(tipo =>
-        fetch(`${API}${eventoId}/tipos/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tipo }),
-        })
-      ));
 
       // Punto de interés
       const puntoId = document.getElementById('puntoSelect').value;
       if (puntoId) {
-        // Limpiar puntos anteriores y agregar el nuevo
         const rP = await fetch(`${API}${eventoId}/puntos/`);
         const dP = await rP.json();
         await Promise.all((dP.data || []).map(p =>
@@ -399,16 +380,24 @@
     } catch (err) {
       toast('Error al guardar: ' + err.message, 'error');
       btn.disabled = false;
-      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>${EVENTO_ID ? 'Guardar cambios' : 'Crear evento'}`;
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>${EVENTO_ID ? 'Guardar cambios' : 'Crear evento'}`;
     }
   }
 
-  // ── Init ───────────────────────────────────────────────
+  async function cargarCoordinadorId() {
+    try {
+      const r = await fetch(API + 'coordinadores/');
+      const d = await r.json();
+      const lista = d.data || [];
+      if (lista.length) window._coordinadorId = lista[0].id;
+    } catch { /* no bloqueante */ }
+  }
+
   if (EVENTO_ID) {
     cargarEvento();
   } else {
     cargarBarrios();
-    // Fecha de hoy por defecto
+    cargarCoordinadorId();
     document.getElementById('fecha').valueAsDate = new Date();
   }
 </script>

@@ -11,6 +11,8 @@ logging.info(f"BASE_DIR detectado en el sistema: '{BASE_DIR}'")
 
 SECRET_KEY = 'django-insecure-leat#y$cce&6tir1_1qjuno&(i8y1rs9ntkw#t8%z@a3!fdq9('
 
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -19,6 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'Backend.moduloEventos',
+    'Backend.moduloLogin'
 ]
 
 MIDDLEWARE = [

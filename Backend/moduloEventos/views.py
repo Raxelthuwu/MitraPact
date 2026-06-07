@@ -7,6 +7,7 @@ from django.shortcuts import render # Importación necesaria
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from Backend.moduloLogin.views import login_requerido, SESSION_KEY
 
 from Backend.moduloEventos.services import (
     BarrioService,
@@ -30,6 +31,22 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 # Vista para cargar el Frontend (Nueva)
 # ─────────────────────────────────────────────────────────────────────────────
+@login_requerido
+def evento_crear_vista(request):
+    """Carga el formulario de creación de evento."""
+    return render(request, 'moduloEventos/eventos_form.html')
+
+@login_requerido
+def evento_detalle_vista(request, evento_id):
+    """Carga la vista de detalle de un evento."""
+    return render(request, 'moduloEventos/eventos_detalle.html', {'evento_id': evento_id})
+
+@login_requerido
+def evento_editar_vista(request, evento_id):
+    """Carga el formulario de edición de un evento."""
+    return render(request, 'moduloEventos/eventos_form.html', {'evento_id': evento_id})
+
+@login_requerido
 def eventos_vista(request):
     """Carga la interfaz del frontend de eventos."""
     return render(request, 'moduloEventos/eventos_lista.html')
@@ -423,7 +440,7 @@ class EventoDetailView(View):
 
 @csrf_exempt_cbv
 class EventoEstadoView(View):
-    """PATCH /eventos/<evento_id>/estado/  — RF-EV-04"""
+    """PATCH|PUT /eventos/<evento_id>/estado/  — RF-EV-04"""
 
     async def patch(self, request, evento_id):
         data = _body(request)
@@ -431,6 +448,15 @@ class EventoEstadoView(View):
         async def _():
             return _ok(await _evento_svc.actualizar_estado(evento_id, data["estado"]))
         return await _handle(_)
+
+    async def put(self, request, evento_id):
+        data = _body(request)
+        logger.debug("[EventoEstadoView] PUT actualizar_estado evento_id=%s estado=%s", evento_id, data.get("estado"))
+        async def _():
+            return _ok(await _evento_svc.actualizar_estado(evento_id, data["estado"]))
+        return await _handle(_)
+    
+
 
 
 @csrf_exempt_cbv

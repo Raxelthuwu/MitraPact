@@ -81,20 +81,31 @@
 
     </nav>
 
-    <div class="sidebar-user">
-      {% if request.user.is_authenticated %}
-        <div class="user-avatar"
-             style="background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:15px;">
-          {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+    <div class="sidebar-user" style="flex-direction:column;align-items:stretch;gap:8px;padding:12px;">
+      {% if request.session.coordinador_nombre %}
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="user-avatar"
+               style="background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);font-size:15px;flex-shrink:0;">
+            {{ request.session.coordinador_nombre|first|upper }}
+          </div>
+          <div class="user-info" style="flex:1;min-width:0;">
+            <div class="user-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ request.session.coordinador_nombre }}
+            </div>
+            <div class="user-role" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              {{ request.session.coordinador_email }}
+            </div>
+          </div>
         </div>
-        <div class="user-info">
-          <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-          <div class="user-role">{{ request.user.profile.rol|default:"Coordinador" }}</div>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-             stroke-width="2" stroke="currentColor" style="flex-shrink:0;color:var(--text-muted)">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-        </svg>
+        <a href="{% url 'logout' %}"
+           style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);text-decoration:none;padding:6px 4px;border-radius:6px;transition:background .15s;"
+           onmouseover="this.style.background='var(--border-light)'"
+           onmouseout="this.style.background='transparent'">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14" style="flex-shrink:0;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/>
+          </svg>
+          Cerrar sesión
+        </a>
       {% endif %}
     </div>
 

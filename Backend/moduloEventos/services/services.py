@@ -4,7 +4,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from asgiref.sync import sync_to_async
-from django.db import transaction
 
 from Backend.moduloEventos.interfaces import (
     IBarrioService,
@@ -357,7 +356,7 @@ class EventoService(IEventoService):
         logger.info("[EventoService] obtener_evento: encontrado evento_id=%s con %d tipos", evento_id, len(ev["tipos"]))
         return ev
 
-    @transaction.atomic
+     
     async def crear_evento(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         tipos = payload.pop("tipos", [])
         logger.debug("[EventoService] crear_evento: nombre='%s' coordinador_id=%s tipos=%s", payload.get("nombre"), payload.get("coordinador_id"), tipos)
@@ -383,7 +382,7 @@ class EventoService(IEventoService):
         logger.info("[EventoService] crear_evento: creado evento_id=%s", evento_id)
         return result
 
-    @transaction.atomic
+     
     async def actualizar_evento(
         self, evento_id: str, payload: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
@@ -457,7 +456,7 @@ class EventoPuntoInteresService(IEventoPuntoInteresService):
         logger.info("[EventoPuntoInteresService] remover_punto: id=%s eliminado=%s", evento_punto_interes_id, result)
         return result
 
-    @transaction.atomic
+     
     async def reemplazar_puntos(
         self, evento_id: str, punto_interes_ids: List[str]
     ) -> List[Dict[str, Any]]:
@@ -482,7 +481,7 @@ class AsignacionService(IAsignacionService):
         logger.info("[AsignacionService] listar_asignaciones: %d asignaciones para evento_id=%s", len(result), evento_id)
         return result
 
-    @transaction.atomic
+     
     async def asignar_manual(
         self,
         evento_id: str,
@@ -502,7 +501,7 @@ class AsignacionService(IAsignacionService):
         logger.info("[AsignacionService] asignar_manual: asignacion_id=%s creada (MANUAL)", asignacion_id)
         return result
 
-    @transaction.atomic
+     
     async def asignar_automatico(
         self,
         evento_id: str,
@@ -614,8 +613,18 @@ class AsignacionService(IAsignacionService):
 
     async def remover_asignacion(self, asignacion_id: str) -> bool:
         logger.debug("[AsignacionService] remover_asignacion: asignacion_id=%s", asignacion_id)
+        
+        # Obtener la asignación ANTES de borrarla para saber la ocupación
+        asignacion = await sync_to_async(Asignacion.get_by_id)(asignacion_id)
+        if asignacion:
+            simpatizante = await sync_to_async(Simpatizante.get_by_id)(str(asignacion["simpatizante_id"]))
+            if simpatizante:
+                await sync_to_async(Cobertura.decrementar_asignados)(
+                    str(asignacion["evento_id"]), simpatizante["ocupacion"]
+                )
+
         result = await sync_to_async(Asignacion.delete)(asignacion_id)
-        logger.info("[AsignacionService] remover_asignacion: asignacion_id=%s eliminada=%s", asignacion_id, result)
+        logger.info("[AsignacionService] remover_asignacion: asignacion_id=%s eliminado=%s", asignacion_id, result)
         return result
 
     async def registrar_asistencia(
@@ -846,7 +855,7 @@ class EstadoMaterialService(IEstadoMaterialService):
         logger.info("[EstadoMaterialService] registrar_estado: creado estado_id=%s estado='%s'", estado_id, estado_upper)
         return result
 
-    @transaction.atomic
+     
     async def cargar_desde_csv(self, archivo_csv: Any) -> Dict[str, Any]:
         """
         RF-EV-21 — Procesa un archivo CSV con columnas:

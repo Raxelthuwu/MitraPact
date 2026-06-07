@@ -509,7 +509,8 @@ class Evento:
             "resultado_obtenido", "capacidad", "estado",
             "coordinador_id", "barrio_id",
         }
-        fields = {k: v for k, v in payload.items() if k in allowed}
+        # FIX: excluir None para no pisar valores existentes (ej. coordinador_id)
+        fields = {k: v for k, v in payload.items() if k in allowed and v is not None}
         if not fields:
             return False
         set_clause = ", ".join(f"{k} = %s" for k in fields)
@@ -689,10 +690,26 @@ class Cobertura:
 
     @staticmethod
     def get_by_evento(evento_id: str) -> List[Dict[str, Any]]:
+        # FIX: calcula asignados en tiempo real con JOIN
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT id, evento_id, ocupacion, requeridos, asignados
-                    FROM {db.cobertura} WHERE evento_id = %s ORDER BY ocupacion""",
+                f"""
+                SELECT
+                    c.id,
+                    c.evento_id,
+                    c.ocupacion,
+                    c.requeridos,
+                    COUNT(a.id) AS asignados
+                FROM {db.cobertura} c
+                LEFT JOIN {db.asignacion} a
+                    ON a.evento_id = c.evento_id
+                LEFT JOIN {db.simpatizante} s
+                    ON s.id = a.simpatizante_id
+                   AND LOWER(TRIM(s.ocupacion)) = LOWER(TRIM(c.ocupacion))
+                WHERE c.evento_id = %s
+                GROUP BY c.id, c.evento_id, c.ocupacion, c.requeridos
+                ORDER BY c.ocupacion
+                """,
                 [evento_id],
             )
             return _fetchall(cur)
