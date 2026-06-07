@@ -3,6 +3,7 @@ import logging
 from typing import Callable
 
 from django.http import JsonResponse
+from django.shortcuts import render # Importación necesaria
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -25,6 +26,13 @@ from Backend.moduloEventos.services import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Vista para cargar el Frontend (Nueva)
+# ─────────────────────────────────────────────────────────────────────────────
+def eventos_vista(request):
+    """Carga la interfaz del frontend de eventos."""
+    return render(request, 'moduloEventos/eventos_lista.html')
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Instancias de servicios (singleton ligero — sin estado mutable)
@@ -63,6 +71,13 @@ def _body(request) -> dict:
     except json.JSONDecodeError:
         return {}
 
+def evento_crear_vista(request):
+    """Carga el formulario de creación de evento."""
+    return render(request, 'moduloEventos/eventos_form.html')
+
+def evento_detalle_vista(request, evento_id):
+    """Carga la vista de detalle de un evento."""
+    return render(request, 'moduloEventos/eventos_detalle.html', {'evento_id': evento_id})
 
 async def _handle(func: Callable) -> JsonResponse:
     """Envuelve la lógica de cada handler para capturar excepciones comunes."""
@@ -130,7 +145,6 @@ class BarrioDetailView(View):
 
 # =============================================================================
 # PUNTO DE INTERÉS
-# — sector eliminado: punto_interes ahora referencia barrio_id directamente
 # =============================================================================
 
 @csrf_exempt_cbv
@@ -509,7 +523,7 @@ class EventoPuntoInteresDetailView(View):
 class AsignacionListView(View):
     """
     GET  /eventos/<evento_id>/asignaciones/
-    POST /eventos/<evento_id>/asignaciones/       — asignación manual (RF-EV-07)
+    POST /eventos/<evento_id>/asignaciones/        — asignación manual (RF-EV-07)
     """
 
     async def get(self, request, evento_id):

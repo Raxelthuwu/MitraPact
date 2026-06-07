@@ -1,0 +1,1035 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Detalle Evento · Pacto Histórico{% endblock %}
+{% block nav_eventos %}active{% endblock %}
+{% block page_title %}Detalle del Evento{% endblock %}
+{% block page_subtitle %}Información completa y gestión operativa{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'eventos.css' %}">
+{% endblock %}
+
+{% block topbar_extra %}
+  <a href="{% url 'evento-list' %}" class="btn btn-ghost btn-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+    </svg>
+    Volver
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Header del evento ── -->
+<div class="detalle-header" id="detalleHeader">
+  <div class="skeleton" style="width:56px;height:56px;border-radius:12px;flex-shrink:0;"></div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+    <div class="skeleton" style="width:60%;height:28px;"></div>
+    <div class="skeleton" style="width:40%;height:16px;"></div>
+    <div class="skeleton" style="width:80%;height:16px;"></div>
+  </div>
+</div>
+
+<!-- ── Tab Navigation ── -->
+<nav class="tab-nav" id="tabNav">
+  <button class="tab-btn active" onclick="showTab('info', this)">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>
+    </svg>
+    Información
+  </button>
+  <button class="tab-btn" onclick="showTab('personal', this)">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+    </svg>
+    Personal
+  </button>
+  <button class="tab-btn" onclick="showTab('cobertura', this)">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
+    </svg>
+    Cobertura
+  </button>
+  <button class="tab-btn" onclick="showTab('observaciones', this)">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>
+    </svg>
+    Observaciones
+  </button>
+  <button class="tab-btn" onclick="showTab('material', this)">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/>
+    </svg>
+    Material
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: INFORMACIÓN
+     ════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-info">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Datos del Evento</span>
+      <a href="#" id="btnEditar" class="btn btn-outline btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/>
+        </svg>
+        Editar
+      </a>
+    </div>
+    <div class="card-body">
+      <div class="info-grid" id="infoGrid">
+        <div class="loading-row col-span-2"><div class="spinner"></div> Cargando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Participación externa -->
+  <div class="card" style="margin-top:18px;">
+    <div class="card-header">
+      <span class="card-title">Participación Externa</span>
+      <button class="btn btn-outline btn-sm" onclick="openModal('modalParticipacion')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+        </svg>
+        Registrar
+      </button>
+    </div>
+    <div class="card-body" id="participacionContent">
+      <div class="loading-row"><div class="spinner"></div> Cargando…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: PERSONAL
+     ════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-personal">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Personal Asignado</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="openModal('modalDisponibles')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+          </svg>
+          Ver disponibles
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="asignacionAutomatica()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/>
+          </svg>
+          Asignación automática
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modalAsignar')">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+          </svg>
+          Asignar persona
+        </button>
+      </div>
+    </div>
+    <div class="card-body no-pad">
+      <div id="personalContent">
+        <div class="loading-row"><div class="spinner"></div> Cargando asignaciones…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: COBERTURA
+     ════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-cobertura">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Control de Cobertura</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modalCobertura')">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+        </svg>
+        Nueva cobertura
+      </button>
+    </div>
+    <div class="card-body" id="coberturaContent">
+      <div class="loading-row"><div class="spinner"></div> Cargando…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: OBSERVACIONES
+     ════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-observaciones">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Observaciones</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="openObsModal('INICIAL')">+ Inicial</button>
+        <button class="btn btn-outline btn-sm" onclick="openObsModal('FINAL')">+ Final</button>
+      </div>
+    </div>
+    <div class="card-body" id="obsContent">
+      <div class="loading-row"><div class="spinner"></div> Cargando…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB: MATERIAL
+     ════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-material">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+    <!-- Material publicitario -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Material Publicitario</span>
+        <button class="btn btn-outline btn-sm" onclick="openModal('modalMaterial')">Editar</button>
+      </div>
+      <div class="card-body" id="materialContent">
+        <div class="loading-row"><div class="spinner"></div> Cargando…</div>
+      </div>
+    </div>
+
+    <!-- Estado del material -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Estado del Material</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modalCSV')">Cargar CSV</button>
+          <button class="btn btn-outline btn-sm" onclick="openModal('modalEstado')">+ Registro</button>
+        </div>
+      </div>
+      <div class="card-body" id="estadoMaterialContent">
+        <div class="loading-row"><div class="spinner"></div> Cargando…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     MODALES
+     ════════════════════════════════════════ -->
+
+<!-- Modal: Asignar persona manual -->
+<div class="modal-overlay" id="modalAsignar">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Asignar Persona</span>
+      <button class="modal-close" onclick="closeModal('modalAsignar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Simpatizante</label>
+        <select class="form-control form-select" id="asignarSimpatizante">
+          <option value="">Cargando simpatizantes…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rol</label>
+        <select class="form-control form-select" id="asignarRol">
+          <option value="LIDER">Líder</option>
+          <option value="STAFF">Staff del partido</option>
+          <option value="PARTICIPANTE">Participante externo</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalAsignar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="asignarPersona()">Asignar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ver disponibles -->
+<div class="modal-overlay" id="modalDisponibles">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <span class="modal-title">Personas Disponibles</span>
+      <button class="modal-close" onclick="closeModal('modalDisponibles')">✕</button>
+    </div>
+    <div class="modal-body" id="disponiblesContent">
+      <div class="loading-row"><div class="spinner"></div> Consultando disponibilidad…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nueva Cobertura -->
+<div class="modal-overlay" id="modalCobertura">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Registrar Cobertura</span>
+      <button class="modal-close" onclick="closeModal('modalCobertura')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Ocupación requerida</label>
+        <input class="form-control" type="text" id="coberturaOcupacion" placeholder="Ej. Desarrolladores de software">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cantidad requerida</label>
+        <input class="form-control" type="number" id="coberturaRequeridos" min="1" value="1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalCobertura')">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearCobertura()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Observación -->
+<div class="modal-overlay" id="modalObs">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="obsMomentoLabel">Observación Inicial</span>
+      <button class="modal-close" onclick="closeModal('modalObs')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="obsMomento" value="INICIAL">
+      <div class="form-group">
+        <label class="form-label">Contenido</label>
+        <textarea class="form-control" id="obsContenido" rows="4" placeholder="Escribe tu observación…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalObs')">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearObservacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Material publicitario -->
+<div class="modal-overlay" id="modalMaterial">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Material Publicitario</span>
+      <button class="modal-close" onclick="closeModal('modalMaterial')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Cantidad entregada</label>
+        <input class="form-control" type="number" id="matEntregado" min="0" value="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cantidad restante</label>
+        <input class="form-control" type="number" id="matRestante" min="0" value="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalMaterial')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMaterial()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Estado del material -->
+<div class="modal-overlay" id="modalEstado">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Registrar Estado del Material</span>
+      <button class="modal-close" onclick="closeModal('modalEstado')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <select class="form-control form-select" id="estadoValor">
+          <option value="CONSERVADO">Conservado</option>
+          <option value="DETERIORADO">Deteriorado</option>
+          <option value="RETIRADO">Retirado</option>
+          <option value="VANDALIZADO">Vandalizado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea class="form-control" id="estadoNotas" rows="3" placeholder="Observaciones adicionales…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEstado')">Cancelar</button>
+      <button class="btn btn-primary" onclick="registrarEstado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cargar CSV -->
+<div class="modal-overlay" id="modalCSV">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Cargar CSV de Estado</span>
+      <button class="modal-close" onclick="closeModal('modalCSV')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-sm text-secondary" style="margin-bottom:14px;">
+        El CSV debe tener las columnas: <strong>evento_id</strong>, <strong>estado</strong> (1-5) y <strong>notas</strong>.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Archivo CSV</label>
+        <input class="form-control" type="file" id="csvFile" accept=".csv">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalCSV')">Cancelar</button>
+      <button class="btn btn-primary" onclick="cargarCSV()">Cargar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Participación externa -->
+<div class="modal-overlay" id="modalParticipacion">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Participación Externa</span>
+      <button class="modal-close" onclick="closeModal('modalParticipacion')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Cantidad aproximada de externos</label>
+        <input class="form-control" type="number" id="partCantidad" min="0" value="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea class="form-control" id="partNotas" rows="3" placeholder="Observaciones sobre la participación…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalParticipacion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarParticipacion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const API       = '/eventos/';
+  const EVENTO_ID = '{{ evento_id }}';   // inyectado desde la URL view de Django
+  const MESES     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  let eventoData    = null;
+  let materialData  = null;
+  let partData      = null;
+
+  // ── Utilidades ──────────────────────────────────────────
+  function toast(msg, tipo = 'success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3500);
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function estadoBadge(estado) {
+    const cls = { PLANIFICADO:'estado-planificado', EN_EJECUCION:'estado-en_ejecucion', FINALIZADO:'estado-finalizado', CANCELADO:'estado-cancelado' };
+    const lbl = { PLANIFICADO:'Planificado', EN_EJECUCION:'En ejecución', FINALIZADO:'Finalizado', CANCELADO:'Cancelado' };
+    return `<span class="estado-badge ${cls[estado]||''}">${lbl[estado]||estado}</span>`;
+  }
+
+  function rolBadge(rol) {
+    const cls = { LIDER:'rol-lider', STAFF:'rol-staff', PARTICIPANTE:'rol-participante' };
+    const lbl = { LIDER:'Líder', STAFF:'Staff', PARTICIPANTE:'Externo' };
+    return `<span class="rol-badge ${cls[rol]||''}">${lbl[rol]||rol||'—'}</span>`;
+  }
+
+  function formatFecha(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T00:00:00');
+    return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // ── Header del evento ───────────────────────────────────
+  function renderHeader(ev, tipos, barrio) {
+    document.getElementById('detalleHeader').innerHTML = `
+      <div class="detalle-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
+        </svg>
+      </div>
+      <div class="detalle-info">
+        <h2>${ev.nombre}</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+          ${estadoBadge(ev.estado)}
+          ${tipos.map(t=>`<span class="tipo-pill">${t.tipo}</span>`).join('')}
+        </div>
+        <div class="detalle-meta-row">
+          <span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+            ${formatFecha(ev.fecha)}
+          </span>
+          <span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+            ${(ev.hora_inicio||'').slice(0,5)} – ${(ev.hora_fin||'').slice(0,5)}
+            ${ev.duracion_min ? `(${ev.duracion_min} min)` : ''}
+          </span>
+          ${barrio ? `<span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0 1 15 0Z"/></svg>
+            ${barrio.nombre}
+          </span>` : ''}
+          ${ev.capacidad ? `<span>Cap. ${ev.capacidad}</span>` : ''}
+        </div>
+      </div>
+      <div class="detalle-actions">
+        <a href="/eventos/${ev.id}/editar/" class="btn btn-outline btn-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+          Editar
+        </a>
+        <button class="btn btn-ghost btn-sm" onclick="cambiarEstado()">Cambiar estado</button>
+      </div>
+    `;
+    document.getElementById('btnEditar').href = `/eventos/${ev.id}/editar/`;
+  }
+
+  // ── Tab: Información ────────────────────────────────────
+  function renderInfo(ev, puntos) {
+    const puntosNombres = puntos.map(p => p.punto_interes).join(', ') || '—';
+    document.getElementById('infoGrid').innerHTML = `
+      <div class="info-field">
+        <label>Descripción</label>
+        <p>${ev.descripcion || '—'}</p>
+      </div>
+      <div class="info-field">
+        <label>Puntos de interés</label>
+        <p>${puntosNombres}</p>
+      </div>
+      <div class="info-field full">
+        <label>Objetivo</label>
+        <p>${ev.objetivo || '—'}</p>
+      </div>
+      <div class="info-field">
+        <label>Resultado esperado</label>
+        <p>${ev.resultado_esperado || '—'}</p>
+      </div>
+      <div class="info-field">
+        <label>Resultado obtenido</label>
+        <p>${ev.resultado_obtenido || '—'}</p>
+      </div>
+    `;
+  }
+
+  // ── Tab: Personal / Asignaciones ────────────────────────
+  function renderPersonal(asignaciones) {
+    if (!asignaciones.length) {
+      document.getElementById('personalContent').innerHTML = `
+        <div class="empty-state" style="padding:32px;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+          <h3>Sin personal asignado</h3>
+          <p>Asigna personas a este evento usando los botones de arriba.</p>
+        </div>`;
+      return;
+    }
+    document.getElementById('personalContent').innerHTML = `
+      <div class="table-wrapper" style="border:none;border-radius:0;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Ocupación</th>
+              <th>Rol</th>
+              <th>Método</th>
+              <th>Asistió</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${asignaciones.map(a => `
+              <tr class="asignacion-row" data-id="${a.id}">
+                <td>${a.simpatizante_nombre}</td>
+                <td class="text-muted text-sm">${a.simpatizante_ocupacion || '—'}</td>
+                <td>${rolBadge(a.rol)}</td>
+                <td class="text-muted text-sm">${a.metodo === 'AUTOMATICA' ? 'Automática' : 'Manual'}</td>
+                <td>
+                  <input type="checkbox" class="asistencia-check" 
+                    ${a.asistio ? 'checked' : ''} 
+                    onchange="registrarAsistencia('${a.id}', this.checked)">
+                </td>
+                <td>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="eliminarAsignacion('${a.id}')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                    Quitar
+                  </button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Tab: Cobertura ──────────────────────────────────────
+  function renderCobertura(coberturas) {
+    if (!coberturas.length) {
+      document.getElementById('coberturaContent').innerHTML = `
+        <div class="empty-state" style="padding:32px;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+          <h3>Sin cobertura registrada</h3>
+          <p>Define cuánto personal se necesita por ocupación.</p>
+        </div>`;
+      return;
+    }
+    document.getElementById('coberturaContent').innerHTML = coberturas.map(c => {
+      const pct  = c.requeridos > 0 ? Math.min((c.asignados / c.requeridos) * 100, 100) : 0;
+      const cls  = pct >= 100 ? 'completo' : (pct > 80 ? 'exceso' : '');
+      return `
+        <div class="cobertura-item">
+          <div class="cobertura-item-header">
+            <span class="cobertura-ocupacion">${c.ocupacion}</span>
+            <span class="cobertura-nums">${c.asignados} / ${c.requeridos} asignados</span>
+          </div>
+          <div class="cobertura-bar-bg">
+            <div class="cobertura-bar-fill ${cls}" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Tab: Observaciones ──────────────────────────────────
+  function renderObservaciones(obs) {
+    if (!obs.length) {
+      document.getElementById('obsContent').innerHTML = `
+        <div class="empty-state" style="padding:32px;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+          <h3>Sin observaciones</h3>
+          <p>Agrega observaciones iniciales o finales del evento.</p>
+        </div>`;
+      return;
+    }
+    document.getElementById('obsContent').innerHTML = obs.map(o => {
+      const fecha = o.registrado_en ? new Date(o.registrado_en).toLocaleString('es-CO', { dateStyle:'short', timeStyle:'short' }) : '';
+      return `
+        <div class="obs-item">
+          <span class="obs-momento ${o.momento === 'INICIAL' ? 'inicial' : 'final'}">${o.momento === 'INICIAL' ? 'Inicial' : 'Final'}</span>
+          <p class="obs-contenido">${o.contenido}</p>
+          <span class="obs-fecha">${fecha}</span>
+          <button style="color:var(--danger);background:none;border:none;cursor:pointer;flex-shrink:0;" onclick="eliminarObs('${o.id}')">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Tab: Material ───────────────────────────────────────
+  function renderMaterial(mat) {
+    materialData = mat;
+    if (!mat) {
+      document.getElementById('materialContent').innerHTML = `
+        <div class="empty-state" style="padding:24px;">
+          <h3>Sin material registrado</h3>
+          <p>Registra el material publicitario del evento.</p>
+          <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openModal('modalMaterial')">Registrar</button>
+        </div>`;
+      return;
+    }
+    document.getElementById('materialContent').innerHTML = `
+      <div class="material-stats">
+        <div class="material-stat">
+          <div class="val">${mat.entregado}</div>
+          <div class="lbl">Entregado</div>
+        </div>
+        <div class="material-stat">
+          <div class="val">${mat.restante}</div>
+          <div class="lbl">Restante</div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-sm btn-block" onclick="openModal('modalMaterial')">Actualizar</button>`;
+    document.getElementById('matEntregado').value = mat.entregado;
+    document.getElementById('matRestante').value  = mat.restante;
+  }
+
+  async function renderEstadoMaterial() {
+    const [rEst, rProm] = await Promise.all([
+      fetch(`${API}${EVENTO_ID}/material/estado/`),
+      fetch(`${API}${EVENTO_ID}/material/estado/promedio/`),
+    ]);
+    const dEst  = await rEst.json();
+    const dProm = await rProm.json();
+    const estados = dEst.data || [];
+    const prom    = dProm.data?.promedio;
+
+    const estadoColors = { CONSERVADO:'var(--success)', DETERIORADO:'var(--warning)', RETIRADO:'var(--info)', VANDALIZADO:'var(--danger)' };
+
+    let html = '';
+    if (prom !== null && prom !== undefined) {
+      const pct = ((prom / 5) * 100).toFixed(0);
+      html += `
+        <div class="gauge-wrap">
+          <div class="gauge-circle" style="background:conic-gradient(var(--accent) ${pct}%, var(--border-light) 0%);">
+            <span class="gauge-val">${prom.toFixed(1)}</span>
+          </div>
+          <span class="gauge-label">Promedio estado (1–5)</span>
+        </div>`;
+    }
+
+    if (!estados.length) {
+      html += `<p class="text-sm text-muted" style="text-align:center;padding:16px 0;">Sin registros de estado aún.</p>`;
+    } else {
+      html += `<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+        ${estados.slice(-5).reverse().map(e => `
+          <div style="display:flex;align-items:center;gap:8px;font-size:var(--font-size-sm);">
+            <span style="width:8px;height:8px;border-radius:50%;background:${estadoColors[e.estado]||'var(--text-muted)'};flex-shrink:0;"></span>
+            <span style="flex:1;">${e.estado}</span>
+            <span class="text-muted text-xs">${e.notas || ''}</span>
+          </div>`).join('')}
+      </div>`;
+    }
+    document.getElementById('estadoMaterialContent').innerHTML = html;
+  }
+
+  // ── Participación externa ───────────────────────────────
+  function renderParticipacion(part) {
+    partData = part;
+    if (!part) {
+      document.getElementById('participacionContent').innerHTML = `<p class="text-sm text-muted">No hay registro de participación externa.</p>`;
+      return;
+    }
+    document.getElementById('participacionContent').innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-display);font-size:var(--font-size-2xl);font-weight:700;color:var(--accent);">${part.cantidad}</div>
+          <div class="text-muted text-xs">personas externas</div>
+        </div>
+        ${part.notas ? `<p class="text-sm text-secondary" style="flex:1;">${part.notas}</p>` : ''}
+      </div>`;
+    document.getElementById('partCantidad').value = part.cantidad;
+    document.getElementById('partNotas').value    = part.notas || '';
+  }
+
+  // ── Asignación automática ───────────────────────────────
+  async function asignacionAutomatica() {
+    if (!confirm('¿Aplicar asignación automática de personal?')) return;
+    try {
+      const r = await fetch(`${API}${EVENTO_ID}/asignaciones/automatica/`, { method: 'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      toast('Asignación automática completada');
+      cargarPersonal();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function asignarPersona() {
+    const simId = document.getElementById('asignarSimpatizante').value;
+    const rol   = document.getElementById('asignarRol').value;
+    if (!simId) { toast('Selecciona una persona', 'error'); return; }
+    try {
+      const r = await fetch(`${API}${EVENTO_ID}/asignaciones/`, {
+        method: 'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ simpatizante_id: simId, rol }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      closeModal('modalAsignar');
+      toast('Persona asignada');
+      cargarPersonal();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function eliminarAsignacion(id) {
+    if (!confirm('¿Quitar esta persona del evento?')) return;
+    await fetch(`${API}asignaciones/${id}/`, { method:'DELETE' });
+    toast('Persona removida');
+    cargarPersonal();
+  }
+
+  async function registrarAsistencia(id, asistio) {
+    await fetch(`${API}asignaciones/${id}/asistencia/`, {
+      method: 'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ asistio }),
+    });
+    toast(asistio ? 'Asistencia confirmada' : 'Asistencia removida');
+  }
+
+  async function cargarPersonal() {
+    const r = await fetch(`${API}${EVENTO_ID}/asignaciones/`);
+    const d = await r.json();
+    renderPersonal(d.data || []);
+  }
+
+  // ── Disponibles ─────────────────────────────────────────
+  async function openModal_disponibles() {
+    openModal('modalDisponibles');
+    if (!eventoData) return;
+    const dia = new Date(eventoData.fecha + 'T00:00:00')
+                  .toLocaleDateString('es-CO',{weekday:'long'}).toUpperCase().split(',')[0];
+    try {
+      const r = await fetch(`${API}${EVENTO_ID}/disponibles/`);
+      const d = await r.json();
+      const lista = d.data || [];
+      document.getElementById('disponiblesContent').innerHTML = lista.length
+        ? `<div class="disponibles-list">${lista.map(p=>`
+            <div class="disponible-item">
+              <div class="disponible-avatar">${(p.nombre||'?')[0].toUpperCase()}</div>
+              <div class="disponible-info">
+                <div class="disponible-nombre">${p.nombre}</div>
+                <div class="disponible-meta">${p.ocupacion||''} · ${p.barrio_id||''}</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="asignarDirecto('${p.id}')">Asignar</button>
+            </div>`).join('')}</div>`
+        : `<div class="empty-state" style="padding:20px;"><h3>Ninguna persona disponible</h3><p>No hay simpatizantes con horario compatible.</p></div>`;
+    } catch { document.getElementById('disponiblesContent').innerHTML = '<p class="text-muted text-sm">Error cargando disponibilidad.</p>'; }
+  }
+
+  async function asignarDirecto(simId) {
+    try {
+      await fetch(`${API}${EVENTO_ID}/asignaciones/`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ simpatizante_id: simId, rol:'PARTICIPANTE' }),
+      });
+      closeModal('modalDisponibles');
+      toast('Persona asignada');
+      cargarPersonal();
+    } catch { toast('Error al asignar', 'error'); }
+  }
+
+  // ── Cobertura ───────────────────────────────────────────
+  async function crearCobertura() {
+    const ocup = document.getElementById('coberturaOcupacion').value.trim();
+    const req  = parseInt(document.getElementById('coberturaRequeridos').value);
+    if (!ocup || !req) { toast('Completa todos los campos', 'error'); return; }
+    try {
+      const r = await fetch(`${API}${EVENTO_ID}/cobertura/`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ocupacion: ocup, requeridos: req }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      closeModal('modalCobertura');
+      toast('Cobertura registrada');
+      cargarCobertura();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  async function cargarCobertura() {
+    const r = await fetch(`${API}${EVENTO_ID}/cobertura/`);
+    const d = await r.json();
+    renderCobertura(d.data || []);
+  }
+
+  // ── Observaciones ───────────────────────────────────────
+  function openObsModal(momento) {
+    document.getElementById('obsMomento').value = momento;
+    document.getElementById('obsMomentoLabel').textContent = momento === 'INICIAL' ? 'Observación Inicial' : 'Observación Final';
+    document.getElementById('obsContenido').value = '';
+    openModal('modalObs');
+  }
+
+  async function crearObservacion() {
+    const contenido = document.getElementById('obsContenido').value.trim();
+    const momento   = document.getElementById('obsMomento').value;
+    if (!contenido) { toast('Escribe el contenido de la observación', 'error'); return; }
+    try {
+      await fetch(`${API}${EVENTO_ID}/observaciones/`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ momento, contenido }),
+      });
+      closeModal('modalObs');
+      toast('Observación registrada');
+      cargarObservaciones();
+    } catch { toast('Error guardando observación', 'error'); }
+  }
+
+  async function eliminarObs(id) {
+    if (!confirm('¿Eliminar esta observación?')) return;
+    await fetch(`${API}observaciones/${id}/`, { method:'DELETE' });
+    toast('Observación eliminada');
+    cargarObservaciones();
+  }
+
+  async function cargarObservaciones() {
+    const r = await fetch(`${API}${EVENTO_ID}/observaciones/`);
+    const d = await r.json();
+    renderObservaciones(d.data || []);
+  }
+
+  // ── Material ────────────────────────────────────────────
+  async function guardarMaterial() {
+    const entregado = parseInt(document.getElementById('matEntregado').value) || 0;
+    const restante  = parseInt(document.getElementById('matRestante').value) || 0;
+    try {
+      if (materialData) {
+        await fetch(`${API}${EVENTO_ID}/material/`, {
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: materialData.id, entregado, restante }),
+        });
+      } else {
+        await fetch(`${API}${EVENTO_ID}/material/`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ entregado, restante }),
+        });
+      }
+      closeModal('modalMaterial');
+      toast('Material actualizado');
+      cargarMaterial();
+    } catch { toast('Error guardando material', 'error'); }
+  }
+
+  async function cargarMaterial() {
+    const r = await fetch(`${API}${EVENTO_ID}/material/`);
+    const d = await r.json();
+    renderMaterial(d.data);
+    renderEstadoMaterial();
+  }
+
+  async function registrarEstado() {
+    const estado = document.getElementById('estadoValor').value;
+    const notas  = document.getElementById('estadoNotas').value.trim();
+    try {
+      await fetch(`${API}${EVENTO_ID}/material/estado/`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ estado, notas }),
+      });
+      closeModal('modalEstado');
+      toast('Estado registrado');
+      renderEstadoMaterial();
+    } catch { toast('Error', 'error'); }
+  }
+
+  async function cargarCSV() {
+    const archivo = document.getElementById('csvFile').files[0];
+    if (!archivo) { toast('Selecciona un archivo CSV', 'error'); return; }
+    const fd = new FormData();
+    fd.append('archivo', archivo);
+    try {
+      const r = await fetch(`${API}material/estado/csv/`, { method:'POST', body: fd });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      closeModal('modalCSV');
+      toast(`CSV cargado: ${d.data} registros insertados`);
+      renderEstadoMaterial();
+    } catch (e) { toast('Error: ' + e.message, 'error'); }
+  }
+
+  // ── Participación externa ───────────────────────────────
+  async function guardarParticipacion() {
+    const cantidad = parseInt(document.getElementById('partCantidad').value) || 0;
+    const notas    = document.getElementById('partNotas').value.trim();
+    try {
+      if (partData) {
+        await fetch(`${API}${EVENTO_ID}/participacion-externa/`, {
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: partData.id, cantidad, notas }),
+        });
+      } else {
+        await fetch(`${API}${EVENTO_ID}/participacion-externa/`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ cantidad, notas }),
+        });
+      }
+      closeModal('modalParticipacion');
+      toast('Participación registrada');
+      cargarParticipacion();
+    } catch { toast('Error', 'error'); }
+  }
+
+  async function cargarParticipacion() {
+    const r = await fetch(`${API}${EVENTO_ID}/participacion-externa/`);
+    const d = await r.json();
+    renderParticipacion(d.data);
+  }
+
+  // ── Cambiar estado rápido ───────────────────────────────
+  async function cambiarEstado() {
+    const estados = ['PLANIFICADO','EN_EJECUCION','FINALIZADO','CANCELADO'];
+    const labels  = ['Planificado','En ejecución','Finalizado','Cancelado'];
+    const actual  = eventoData?.estado;
+    const opts    = estados.map((e,i) => `${e === actual ? '✓ ' : ''}${labels[i]}`).join('\n');
+    const idx     = estados.findIndex(e => e === actual);
+    const sel     = prompt(`Estado actual: ${labels[idx]}\n\nElige el nuevo estado (0-3):\n${labels.map((l,i)=>`${i}: ${l}`).join('\n')}`);
+    if (sel === null || !estados[parseInt(sel)]) return;
+    const nuevoEstado = estados[parseInt(sel)];
+    try {
+      await fetch(`${API}${EVENTO_ID}/estado/`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      toast('Estado actualizado');
+      init();
+    } catch { toast('Error cambiando estado', 'error'); }
+  }
+
+  // ── Cargar simpatizantes para modal ────────────────────
+  async function cargarSimpatizantes() {
+    const sel = document.getElementById('asignarSimpatizante');
+    try {
+      const r = await fetch(`${API}simpatizantes/`);
+      const d = await r.json();
+      sel.innerHTML = '<option value="">Seleccionar…</option>';
+      (d.data || []).forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = `${s.nombre} (${s.ocupacion||'Sin ocupación'})`;
+        sel.appendChild(o);
+      });
+    } catch { sel.innerHTML = '<option>Error cargando</option>'; }
+  }
+
+  // ── Init ───────────────────────────────────────────────
+  async function init() {
+    try {
+      const [rEv, rTipos, rPuntos, rAsis, rCob, rObs, rPart, rMat] = await Promise.all([
+        fetch(`${API}${EVENTO_ID}/`),
+        fetch(`${API}${EVENTO_ID}/tipos/`),
+        fetch(`${API}${EVENTO_ID}/puntos/`),
+        fetch(`${API}${EVENTO_ID}/asignaciones/`),
+        fetch(`${API}${EVENTO_ID}/cobertura/`),
+        fetch(`${API}${EVENTO_ID}/observaciones/`),
+        fetch(`${API}${EVENTO_ID}/participacion-externa/`),
+        fetch(`${API}${EVENTO_ID}/material/`),
+      ]);
+
+      const [dEv, dTipos, dPuntos, dAsis, dCob, dObs, dPart, dMat] = await Promise.all([
+        rEv.json(), rTipos.json(), rPuntos.json(), rAsis.json(),
+        rCob.json(), rObs.json(), rPart.json(), rMat.json(),
+      ]);
+
+      eventoData = dEv.data;
+      if (!eventoData) { toast('Evento no encontrado', 'error'); return; }
+
+      let barrio = null;
+      if (eventoData.barrio_id) {
+        const rB = await fetch(`${API}barrios/${eventoData.barrio_id}/`);
+        const dB = await rB.json();
+        barrio = dB.data;
+      }
+
+      renderHeader(eventoData, dTipos.data || [], barrio);
+      renderInfo(eventoData, dPuntos.data || []);
+      renderPersonal(dAsis.data || []);
+      renderCobertura(dCob.data || []);
+      renderObservaciones(dObs.data || []);
+      renderParticipacion(dPart.data);
+      renderMaterial(dMat.data);
+
+      await renderEstadoMaterial();
+      await cargarSimpatizantes();
+
+    } catch (err) {
+      console.error(err);
+      toast('Error al cargar el evento', 'error');
+    }
+  }
+
+  // Conectar botón "Ver disponibles"
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('[onclick="openModal(\'modalDisponibles\')"]')
+      ?.setAttribute('onclick', 'openModal_disponibles()');
+  });
+
+  init();
+</script>
+{% endblock %}

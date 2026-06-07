@@ -1,0 +1,300 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Eventos · Pacto Histórico{% endblock %}
+{% block nav_eventos %}active{% endblock %}
+{% block page_title %}Gestión de Eventos{% endblock %}
+{% block page_subtitle %}Registro, seguimiento y control de actividades políticas{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'eventos.css' %}">
+<style>
+  /* ── Fix SVG dentro de search-box y evento-card-meta ── */
+  .search-box svg,
+  .evento-card-meta svg {
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0;
+  }
+  .evento-card-right svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+</style>
+{% endblock %}
+
+{% block topbar_extra %}
+  <a href="{% url 'evento-crear' %}" class="btn btn-primary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+    Nuevo Evento
+  </a>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── KPI Row ── -->
+<div class="kpi-grid" id="kpiGrid">
+  <div class="kpi-card"><div class="skeleton" style="width:100%;height:80px;"></div></div>
+  <div class="kpi-card"><div class="skeleton" style="width:100%;height:80px;"></div></div>
+  <div class="kpi-card"><div class="skeleton" style="width:100%;height:80px;"></div></div>
+  <div class="kpi-card"><div class="skeleton" style="width:100%;height:80px;"></div></div>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="card">
+  <div class="card-body" style="padding: 14px 20px;">
+    <div class="eventos-toolbar">
+
+      <div class="search-box">
+        <!-- SVG con width/height explícitos para que no se dispare -->
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="flex-shrink:0;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        <input type="text" id="searchInput" placeholder="Buscar evento…" oninput="filtrar()">
+      </div>
+
+      <select class="filter-select" id="filtroEstado" onchange="filtrar()">
+        <option value="">Todos los estados</option>
+        <option value="PLANIFICADO">Planificado</option>
+        <option value="EN_EJECUCION">En ejecución</option>
+        <option value="FINALIZADO">Finalizado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+
+      <select class="filter-select" id="filtroBarrio" onchange="filtrar()">
+        <option value="">Todos los barrios</option>
+      </select>
+
+      <div style="flex:1"></div>
+      <span class="text-muted text-sm" id="conteoLabel"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Lista de Eventos ── -->
+<div id="eventosContainer">
+  <div class="skeleton skeleton-card"></div>
+  <div class="skeleton skeleton-card"></div>
+  <div class="skeleton skeleton-card"></div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── CORRECCIÓN CLAVE: la raíz / ahora es el HTML, la API está en /api/
+  const API        = '/eventos/api/';
+  const API_BARRIOS = '/eventos/barrios/';
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  let todosEventos = [];
+  let todosBarrios = [];
+
+  function toast(msg, tipo = 'success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`;
+    t.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16">
+      ${tipo === 'success'
+        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>'}
+    </svg>${msg}`;
+    c.appendChild(t);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transition = 'opacity .3s';
+      setTimeout(() => t.remove(), 300);
+    }, 3500);
+  }
+
+  function estadoBadge(estado) {
+    const cls = { PLANIFICADO: 'estado-planificado', EN_EJECUCION: 'estado-en_ejecucion', FINALIZADO: 'estado-finalizado', CANCELADO: 'estado-cancelado' };
+    const lbl = { PLANIFICADO: 'Planificado', EN_EJECUCION: 'En ejecución', FINALIZADO: 'Finalizado', CANCELADO: 'Cancelado' };
+    return `<span class="estado-badge ${cls[estado] || ''}">${lbl[estado] || estado}</span>`;
+  }
+
+  function parseFecha(iso) {
+    if (!iso) return null;
+    return new Date(iso + 'T00:00:00');
+  }
+
+  function renderKPIs(eventos) {
+    const total     = eventos.length;
+    const planif    = eventos.filter(e => e.estado === 'PLANIFICADO').length;
+    const ejecucion = eventos.filter(e => e.estado === 'EN_EJECUCION').length;
+    const finaliz   = eventos.filter(e => e.estado === 'FINALIZADO').length;
+
+    document.getElementById('kpiGrid').innerHTML = `
+      <div class="kpi-card">
+        <div class="kpi-icon purple">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
+          </svg>
+        </div>
+        <div class="kpi-data"><div class="kpi-value">${total}</div><div class="kpi-label">Total Eventos</div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon blue">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+          </svg>
+        </div>
+        <div class="kpi-data"><div class="kpi-value">${planif}</div><div class="kpi-label">Planificados</div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon orange">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/>
+          </svg>
+        </div>
+        <div class="kpi-data"><div class="kpi-value">${ejecucion}</div><div class="kpi-label">En Ejecución</div></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon green">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="24" height="24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+          </svg>
+        </div>
+        <div class="kpi-data"><div class="kpi-value">${finaliz}</div><div class="kpi-label">Finalizados</div></div>
+      </div>
+    `;
+  }
+
+  function renderEventos(lista) {
+    const cont = document.getElementById('eventosContainer');
+    document.getElementById('conteoLabel').textContent = `${lista.length} evento${lista.length !== 1 ? 's' : ''}`;
+
+    if (!lista.length) {
+      cont.innerHTML = `
+        <div class="card">
+          <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor" width="40" height="40">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
+            </svg>
+            <h3>No hay eventos</h3>
+            <p>No se encontraron eventos con los filtros seleccionados.</p>
+            <a href="{% url 'evento-crear' %}" class="btn btn-primary btn-sm" style="margin-top:4px;">Crear primer evento</a>
+          </div>
+        </div>`;
+      return;
+    }
+
+    cont.innerHTML = lista.map(ev => {
+      const fecha = parseFecha(ev.fecha);
+      const day   = fecha ? fecha.getDate() : '—';
+      const month = fecha ? MESES[fecha.getMonth()] : '';
+      const tipos = (ev.tipos || []).map(t => `<span class="tipo-pill">${t.tipo}</span>`).join('');
+      const barrio = todosBarrios.find(b => b.id === ev.barrio_id);
+      const barrioNombre = barrio ? barrio.nombre : '';
+      return `
+        <a class="evento-card" href="/eventos/${ev.id}/detalle/">
+          <div class="evento-card-date">
+            <span class="day">${day}</span>
+            <span class="month">${month}</span>
+          </div>
+          <div class="evento-card-body">
+            <div class="evento-card-title">${ev.nombre}</div>
+            <div class="evento-card-meta">
+              ${barrioNombre ? `<span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 0 1 15 0Z"/>
+                </svg>${barrioNombre}
+              </span>` : ''}
+              <span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>${ev.hora_inicio || '—'} – ${ev.hora_fin || '—'}
+              </span>
+              ${ev.capacidad ? `<span>Cap. ${ev.capacidad}</span>` : ''}
+            </div>
+            <div class="evento-card-tipos">${tipos}</div>
+          </div>
+          <div class="evento-card-right">
+            ${estadoBadge(ev.estado)}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="16" height="16" style="color:var(--text-muted);flex-shrink:0;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+            </svg>
+          </div>
+        </a>`;
+    }).join('');
+  }
+
+  function filtrar() {
+    const q      = document.getElementById('searchInput').value.toLowerCase();
+    const estado = document.getElementById('filtroEstado').value;
+    const barrio = document.getElementById('filtroBarrio').value;
+
+    const lista = todosEventos.filter(ev => {
+      const matchQ      = !q      || ev.nombre.toLowerCase().includes(q) || (ev.descripcion || '').toLowerCase().includes(q);
+      const matchEstado = !estado || ev.estado === estado;
+      const matchBarrio = !barrio || ev.barrio_id === barrio;
+      return matchQ && matchEstado && matchBarrio;
+    });
+    renderEventos(lista);
+  }
+
+  async function init() {
+    try {
+      const [resEventos, resBarrios] = await Promise.all([
+        fetch(API),
+        fetch(API_BARRIOS),
+      ]);
+
+      // Verificar que las respuestas sean JSON y no HTML
+      const contentTypeE = resEventos.headers.get('content-type') || '';
+      const contentTypeB = resBarrios.headers.get('content-type') || '';
+      if (!contentTypeE.includes('application/json') || !contentTypeB.includes('application/json')) {
+        throw new Error('El servidor devolvió HTML en vez de JSON. Revisa las rutas de la API.');
+      }
+
+      const dataEventos = await resEventos.json();
+      const dataBarrios = await resBarrios.json();
+
+      todosEventos = dataEventos.data || [];
+      todosBarrios = dataBarrios.data || [];
+
+      // Cargar tipos de cada evento
+      await Promise.all(
+        todosEventos.map(async (ev) => {
+          try {
+            const r = await fetch(`/eventos/api/${ev.id}/tipos/`);
+            const d = await r.json();
+            ev.tipos = d.data || [];
+          } catch { ev.tipos = []; }
+        })
+      );
+
+      // Poblar filtro barrios
+      const sel = document.getElementById('filtroBarrio');
+      todosBarrios.forEach(b => {
+        const o = document.createElement('option');
+        o.value = b.id;
+        o.textContent = b.nombre;
+        sel.appendChild(o);
+      });
+
+      renderKPIs(todosEventos);
+      filtrar();
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById('eventosContainer').innerHTML = `
+        <div class="card"><div class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="40" height="40">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+          </svg>
+          <h3>Error al cargar eventos</h3>
+          <p>${err.message || 'No se pudo conectar con el servidor. Recarga la página.'}</p>
+        </div></div>`;
+      toast('Error al cargar los eventos', 'error');
+    }
+  }
+
+  init();
+</script>
+{% endblock %}
