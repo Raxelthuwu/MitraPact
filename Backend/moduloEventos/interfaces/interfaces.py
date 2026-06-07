@@ -34,37 +34,11 @@ class IBarrioService(ABC):
         pass
 
 
-class ISectorService(ABC):
-
-    @abstractmethod
-    def listar_sectores(self, barrio_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Lista sectores, opcionalmente filtrando por barrio."""
-        pass
-
-    @abstractmethod
-    def obtener_sector(self, sector_id: str) -> Optional[Dict[str, Any]]:
-        pass
-
-    @abstractmethod
-    def crear_sector(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def actualizar_sector(
-        self, sector_id: str, nombre: str, barrio_id: str
-    ) -> Optional[Dict[str, Any]]:
-        pass
-
-    @abstractmethod
-    def eliminar_sector(self, sector_id: str) -> bool:
-        pass
-
-
 class IPuntoInteresService(ABC):
 
     @abstractmethod
-    def listar_puntos(self, sector_id: str) -> List[Dict[str, Any]]:
-        """Lista los puntos de interés de un sector."""
+    def listar_puntos(self, barrio_id: str) -> List[Dict[str, Any]]:
+        """Lista los puntos de interés de un barrio."""
         pass
 
     @abstractmethod
@@ -72,12 +46,12 @@ class IPuntoInteresService(ABC):
         pass
 
     @abstractmethod
-    def crear_punto(self, nombre: str, sector_id: str) -> Dict[str, Any]:
+    def crear_punto(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
         pass
 
     @abstractmethod
     def actualizar_punto(
-        self, punto_id: str, nombre: str, sector_id: str
+        self, punto_id: str, nombre: str, barrio_id: str
     ) -> Optional[Dict[str, Any]]:
         pass
 
@@ -204,7 +178,7 @@ class IEventoService(ABC):
 
     @abstractmethod
     def obtener_evento(self, evento_id: str) -> Optional[Dict[str, Any]]:
-        """RF-EV-02 — Consulta completa de un evento, incluye tipos."""
+        """RF-EV-02 — Consulta completa de un evento, incluye tipos y puntos de interés."""
         pass
 
     @abstractmethod
@@ -244,6 +218,38 @@ class IEventoService(ABC):
     @abstractmethod
     def eliminar_tipo(self, tipo_id: str) -> bool:
         """RF-EV-05 — Elimina un tipo del evento."""
+        pass
+
+
+# =============================================================================
+# EVENTO PUNTO DE INTERÉS
+# =============================================================================
+
+class IEventoPuntoInteresService(ABC):
+
+    @abstractmethod
+    def listar_puntos_evento(self, evento_id: str) -> List[Dict[str, Any]]:
+        """Retorna los puntos de interés asociados a un evento."""
+        pass
+
+    @abstractmethod
+    def agregar_punto(self, evento_id: str, punto_interes_id: str) -> Dict[str, Any]:
+        """
+        Asocia un punto de interés al evento.
+        El trigger de BD valida que el punto pertenezca al mismo barrio del evento.
+        """
+        pass
+
+    @abstractmethod
+    def remover_punto(self, evento_punto_interes_id: str) -> bool:
+        """Desvincula un punto de interés del evento."""
+        pass
+
+    @abstractmethod
+    def reemplazar_puntos(
+        self, evento_id: str, punto_interes_ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Reemplaza todos los puntos de interés del evento por la lista indicada."""
         pass
 
 
@@ -305,7 +311,7 @@ class IAsignacionService(ABC):
     ) -> Dict[str, Any]:
         """
         RF-EV-23 — Advierte si la persona participó recientemente
-        en el mismo sector del evento.
+        en el mismo barrio del evento.
         """
         pass
 

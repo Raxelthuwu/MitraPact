@@ -7,12 +7,12 @@ from django.db import transaction
 
 from Backend.moduloEventos.interfaces import (
     IBarrioService,
-    ISectorService,
     IPuntoInteresService,
     ICoordinadorService,
     ISimpatizanteService,
     IHorarioDisponibleService,
     IEventoService,
+    IEventoPuntoInteresService,
     IAsignacionService,
     ICoberturaService,
     IObservacionService,
@@ -23,13 +23,13 @@ from Backend.moduloEventos.interfaces import (
 )
 from Backend.moduloEventos.models import (
     Barrio,
-    Sector,
     PuntoInteres,
     Coordinador,
     Simpatizante,
     HorarioDisponible,
     Evento,
     EventoTipo,
+    EventoPuntoInteres,
     Asignacion,
     Cobertura,
     Observacion,
@@ -94,53 +94,28 @@ class BarrioService(IBarrioService):
 
 
 # =============================================================================
-# SECTOR
-# =============================================================================
-
-class SectorService(ISectorService):
-
-    def listar_sectores(self, barrio_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        if barrio_id:
-            return _serialize_list(Sector.get_by_barrio(barrio_id))
-        return _serialize_list(Sector.get_all())
-
-    def obtener_sector(self, sector_id: str) -> Optional[Dict[str, Any]]:
-        return _serialize(Sector.get_by_id(sector_id))
-
-    def crear_sector(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
-        sector_id = Sector.create(nombre, barrio_id)
-        return _serialize(Sector.get_by_id(sector_id))
-
-    def actualizar_sector(
-        self, sector_id: str, nombre: str, barrio_id: str
-    ) -> Optional[Dict[str, Any]]:
-        Sector.update(sector_id, nombre, barrio_id)
-        return _serialize(Sector.get_by_id(sector_id))
-
-    def eliminar_sector(self, sector_id: str) -> bool:
-        return Sector.delete(sector_id)
-
-
-# =============================================================================
 # PUNTO DE INTERÉS
 # =============================================================================
 
 class PuntoInteresService(IPuntoInteresService):
 
-    def listar_puntos(self, sector_id: str) -> List[Dict[str, Any]]:
-        return _serialize_list(PuntoInteres.get_by_sector(sector_id))
+    def listar_puntos(self, barrio_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(PuntoInteres.get_by_barrio(barrio_id))
 
     def obtener_punto(self, punto_id: str) -> Optional[Dict[str, Any]]:
         return _serialize(PuntoInteres.get_by_id(punto_id))
 
-    def crear_punto(self, nombre: str, sector_id: str) -> Dict[str, Any]:
-        punto_id = PuntoInteres.create(nombre, sector_id)
+    def crear_punto(self, nombre: str, barrio_id: str) -> Dict[str, Any]:
+        punto_id = PuntoInteres.create(nombre, barrio_id)
         return _serialize(PuntoInteres.get_by_id(punto_id))
 
     def actualizar_punto(
-        self, punto_id: str, nombre: str, sector_id: str
+        self,
+        punto_id: str,
+        nombre: str,
+        barrio_id: str,
     ) -> Optional[Dict[str, Any]]:
-        PuntoInteres.update(punto_id, nombre, sector_id)
+        PuntoInteres.update(punto_id, nombre, barrio_id)
         return _serialize(PuntoInteres.get_by_id(punto_id))
 
     def eliminar_punto(self, punto_id: str) -> bool:
@@ -237,7 +212,6 @@ class HorarioDisponibleService(IHorarioDisponibleService):
         hora_inicio: str,
         hora_fin: str,
     ) -> Dict[str, Any]:
-        from django.db import connection
         horario_id = HorarioDisponible.create(
             simpatizante_id, dia_semana, hora_inicio, hora_fin
         )
@@ -335,6 +309,33 @@ class EventoService(IEventoService):
 
 
 # =============================================================================
+# EVENTO PUNTO DE INTERÉS
+# =============================================================================
+
+class EventoPuntoInteresService(IEventoPuntoInteresService):
+
+    def listar_puntos_evento(self, evento_id: str) -> List[Dict[str, Any]]:
+        return _serialize_list(EventoPuntoInteres.get_by_evento(evento_id))
+
+    def agregar_punto(self, evento_id: str, punto_interes_id: str) -> Dict[str, Any]:
+        relacion_id = EventoPuntoInteres.create(evento_id, punto_interes_id)
+        rows = _serialize_list(EventoPuntoInteres.get_by_evento(evento_id))
+        return next(r for r in rows if r["id"] == relacion_id)
+
+    def remover_punto(self, evento_punto_interes_id: str) -> bool:
+        return EventoPuntoInteres.delete(evento_punto_interes_id)
+
+    @transaction.atomic
+    def reemplazar_puntos(
+        self, evento_id: str, punto_interes_ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        EventoPuntoInteres.delete_by_evento(evento_id)
+        for punto_id in punto_interes_ids:
+            EventoPuntoInteres.create(evento_id, punto_id)
+        return _serialize_list(EventoPuntoInteres.get_by_evento(evento_id))
+
+
+# =============================================================================
 # ASIGNACIÓN  (RF-EV-07 al RF-EV-14, RF-EV-23)
 # =============================================================================
 
@@ -369,7 +370,7 @@ class AsignacionService(IAsignacionService):
         Criterios soportados:
           - usar_horario (bool): filtra por compatibilidad de horario
           - usar_ocupacion (bool): prioriza la ocupación requerida por cobertura
-          - usar_participacion_previa (bool): excluye quienes ya participaron en el sector
+          - usar_participacion_previa (bool): excluye quienes ya participaron en el barrio
         """
         evento = Evento.get_by_id(evento_id)
         if not evento:
@@ -399,18 +400,19 @@ class AsignacionService(IAsignacionService):
             }
             candidatos = [c for c in candidatos if str(c["id"]) in disponibles_ids]
 
-        # Filtro por participación previa en el sector (RF-EV-23)
+        # Filtro por participación previa en el barrio (RF-EV-23)
+        # Usa get_barrios_recientes_simpatizante (sector fue eliminado del esquema)
         if criterios.get("usar_participacion_previa", True):
             sin_conflicto = []
             for c in candidatos:
-                sectores_recientes = Asignacion.get_sectores_recientes_simpatizante(
+                barrios_recientes = Asignacion.get_barrios_recientes_simpatizante(
                     str(c["id"])
                 )
-                if not sectores_recientes:
+                if not barrios_recientes:
                     sin_conflicto.append(c)
                 else:
                     logger.info(
-                        "[AsignacionService] Simpatizante %s omitido por participación territorial reciente.",
+                        "[AsignacionService] Simpatizante %s omitido por participación territorial reciente en barrio.",
                         c["id"],
                     )
             candidatos = sin_conflicto
@@ -424,7 +426,10 @@ class AsignacionService(IAsignacionService):
 
         # Ordenar por ocupación si se usa cobertura
         if criterios.get("usar_ocupacion", True):
-            coberturas = {c["ocupacion"]: c["requeridos"] for c in Cobertura.get_by_evento(evento_id)}
+            coberturas = {
+                c["ocupacion"]: c["requeridos"]
+                for c in Cobertura.get_by_evento(evento_id)
+            }
             candidatos.sort(
                 key=lambda c: coberturas.get(c["ocupacion"], 0),
                 reverse=True,
@@ -462,17 +467,20 @@ class AsignacionService(IAsignacionService):
     def verificar_participacion_territorial(
         self, simpatizante_id: str, evento_id: str
     ) -> Dict[str, Any]:
-        """RF-EV-23 — Advierte si hay participación reciente en el mismo sector."""
+        """
+        RF-EV-23 — Advierte si hay participación reciente en el mismo barrio.
+        Usa get_barrios_recientes_simpatizante (sector fue eliminado del esquema).
+        """
         evento = Evento.get_by_id(evento_id)
         if not evento:
-            return {"advertencia": False, "sectores": []}
-        sectores_recientes = Asignacion.get_sectores_recientes_simpatizante(simpatizante_id)
-        advertencia = len(sectores_recientes) > 0
+            return {"advertencia": False, "barrios": []}
+        barrios_recientes = Asignacion.get_barrios_recientes_simpatizante(simpatizante_id)
+        advertencia = len(barrios_recientes) > 0
         return {
             "advertencia": advertencia,
-            "sectores": sectores_recientes,
+            "barrios": barrios_recientes,
             "mensaje": (
-                "Esta persona participó recientemente en actividades del mismo sector."
+                "Esta persona participó recientemente en actividades del mismo barrio."
                 if advertencia
                 else "Sin participación territorial reciente."
             ),
@@ -503,16 +511,9 @@ class CoberturaService(ICoberturaService):
         asignados: int,
     ) -> Optional[Dict[str, Any]]:
         Cobertura.update(cobertura_id, ocupacion, requeridos, asignados)
-        # Reconstruimos el objeto desde la BD
-        from django.db import connection
-        import db
-        from Backend.moduloEventos.models import _fetchone
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT id, evento_id, ocupacion, requeridos, asignados FROM {db.cobertura} WHERE id = %s",
-                [cobertura_id],
-            )
-            return _serialize(_fetchone(cur))
+        # Reconstruimos desde BD usando el modelo, sin queries manuales con import db
+        rows = Cobertura.get_by_evento_by_id(cobertura_id)
+        return _serialize(rows)
 
     def eliminar_cobertura(self, cobertura_id: str) -> bool:
         return Cobertura.delete(cobertura_id)
@@ -568,15 +569,8 @@ class ParticipacionExternaService(IParticipacionExternaService):
         notas: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         ParticipacionExterna.update(participacion_id, cantidad, notas)
-        from django.db import connection
-        import db
-        from Backend.moduloEventos.models import _fetchone
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT id, evento_id, cantidad, notas FROM {db.participacion_externa} WHERE id = %s",
-                [participacion_id],
-            )
-            return _serialize(_fetchone(cur))
+        # Reconstruimos desde BD usando el modelo, sin queries manuales con import db
+        return _serialize(ParticipacionExterna.get_by_id(participacion_id))
 
 
 # =============================================================================
@@ -602,15 +596,8 @@ class MaterialPublicitarioService(IMaterialPublicitarioService):
         self, material_id: str, entregado: int, restante: int
     ) -> Optional[Dict[str, Any]]:
         MaterialPublicitario.update(material_id, entregado, restante)
-        from django.db import connection
-        import db
-        from Backend.moduloEventos.models import _fetchone
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT id, evento_id, entregado, restante FROM {db.material_publicitario} WHERE id = %s",
-                [material_id],
-            )
-            return _serialize(_fetchone(cur))
+        # Reconstruimos desde BD usando el modelo, sin queries manuales con import db
+        return _serialize(MaterialPublicitario.get_by_id(material_id))
 
 
 # =============================================================================

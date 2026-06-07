@@ -9,12 +9,12 @@ from django.utils.decorators import method_decorator
 
 from Backend.moduloEventos.services import (
     BarrioService,
-    SectorService,
     PuntoInteresService,
     CoordinadorService,
     SimpatizanteService,
     HorarioDisponibleService,
     EventoService,
+    EventoPuntoInteresService,
     AsignacionService,
     CoberturaService,
     ObservacionService,
@@ -30,12 +30,12 @@ logger = logging.getLogger(__name__)
 # Instancias de servicios (singleton ligero — sin estado mutable)
 # ─────────────────────────────────────────────────────────────────────────────
 _barrio_svc             = BarrioService()
-_sector_svc             = SectorService()
 _punto_svc              = PuntoInteresService()
 _coordinador_svc        = CoordinadorService()
 _simpatizante_svc       = SimpatizanteService()
 _horario_svc            = HorarioDisponibleService()
 _evento_svc             = EventoService()
+_evento_punto_svc       = EventoPuntoInteresService()
 _asignacion_svc         = AsignacionService()
 _cobertura_svc          = CoberturaService()
 _observacion_svc        = ObservacionService()
@@ -116,55 +116,21 @@ class BarrioDetailView(View):
 
 
 # =============================================================================
-# SECTOR
-# =============================================================================
-
-@csrf_exempt_cbv
-class SectorListView(View):
-    """GET /eventos/sectores/?barrio_id=  — POST /eventos/sectores/"""
-
-    def get(self, request):
-        barrio_id = request.GET.get("barrio_id")
-        return _handle(lambda: _ok(_sector_svc.listar_sectores(barrio_id)))
-
-    def post(self, request):
-        data = _body(request)
-        return _handle(lambda: _ok(_sector_svc.crear_sector(data["nombre"], data["barrio_id"]), 201))
-
-
-@csrf_exempt_cbv
-class SectorDetailView(View):
-    """GET|PUT|DELETE /eventos/sectores/<sector_id>/"""
-
-    def get(self, request, sector_id):
-        def _():
-            obj = _sector_svc.obtener_sector(sector_id)
-            return _ok(obj) if obj else _err("Sector no encontrado.", 404)
-        return _handle(_)
-
-    def put(self, request, sector_id):
-        data = _body(request)
-        return _handle(lambda: _ok(_sector_svc.actualizar_sector(sector_id, data["nombre"], data["barrio_id"])))
-
-    def delete(self, request, sector_id):
-        return _handle(lambda: _ok({"eliminado": _sector_svc.eliminar_sector(sector_id)}))
-
-
-# =============================================================================
 # PUNTO DE INTERÉS
+# — sector eliminado: punto_interes ahora referencia barrio_id directamente
 # =============================================================================
 
 @csrf_exempt_cbv
 class PuntoInteresListView(View):
-    """GET /eventos/puntos/?sector_id=  — POST /eventos/puntos/"""
+    """GET /eventos/puntos/?barrio_id=  — POST /eventos/puntos/"""
 
     def get(self, request):
-        sector_id = request.GET.get("sector_id", "")
-        return _handle(lambda: _ok(_punto_svc.listar_puntos(sector_id)))
+        barrio_id = request.GET.get("barrio_id", "")
+        return _handle(lambda: _ok(_punto_svc.listar_puntos(barrio_id)))
 
     def post(self, request):
         data = _body(request)
-        return _handle(lambda: _ok(_punto_svc.crear_punto(data["nombre"], data["sector_id"]), 201))
+        return _handle(lambda: _ok(_punto_svc.crear_punto(data["nombre"], data["barrio_id"]), 201))
 
 
 @csrf_exempt_cbv
@@ -179,7 +145,7 @@ class PuntoInteresDetailView(View):
 
     def put(self, request, punto_id):
         data = _body(request)
-        return _handle(lambda: _ok(_punto_svc.actualizar_punto(punto_id, data["nombre"], data["sector_id"])))
+        return _handle(lambda: _ok(_punto_svc.actualizar_punto(punto_id, data["nombre"], data["barrio_id"])))
 
     def delete(self, request, punto_id):
         return _handle(lambda: _ok({"eliminado": _punto_svc.eliminar_punto(punto_id)}))
@@ -402,6 +368,42 @@ class EventoTipoDetailView(View):
 
 
 # =============================================================================
+# EVENTO PUNTO DE INTERÉS
+# =============================================================================
+
+@csrf_exempt_cbv
+class EventoPuntoInteresListView(View):
+    """
+    GET /eventos/<evento_id>/puntos/  — lista puntos del evento
+    POST /eventos/<evento_id>/puntos/ — agrega un punto al evento
+    PUT  /eventos/<evento_id>/puntos/ — reemplaza todos los puntos del evento
+    """
+
+    def get(self, request, evento_id):
+        return _handle(lambda: _ok(_evento_punto_svc.listar_puntos_evento(evento_id)))
+
+    def post(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _evento_punto_svc.agregar_punto(evento_id, data["punto_interes_id"]), 201
+        ))
+
+    def put(self, request, evento_id):
+        data = _body(request)
+        return _handle(lambda: _ok(
+            _evento_punto_svc.reemplazar_puntos(evento_id, data["punto_interes_ids"])
+        ))
+
+
+@csrf_exempt_cbv
+class EventoPuntoInteresDetailView(View):
+    """DELETE /eventos/puntos-evento/<relacion_id>/  — remueve un punto del evento"""
+
+    def delete(self, request, relacion_id):
+        return _handle(lambda: _ok({"eliminado": _evento_punto_svc.remover_punto(relacion_id)}))
+
+
+# =============================================================================
 # ASIGNACIÓN  (RF-EV-07 al RF-EV-10, RF-EV-14, RF-EV-23)
 # =============================================================================
 
@@ -541,7 +543,7 @@ class ObservacionDetailView(View):
 
 @csrf_exempt_cbv
 class ParticipacionExternaView(View):
-    """GET|POST /eventos/<evento_id>/participacion-externa/"""
+    """GET|POST|PUT /eventos/<evento_id>/participacion-externa/"""
 
     def get(self, request, evento_id):
         return _handle(lambda: _ok(_participacion_svc.obtener_participacion(evento_id)))

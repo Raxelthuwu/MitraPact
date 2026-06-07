@@ -4,9 +4,6 @@ from .views import (
     BarrioListView,
     BarrioDetailView,
 
-    SectorListView,
-    SectorDetailView,
-
     PuntoInteresListView,
     PuntoInteresDetailView,
 
@@ -26,6 +23,9 @@ from .views import (
     EventoEstadoView,
     EventoTipoListView,
     EventoTipoDetailView,
+
+    EventoPuntoInteresListView,
+    EventoPuntoInteresDetailView,
 
     AsignacionListView,
     AsignacionAutomaticaView,
@@ -69,23 +69,8 @@ urlpatterns = [
     ),
 
     # =========================================================================
-    # SECTORES
-    # =========================================================================
-
-    path(
-        "sectores/",
-        SectorListView.as_view(),
-        name="sector-list"
-    ),
-
-    path(
-        "sectores/<str:sector_id>/",
-        SectorDetailView.as_view(),
-        name="sector-detail"
-    ),
-
-    # =========================================================================
     # PUNTOS DE INTERÉS
+    # — sector eliminado: filtrar por ?barrio_id=
     # =========================================================================
 
     path(
@@ -192,6 +177,23 @@ urlpatterns = [
         "tipos/<str:tipo_id>/",
         EventoTipoDetailView.as_view(),
         name="evento-tipo-detail"
+    ),
+
+
+    # =========================================================================
+    # EVENTO PUNTO DE INTERÉS
+    # =========================================================================
+
+    path(
+        "<str:evento_id>/puntos/",
+        EventoPuntoInteresListView.as_view(),
+        name="evento-punto-list"
+    ),
+
+    path(
+        "puntos-evento/<str:relacion_id>/",
+        EventoPuntoInteresDetailView.as_view(),
+        name="evento-punto-detail"
     ),
 
     # =========================================================================

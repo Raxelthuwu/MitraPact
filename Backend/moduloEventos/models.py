@@ -78,62 +78,6 @@ class Barrio:
             return cur.rowcount > 0
 
 
-# =============================================================================
-# SECTOR
-# =============================================================================
-
-class Sector:
-
-    @staticmethod
-    def get_all() -> List[Dict[str, Any]]:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT id, nombre, barrio_id FROM {db.sector} ORDER BY nombre"
-            )
-            return _fetchall(cur)
-
-    @staticmethod
-    def get_by_barrio(barrio_id: str) -> List[Dict[str, Any]]:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT id, nombre, barrio_id FROM {db.sector} WHERE barrio_id = %s ORDER BY nombre",
-                [barrio_id],
-            )
-            return _fetchall(cur)
-
-    @staticmethod
-    def get_by_id(sector_id: str) -> Optional[Dict[str, Any]]:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"SELECT id, nombre, barrio_id FROM {db.sector} WHERE id = %s",
-                [sector_id],
-            )
-            return _fetchone(cur)
-
-    @staticmethod
-    def create(nombre: str, barrio_id: str) -> str:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"INSERT INTO {db.sector} (nombre, barrio_id) VALUES (%s, %s) RETURNING id",
-                [nombre, barrio_id],
-            )
-            return str(cur.fetchone()[0])
-
-    @staticmethod
-    def update(sector_id: str, nombre: str, barrio_id: str) -> bool:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"UPDATE {db.sector} SET nombre = %s, barrio_id = %s WHERE id = %s",
-                [nombre, barrio_id, sector_id],
-            )
-            return cur.rowcount > 0
-
-    @staticmethod
-    def delete(sector_id: str) -> bool:
-        with connection.cursor() as cur:
-            cur.execute(f"DELETE FROM {db.sector} WHERE id = %s", [sector_id])
-            return cur.rowcount > 0
-
 
 # =============================================================================
 # PUNTO DE INTERÉS
@@ -142,46 +86,135 @@ class Sector:
 class PuntoInteres:
 
     @staticmethod
-    def get_by_sector(sector_id: str) -> List[Dict[str, Any]]:
+    def get_by_barrio(barrio_id: str):
         with connection.cursor() as cur:
             cur.execute(
-                f"SELECT id, nombre, sector_id FROM {db.punto_interes} WHERE sector_id = %s ORDER BY nombre",
-                [sector_id],
+                f"""
+                SELECT id, nombre, barrio_id
+                FROM {db.punto_interes}
+                WHERE barrio_id = %s
+                ORDER BY nombre
+                """,
+                [barrio_id]
             )
             return _fetchall(cur)
 
     @staticmethod
-    def get_by_id(punto_id: str) -> Optional[Dict[str, Any]]:
+    def get_by_id(punto_id: str):
         with connection.cursor() as cur:
             cur.execute(
-                f"SELECT id, nombre, sector_id FROM {db.punto_interes} WHERE id = %s",
-                [punto_id],
+                f"""
+                SELECT id, nombre, barrio_id
+                FROM {db.punto_interes}
+                WHERE id = %s
+                """,
+                [punto_id]
             )
             return _fetchone(cur)
 
     @staticmethod
-    def create(nombre: str, sector_id: str) -> str:
+    def create(nombre: str, barrio_id: str):
         with connection.cursor() as cur:
             cur.execute(
-                f"INSERT INTO {db.punto_interes} (nombre, sector_id) VALUES (%s, %s) RETURNING id",
-                [nombre, sector_id],
+                f"""
+                INSERT INTO {db.punto_interes}
+                (nombre, barrio_id)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                [nombre, barrio_id]
             )
             return str(cur.fetchone()[0])
 
     @staticmethod
-    def update(punto_id: str, nombre: str, sector_id: str) -> bool:
+    def update(punto_id: str, nombre: str, barrio_id: str):
         with connection.cursor() as cur:
             cur.execute(
-                f"UPDATE {db.punto_interes} SET nombre = %s, sector_id = %s WHERE id = %s",
-                [nombre, sector_id, punto_id],
+                f"""
+                UPDATE {db.punto_interes}
+                SET nombre = %s,
+                    barrio_id = %s
+                WHERE id = %s
+                """,
+                [nombre, barrio_id, punto_id]
             )
             return cur.rowcount > 0
 
     @staticmethod
-    def delete(punto_id: str) -> bool:
+    def delete(punto_id: str):
         with connection.cursor() as cur:
-            cur.execute(f"DELETE FROM {db.punto_interes} WHERE id = %s", [punto_id])
+            cur.execute(
+                f"DELETE FROM {db.punto_interes} WHERE id = %s",
+                [punto_id]
+            )
             return cur.rowcount > 0
+
+
+class EventoPuntoInteres:
+
+    @staticmethod
+    def get_by_evento(evento_id: str):
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT epi.id,
+                       epi.evento_id,
+                       epi.punto_interes_id,
+                       p.nombre AS punto_interes
+                FROM {db.evento_punto_interes} epi
+                JOIN {db.punto_interes} p
+                    ON p.id = epi.punto_interes_id
+                WHERE epi.evento_id = %s
+                ORDER BY p.nombre
+                """,
+                [evento_id]
+            )
+            return _fetchall(cur)
+
+    @staticmethod
+    def create(evento_id: str, punto_interes_id: str):
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO {db.evento_punto_interes}
+                (evento_id, punto_interes_id)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                [evento_id, punto_interes_id]
+            )
+            return str(cur.fetchone()[0])
+
+    @staticmethod
+    def delete(relacion_id: str):
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""
+                DELETE FROM {db.evento_punto_interes}
+                WHERE id = %s
+                """,
+                [relacion_id]
+            )
+            return cur.rowcount > 0
+
+    @staticmethod
+    def delete_by_evento(evento_id: str):
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""
+                DELETE FROM {db.evento_punto_interes}
+                WHERE evento_id = %s
+                """,
+                [evento_id]
+            )
+            return cur.rowcount
+
+
+
+
+
+
+
 
 
 # =============================================================================
@@ -625,26 +658,28 @@ class Asignacion:
                 [evento_id, simpatizante_id],
             )
             return cur.fetchone() is not None
-
+    
     @staticmethod
-    def get_sectores_recientes_simpatizante(simpatizante_id: str, dias: int = 30) -> List[str]:
-        """
-        Sectores en los que el simpatizante participó en los últimos N días
-        — apoya RF-EV-23 (Control de Participación Territorial).
-        """
+    def get_barrios_recientes_simpatizante(
+        simpatizante_id: str,
+        dias: int = 30
+    ):
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT DISTINCT b_sector.id AS sector_id
-                    FROM {db.asignacion} a
-                    JOIN {db.evento} e ON e.id = a.evento_id
-                    JOIN {db.barrio} b ON b.id = e.barrio_id
-                    JOIN {db.sector} b_sector ON b_sector.barrio_id = b.id
-                    WHERE a.simpatizante_id = %s
-                      AND e.fecha >= CURRENT_DATE - (%s || ' days')::INTERVAL""",
+                f"""
+                SELECT DISTINCT b.id, b.nombre
+                FROM {db.asignacion} a
+                JOIN {db.evento} e
+                    ON e.id = a.evento_id
+                JOIN {db.barrio} b
+                    ON b.id = e.barrio_id
+                WHERE a.simpatizante_id = %s
+                AND e.fecha >= CURRENT_DATE - (%s || ' days')::INTERVAL
+                ORDER BY b.nombre
+                """,
                 [simpatizante_id, dias],
             )
-            return [row[0] for row in cur.fetchall()]
-
+            return _fetchall(cur)
 
 # =============================================================================
 # COBERTURA

@@ -1,10 +1,10 @@
 from .services import (
     BarrioService,
-    SectorService,
     PuntoInteresService,
     CoordinadorService,
     SimpatizanteService,
     HorarioDisponibleService,
+    EventoPuntoInteresService,
     EventoService,
     AsignacionService,
     CoberturaService,
@@ -17,12 +17,12 @@ from .services import (
 
 __all__ = [
     "BarrioService",
-    "SectorService",
     "PuntoInteresService",
     "CoordinadorService",
     "SimpatizanteService",
     "HorarioDisponibleService",
     "EventoService",
+    "EventoPuntoInteresService",
     "AsignacionService",
     "CoberturaService",
     "ObservacionService",

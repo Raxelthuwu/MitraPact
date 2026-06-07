@@ -1,18 +1,9 @@
 import logging
 from django.db import connection
 
-# Configuración básica para visualizar los mensajes en la consola de Django
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 logging.info("[DbTables] Inicializando mapeo de tablas de la base de datos...")
-
-import sys
-import os
-
-# Esto añade la carpeta raíz (MITRAPACT) al path de Python si no lo está ya
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
-from app import db
 
 # ESQUEMAS
 
@@ -20,38 +11,38 @@ from app import db
 logging.info("[DbTables] Cargando esquema: 'busqueda_semantica'...")
 documento               = 'busqueda_semantica.documento'
 fragmento               = 'busqueda_semantica.fragmento'
-opinion_clasificada    = 'busqueda_semantica.opinion_clasificada'
+opinion_clasificada     = 'busqueda_semantica.opinion_clasificada'
 argumento               = 'busqueda_semantica.argumento'
-argumento_documento    = 'busqueda_semantica.argumento_documento'
-tema_documento         = 'busqueda_semantica.tema_documento'
+argumento_documento     = 'busqueda_semantica.argumento_documento'
+tema_documento          = 'busqueda_semantica.tema_documento'
 
 # estadistico_territorial
 logging.info("[DbTables] Cargando esquema: 'estadistico_territorial'...")
-catalogo_ocupacion               = 'estadistico_territorial.catalogo_ocupacion'
-catalogo_inclinacion_voto       = 'estadistico_territorial.catalogo_inclinacion_voto'
-catalogo_intencion_participacion = 'estadistico_territorial.catalogo_intencion_participacion'
-catalogo_problematica           = 'estadistico_territorial.catalogo_problematica'
-rango_edad                      = 'estadistico_territorial.rango_edad'
-periodo_estadistico             = 'estadistico_territorial.periodo_estadistico'
-importacion_csv                 = 'estadistico_territorial.importacion_csv'
-encuesta                        = 'estadistico_territorial.encuesta'
-snapshot_territorial            = 'estadistico_territorial.snapshot_territorial'
-variacion_temporal              = 'estadistico_territorial.variacion_temporal'
-ranking_problematica            = 'estadistico_territorial.ranking_problematica'
-resultado_cruce                 = 'estadistico_territorial.resultado_cruce'
-caracterizacion_territorial     = 'estadistico_territorial.caracterizacion_territorial'
-exportacion_resultado           = 'estadistico_territorial.exportacion_resultado'
-resumen_estadistico             = 'estadistico_territorial.resumen_estadistico'
+catalogo_ocupacion                = 'estadistico_territorial.catalogo_ocupacion'
+catalogo_inclinacion_voto         = 'estadistico_territorial.catalogo_inclinacion_voto'
+catalogo_intencion_participacion  = 'estadistico_territorial.catalogo_intencion_participacion'
+catalogo_problematica             = 'estadistico_territorial.catalogo_problematica'
+rango_edad                        = 'estadistico_territorial.rango_edad'
+periodo_estadistico               = 'estadistico_territorial.periodo_estadistico'
+importacion_csv                   = 'estadistico_territorial.importacion_csv'
+encuesta                          = 'estadistico_territorial.encuesta'
+snapshot_territorial              = 'estadistico_territorial.snapshot_territorial'
+variacion_temporal                = 'estadistico_territorial.variacion_temporal'
+ranking_problematica              = 'estadistico_territorial.ranking_problematica'
+resultado_cruce                   = 'estadistico_territorial.resultado_cruce'
+caracterizacion_territorial       = 'estadistico_territorial.caracterizacion_territorial'
+exportacion_resultado             = 'estadistico_territorial.exportacion_resultado'
+resumen_estadistico               = 'estadistico_territorial.resumen_estadistico'
 
 # gestion_eventos
 logging.info("[DbTables] Cargando esquema: 'gestion_eventos'...")
 barrio                  = 'gestion_eventos.barrio'
-sector                  = 'gestion_eventos.sector'
-punto_interes           = 'gestion_eventos.punto_interes'
+punto_interes           = 'gestion_eventos.punto_interes'        # barrio_id directo (sector eliminado)
 coordinador             = 'gestion_eventos.coordinador'
 simpatizante            = 'gestion_eventos.simpatizante'
 horario_disponible      = 'gestion_eventos.horario_disponible'
 evento                  = 'gestion_eventos.evento'
+evento_punto_interes    = 'gestion_eventos.evento_punto_interes'  # nueva — N:M evento <-> punto_interes
 evento_tipo             = 'gestion_eventos.evento_tipo'
 asignacion              = 'gestion_eventos.asignacion'
 cobertura               = 'gestion_eventos.cobertura'

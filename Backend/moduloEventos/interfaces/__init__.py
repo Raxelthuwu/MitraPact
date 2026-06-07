@@ -1,11 +1,11 @@
 from .interfaces import (
     IBarrioService,
-    ISectorService,
     IPuntoInteresService,
     ICoordinadorService,
     ISimpatizanteService,
     IHorarioDisponibleService,
     IEventoService,
+    IEventoPuntoInteresService,
     IAsignacionService,
     ICoberturaService,
     IObservacionService,
@@ -17,12 +17,12 @@ from .interfaces import (
 
 __all__ = [
     "IBarrioService",
-    "ISectorService",
     "IPuntoInteresService",
     "ICoordinadorService",
     "ISimpatizanteService",
     "IHorarioDisponibleService",
     "IEventoService",
+    "IEventoPuntoInteresService",
     "IAsignacionService",
     "ICoberturaService",
     "IObservacionService",
