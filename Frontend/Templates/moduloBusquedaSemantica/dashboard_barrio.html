@@ -1,4 +1,4 @@
-{% extends "base.HTML" %}
+{% extends "base.html" %}
 {% load static %}
 
 {% block title %}Dashboard Barrio · Búsqueda Semántica{% endblock %}
@@ -8,6 +8,34 @@
 
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'eventos.css' %}">
+  <style>
+    /* Estilos para el menú desplegable (Autocompletado) */
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--bg-card, #ffffff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 6px;
+      z-index: 50;
+      max-height: 250px;
+      overflow-y: auto;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      margin-top: 4px;
+    }
+    .dropdown-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary, #333333);
+      transition: background 0.2s;
+    }
+    .dropdown-item:hover {
+      background: var(--bg-hover, #f3f4f6);
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
@@ -16,11 +44,14 @@
 <div class="card">
   <div class="card-body">
     <div class="eventos-toolbar">
-      <div class="search-box" style="flex:1; max-width:400px;">
+      <div class="search-box" style="flex:1; max-width:400px; position: relative;">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="16" height="16">
           <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
         </svg>
-        <input id="inputBarrio" type="text" placeholder="Nombre del barrio..." autocomplete="off"/>
+        <input id="inputBarrio" type="text" placeholder="Nombre del barrio..." autocomplete="off"
+               onfocus="cargarTodosLosBarrios()" oninput="filtrarDropdown()"/>
+        <!-- Dropdown contenedor -->
+        <div id="dropdownBarrios" class="dropdown-content"></div>
       </div>
       <button class="btn btn-primary" onclick="buscarBarrio()">Buscar</button>
       <button class="btn btn-ghost" onclick="limpiar()">Limpiar</button>
@@ -141,7 +172,7 @@
       </div>
     </div>
 
-    <!-- Cruce con problemática (acción del usuario) -->
+    <!-- Cruce con problemática (MENÚ DESPLEGABLE DINÁMICO) -->
     <div class="card">
       <div class="card-header">
         <span class="card-title">Cruce con problemática</span>
@@ -150,17 +181,18 @@
         <div class="eventos-toolbar" style="margin-bottom:16px;">
           <div class="search-box" style="flex:1;">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="16" height="16">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Z"/></svg>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Z"/>
             </svg>
-            <input id="inputProblematica" type="number" placeholder="Código problemática..." min="1"
-                   onkeydown="if(event.key==='Enter') cargarCruceProblematica()"/>
+            <select id="inputProblematica" class="form-control" style="width:100%; padding:8px; border:none; outline:none; background:transparent; color:inherit; font-family:inherit; cursor:pointer;" onchange="cargarCruceProblematica()">
+              <option value="">Cargando problemáticas...</option>
+            </select>
           </div>
           <button class="btn btn-outline btn-sm" onclick="cargarCruceProblematica()">Cruzar</button>
         </div>
         <div id="listaCruce">
           <div class="empty-state">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-            <p>Ingresa un código de problemática para cruzar</p>
+            <p>Selecciona una problemática para cruzar</p>
           </div>
         </div>
       </div>
@@ -190,6 +222,85 @@
 <script>
   const BASE = '/semantica/filter/barrio/';
   let _barrioActual = '';
+  
+  // ── Opciones de Problemática Dinámicas ──────────────────────────────────────
+  async function cargarOpcionesProblematica() {
+    const select = document.getElementById('inputProblematica');
+    try {
+      const r = await fetch('/semantica/filter/distribucion/?tipo=problematicas');
+      const d = await r.json();
+      const probs = d.problematicas || [];
+      
+      if (probs.length) {
+        select.innerHTML = '<option value="">Selecciona una problemática…</option>' +
+          probs.map(p => `<option value="${p.codigo}">${p.codigo} — ${p.descripcion}</option>`).join('');
+      } else {
+        select.innerHTML = '<option value="">Sin opciones disponibles</option>';
+      }
+    } catch {
+      select.innerHTML = '<option value="">Error al cargar</option>';
+    }
+  }
+
+  // Se ejecuta automáticamente al cargar la página
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarOpcionesProblematica();
+  });
+
+  // ── Lista de Barrios (Autocompletado) ───────────────────────────────────────
+  let todosLosBarrios = [];
+
+  async function cargarTodosLosBarrios() {
+    if (todosLosBarrios.length > 0) {
+      mostrarDropdown(todosLosBarrios);
+      return;
+    }
+    try {
+      const res = await fetch('/semantica/filter/distribucion/?tipo=opinionesPorBarrio');
+      const data = await res.json();
+      if (data.distribucion) {
+        const unicos = [...new Set(data.distribucion.map(b => b.barrio_nombre).filter(Boolean))];
+        todosLosBarrios = unicos.sort();
+        mostrarDropdown(todosLosBarrios);
+      }
+    } catch (e) {
+      console.error('Error al cargar la lista de barrios:', e);
+    }
+  }
+
+  function mostrarDropdown(lista) {
+    const dropdown = document.getElementById('dropdownBarrios');
+    if (!lista.length) {
+      dropdown.style.display = 'none';
+      return;
+    }
+    dropdown.innerHTML = lista.map(b => `
+      <div class="dropdown-item" onmousedown="seleccionarBarrioDrop('${b.replace(/'/g, "\\'")}')">
+        ${b}
+      </div>
+    `).join('');
+    dropdown.style.display = 'block';
+  }
+
+  function filtrarDropdown() {
+    const val = document.getElementById('inputBarrio').value.toLowerCase();
+    const filtrados = todosLosBarrios.filter(b => b.toLowerCase().includes(val));
+    mostrarDropdown(filtrados);
+  }
+
+  function seleccionarBarrioDrop(nombre) {
+    document.getElementById('inputBarrio').value = nombre;
+    document.getElementById('dropdownBarrios').style.display = 'none';
+    buscarBarrio(); 
+  }
+
+  document.addEventListener('mousedown', (e) => {
+    const searchBox = document.querySelector('.search-box');
+    if (searchBox && !searchBox.contains(e.target)) {
+      document.getElementById('dropdownBarrios').style.display = 'none';
+    }
+  });
+
 
   // ── Utilidades ──────────────────────────────────────────────────────────────
 
@@ -218,6 +329,8 @@
     ocultar('seccionSeleccion');
     ocultar('seccionKpis');
     ocultar('seccionDashboard');
+    
+    document.getElementById('dropdownBarrios').style.display = 'none';
 
     try {
       const res  = await fetch(`${BASE}?barrio=${encodeURIComponent(barrio)}`);
@@ -266,7 +379,7 @@
   function renderResumen(data) {
     document.getElementById('kpiNombre').textContent    = data.nombre     || _barrioActual;
     document.getElementById('kpiOpiniones').textContent = data.total_opiniones   ?? '—';
-    document.getElementById('kpiTemas').textContent     = data.total_temas       ?? '—';
+    document.getElementById('kpiTemas').textContent     = data.temas_unicos      ?? '—'; 
     document.getElementById('kpiArgumentos').textContent= data.total_argumentos  ?? '—';
     mostrar('seccionKpis');
     mostrar('seccionDashboard');
@@ -358,7 +471,7 @@
 
   async function cargarCruceProblematica() {
     const cod = document.getElementById('inputProblematica').value.trim();
-    if (!cod) { toast('Ingresa el código de problemática', 'error'); return; }
+    if (!cod) { toast('Selecciona una problemática de la lista', 'error'); return; }
 
     skeleton('listaCruce');
     try {
@@ -368,7 +481,6 @@
       if (data.seleccion_requerida) { renderSeleccion(data.seleccion_requerida); return; }
       if (data.error) { toast(data.error, 'error'); return; }
 
-      // El backend puede devolver distintas estructuras — renderizamos lo que llegue
       const items = data.argumentos || data.opiniones || data.resultados || [];
       if (!items.length) {
         document.getElementById('listaCruce').innerHTML = '<p class="text-muted text-sm">Sin resultados para ese cruce</p>';
@@ -392,7 +504,7 @@
     _barrioActual = '';
     document.getElementById('inputBarrio').value = '';
     document.getElementById('inputTema').value = '';
-    document.getElementById('inputProblematica').value = '';
+    document.getElementById('inputProblematica').value = ''; 
     ocultar('seccionKpis');
     ocultar('seccionDashboard');
     ocultar('seccionSeleccion');
@@ -400,7 +512,6 @@
   }
 
   // ── Trigger por URL param (capa front automática) ───────────────────────────
-  // Permite llegar desde otro template con ?barrio=NombreBarrio
 
   (function init() {
     const params = new URLSearchParams(window.location.search);

@@ -13,6 +13,12 @@
       <p>Verificación de integridad semántica</p>
     </div>
     <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="abrirModalCrear()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 4v16m8-8H4"/>
+        </svg>
+        Nuevo argumento
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="cargarTodo()">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -131,12 +137,235 @@
 
 </div>
 
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — EDITAR ARGUMENTO
+══════════════════════════════════════════════════════════ -->
+<div id="modal-editar" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div class="modal-box">
+    <h3 class="modal-title">Editar argumento</h3>
+    <p class="modal-sub">Modifica el texto o la frecuencia del argumento seleccionado.</p>
+
+    <input type="hidden" id="modal-edit-id">
+
+    <div class="field-group">
+      <label class="field-label">Texto</label>
+      <textarea id="modal-edit-texto" rows="4" class="field-input" style="resize:vertical;"></textarea>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Frecuencia</label>
+      <input type="number" id="modal-edit-frecuencia" min="0" class="field-input">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modal-editar')">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="guardarArgumento()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     MODAL — CREAR ARGUMENTO
+     CAMBIO 1: se agregó el campo "Opinión asociada"
+══════════════════════════════════════════════════════════ -->
+<div id="modal-crear" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div class="modal-box" style="max-width:580px;">
+    <h3 class="modal-title">Nuevo argumento</h3>
+    <p class="modal-sub">Crea un argumento manualmente y asócialo a uno o más documentos.</p>
+
+    <!-- Texto -->
+    <div class="field-group">
+      <label class="field-label">Texto <span style="color:var(--danger,#e74c3c)">*</span></label>
+      <textarea id="crear-texto" rows="3" class="field-input" placeholder="Describe el argumento…" style="resize:vertical;"></textarea>
+    </div>
+
+    <!-- Tema -->
+    <div class="field-group">
+      <label class="field-label">Tema</label>
+      <input type="text" id="crear-tema" class="field-input" placeholder="Ej: Movilidad, Educación… (opcional)">
+    </div>
+
+    <!-- Problemática + Frecuencia en fila -->
+    <div style="display:grid;grid-template-columns:1fr 120px;gap:12px;">
+      <div class="field-group">
+        <label class="field-label">Problemática <span style="color:var(--danger,#e74c3c)">*</span></label>
+        <select id="crear-problematica" class="field-input form-select">
+          <option value="">Cargando…</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Frecuencia</label>
+        <input type="number" id="crear-frecuencia" class="field-input" value="1" min="1">
+      </div>
+    </div>
+
+    <!-- NUEVO: Opinión asociada -->
+    <div class="field-group">
+      <label class="field-label">Opinión asociada</label>
+      <div style="position:relative;">
+        <input type="text" id="crear-buscar-opinion" class="field-input"
+          placeholder="Buscar por texto de opinión o tema…"
+          oninput="buscarOpinionesParaCrear()">
+        <div id="crear-resultados-opinion"
+          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;background:var(--bg-card);z-index:10;">
+        </div>
+      </div>
+      <div id="crear-opinion-seleccionada" style="margin-top:6px;">
+        <span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin opinión seleccionada (opcional)</span>
+      </div>
+    </div>
+
+    <!-- Buscador de documentos -->
+    <div class="field-group">
+      <label class="field-label">Asociar documentos</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="text" id="crear-buscar-doc" class="field-input" placeholder="Buscar documento por nombre…"
+          oninput="buscarDocumentosParaCrear()"
+          style="flex:1;">
+      </div>
+      <div id="crear-resultados-doc" style="display:none;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;margin-bottom:8px;background:var(--bg-card);">
+      </div>
+      <div id="crear-docs-seleccionados" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;">
+        <span style="font-size:var(--font-size-xs);color:var(--text-muted);align-self:center;">Sin documentos seleccionados</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modal-crear')">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="crearArgumento()">Crear argumento</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast-container" id="toastContainer"></div>
+
+<style>
+  /* ── Botones icono ── */
+  .arg-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+  .btn-icon {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:var(--radius-sm);
+    border:1px solid var(--border); background:var(--bg-card);
+    cursor:pointer; transition:background .15s, box-shadow .15s;
+    color:var(--text-secondary);
+  }
+  .btn-icon:hover { background:var(--bg-hover,#f5f5f5); box-shadow:var(--shadow-card); }
+  .btn-icon.danger { color:#dc2626; border-color:#fca5a5; background:#fff0f0; }
+  .btn-icon.danger:hover { background:#fee2e2; }
+  .btn-icon.edit { color:var(--accent); }
+
+  /* ── Modales ── */
+  .modal-box {
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    padding:28px;
+    width:100%;
+    max-width:520px;
+    box-shadow:0 8px 32px rgba(0,0,0,.18);
+    max-height:90vh;
+    overflow-y:auto;
+  }
+  .modal-title {
+    font-family:var(--font-display);
+    font-size:var(--font-size-md);
+    font-weight:700;
+    color:var(--text-primary);
+    margin-bottom:4px;
+  }
+  .modal-sub {
+    font-size:var(--font-size-xs);
+    color:var(--text-muted);
+    margin-bottom:18px;
+  }
+  .modal-actions {
+    display:flex; gap:10px; justify-content:flex-end; margin-top:20px;
+  }
+  .field-group { margin-bottom:14px; }
+  .field-label {
+    display:block;
+    font-size:var(--font-size-xs);
+    font-weight:600;
+    color:var(--text-secondary);
+    margin-bottom:6px;
+  }
+  .field-input {
+    width:100%;
+    padding:8px 12px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    font-size:var(--font-size-sm);
+    color:var(--text-primary);
+    background:var(--bg-input,var(--bg-card));
+    font-family:inherit;
+    box-sizing:border-box;
+  }
+  .field-input:focus { outline:none; border-color:var(--accent); }
+  .btn-primary {
+    background:var(--accent);
+    color:#fff;
+    border:none;
+  }
+  .btn-primary:hover { opacity:.9; }
+
+  /* ── Chips de documentos / opinión seleccionados ── */
+  .doc-chip {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3px 10px 3px 8px;
+    background:var(--kpi-purple-bg,#ede9fe);
+    color:var(--accent);
+    border-radius:999px;
+    font-size:var(--font-size-xs);
+    font-weight:500;
+  }
+  .doc-chip button {
+    background:none; border:none; cursor:pointer;
+    color:var(--accent); padding:0; line-height:1;
+    font-size:14px;
+  }
+  .opinion-chip {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3px 10px 3px 8px;
+    background:var(--kpi-green-bg,#d1fae5);
+    color:#065f46;
+    border-radius:999px;
+    font-size:var(--font-size-xs);
+    font-weight:500;
+  }
+  .opinion-chip button {
+    background:none; border:none; cursor:pointer;
+    color:#065f46; padding:0; line-height:1;
+    font-size:14px;
+  }
+
+  /* ── Resultado búsqueda doc / opinión ── */
+  .doc-result-item {
+    padding:8px 12px;
+    font-size:var(--font-size-sm);
+    cursor:pointer;
+    border-bottom:1px solid var(--border);
+    color:var(--text-primary);
+  }
+  .doc-result-item:last-child { border-bottom:none; }
+  .doc-result-item:hover { background:var(--bg-hover,#f5f5f5); }
+
+  #modal-editar.open,
+  #modal-crear.open { display:flex !important; }
+</style>
 
 <script>
 const BASE = '/semantica';
 
+// Estado de documentos seleccionados para el modal de crear
+let docsSeleccionados = {}; // { id: nombre }
+let _buscarDocTimer   = null;
+
+// CAMBIO 2: nuevas variables de estado para opinión
+let opinionSeleccionada = null; // { id, tema, barrio_nombre }
+let _buscarOpinionTimer = null;
+
+// ── Toast ───────────────────────────────────────────────────────────────────
 function toast(msg, tipo = 'error') {
   const c = document.getElementById('toastContainer');
   const t = document.createElement('div');
@@ -146,12 +375,40 @@ function toast(msg, tipo = 'error') {
   setTimeout(() => t.remove(), 3500);
 }
 
-// ─── Documentos sin argumentos ─────────────────────────────────────────────
+// ── Modales ──────────────────────────────────────────────────────────────────
+function abrirModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Cerrar al hacer clic fuera
+['modal-editar','modal-crear'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) cerrarModal(id);
+  });
+});
+
+// Cerrar dropdowns al hacer clic fuera de ellos
+document.addEventListener('click', function(e) {
+  const dropdowns = ['crear-resultados-doc', 'crear-resultados-opinion'];
+  dropdowns.forEach(id => {
+    const drop  = document.getElementById(id);
+    const input = document.getElementById(id === 'crear-resultados-doc' ? 'crear-buscar-doc' : 'crear-buscar-opinion');
+    if (drop && input && !drop.contains(e.target) && e.target !== input) {
+      drop.style.display = 'none';
+    }
+  });
+});
+
+// ── Documentos sin argumentos ─────────────────────────────────────────────
 async function cargarDocsSinArgs() {
   try {
-    const r  = await fetch(`${BASE}/filter/auditoria/?tipo=documentosSinArgumentos`);
-    const d  = await r.json();
+    const r     = await fetch(`${BASE}/filter/auditoria/?tipo=documentosSinArgumentos`);
+    const d     = await r.json();
     const items = d.documentos || [];
+
     document.getElementById('val-docsSinArgs').textContent = items.length;
     const badge = document.getElementById('badge-docsSinArgs');
     badge.textContent = `${items.length} registros`;
@@ -177,12 +434,13 @@ async function cargarDocsSinArgs() {
   }
 }
 
-// ─── Argumentos sin documento ───────────────────────────────────────────────
+// ── Argumentos sin documento ──────────────────────────────────────────────
 async function cargarArgsSinDoc() {
   try {
-    const r  = await fetch(`${BASE}/filter/auditoria/?tipo=argumentosSinDocumento`);
-    const d  = await r.json();
+    const r     = await fetch(`${BASE}/filter/auditoria/?tipo=argumentosSinDocumento`);
+    const d     = await r.json();
     const items = d.argumentos || [];
+
     document.getElementById('val-argsSinDoc').textContent = items.length;
     const badge = document.getElementById('badge-argsSinDoc');
     badge.textContent = `${items.length} registros`;
@@ -198,9 +456,30 @@ async function cargarArgsSinDoc() {
     }
 
     el.innerHTML = `<div class="doc-list">${items.map(arg => `
-      <div class="doc-item">
-        <span class="doc-name">${arg.texto ?? arg.id ?? '—'}</span>
-        <span class="doc-type">${arg.problematica_cod ? `P-${arg.problematica_cod}` : ''}</span>
+      <div class="doc-item" id="arg-row-${arg.id}">
+        <span class="doc-name" id="arg-texto-${arg.id}"
+          style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          title="${(arg.texto ?? '').replace(/"/g,'&quot;')}"
+        >${arg.texto ?? arg.id ?? '—'}</span>
+        <div class="arg-actions">
+          <span class="doc-type">${arg.problematica_descripcion ?? (arg.problematica_cod ? `P-${arg.problematica_cod}` : '')}</span>
+          <button class="btn-icon edit" title="Editar"
+            onclick="abrirModalEditar('${arg.id}', ${JSON.stringify((arg.texto ?? '').replace(/\\/g,'\\\\').replace(/"/g,'\\"'))}, ${arg.frecuencia ?? 0})">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="btn-icon danger" title="Eliminar"
+            onclick="eliminarArgumento('${arg.id}')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+              <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+            </svg>
+          </button>
+        </div>
       </div>`).join('')}
     </div>`;
   } catch {
@@ -208,11 +487,11 @@ async function cargarArgsSinDoc() {
   }
 }
 
-// ─── Fragmentos por documento ───────────────────────────────────────────────
+// ── Fragmentos por documento ──────────────────────────────────────────────
 async function cargarFrags() {
   try {
-    const r  = await fetch(`${BASE}/filter/auditoria/?tipo=fragmentosPorDocumento`);
-    const d  = await r.json();
+    const r     = await fetch(`${BASE}/filter/auditoria/?tipo=fragmentosPorDocumento`);
+    const d     = await r.json();
     const items = d.fragmentos || [];
 
     const totalFrags = items.reduce((s, i) => s + (i.total_fragmentos ?? 0), 0);
@@ -245,17 +524,16 @@ async function cargarFrags() {
   }
 }
 
-// ─── Top docs con más argumentos ────────────────────────────────────────────
+// ── Top docs con más argumentos ───────────────────────────────────────────
 async function cargarTopDocs() {
   const limite = document.getElementById('limiteTop').value;
   try {
-    const r  = await fetch(`${BASE}/filter/auditoria/?limite=${limite}`);
-    const d  = await r.json();
+    const r     = await fetch(`${BASE}/filter/auditoria/?limite=${limite}`);
+    const d     = await r.json();
     const items = d.documentos || [];
 
-    if (items.length) {
-      document.getElementById('val-topDoc').textContent = items[0].nombre ?? items[0].id ?? '—';
-    }
+    document.getElementById('val-topDoc').textContent =
+      items.length ? (items[0].nombre ?? items[0].id ?? '—') : 'N/A';
 
     const el = document.getElementById('lista-topDocs');
     if (!items.length) {
@@ -266,7 +544,7 @@ async function cargarTopDocs() {
     const max = Math.max(...items.map(i => i.total_argumentos ?? 0));
     el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">
       ${items.map((i, idx) => {
-        const pct = max > 0 ? Math.round((i.total_argumentos / max) * 100) : 0;
+        const pct   = max > 0 ? Math.round((i.total_argumentos / max) * 100) : 0;
         const medal = idx === 0 ? '#F59E0B' : idx === 1 ? '#9CA3AF' : idx === 2 ? '#D97706' : 'var(--accent)';
         return `<div style="display:flex;align-items:center;gap:12px;">
           <span style="font-family:var(--font-display);font-size:var(--font-size-sm);font-weight:700;color:${medal};min-width:20px;">${idx+1}</span>
@@ -287,7 +565,300 @@ async function cargarTopDocs() {
   }
 }
 
-// ─── Carga inicial ───────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// CRUD — EDITAR
+// ══════════════════════════════════════════════════════════════════
+
+function abrirModalEditar(id, texto, frecuencia) {
+  document.getElementById('modal-edit-id').value         = id;
+  document.getElementById('modal-edit-texto').value      = texto;
+  document.getElementById('modal-edit-frecuencia').value = frecuencia;
+  abrirModal('modal-editar');
+}
+
+async function guardarArgumento() {
+  const id        = document.getElementById('modal-edit-id').value;
+  const texto     = document.getElementById('modal-edit-texto').value.trim();
+  const frecuencia = parseInt(document.getElementById('modal-edit-frecuencia').value);
+
+  if (!texto) { toast('El texto no puede estar vacío.'); return; }
+
+  try {
+    const r = await fetch(`${BASE}/argumentos/${id}/`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ texto, frecuencia: isNaN(frecuencia) ? undefined : frecuencia }),
+    });
+
+    if (r.ok) {
+      const nameEl = document.getElementById(`arg-texto-${id}`);
+      if (nameEl) { nameEl.textContent = texto; nameEl.title = texto; }
+      cerrarModal('modal-editar');
+      toast('Argumento actualizado.', 'success');
+    } else {
+      const d = await r.json();
+      toast(d.error || 'Error al actualizar.');
+    }
+  } catch {
+    toast('Error de conexión al guardar.');
+  }
+}
+
+async function eliminarArgumento(id) {
+  if (!confirm('¿Eliminar este argumento? Esta acción no se puede deshacer.')) return;
+  try {
+    const r = await fetch(`${BASE}/argumentos/${id}/`, { method: 'DELETE' });
+    if (r.ok) {
+      document.getElementById(`arg-row-${id}`)?.remove();
+      const valEl   = document.getElementById('val-argsSinDoc');
+      const badgeEl = document.getElementById('badge-argsSinDoc');
+      const nuevo   = Math.max(0, parseInt(valEl.textContent || '0') - 1);
+      valEl.textContent   = nuevo;
+      badgeEl.textContent = `${nuevo} registros`;
+      badgeEl.className   = `status-badge ${nuevo > 0 ? 'warning' : 'success'}`;
+      toast('Argumento eliminado.', 'success');
+    } else {
+      const d = await r.json();
+      toast(d.error || 'Error al eliminar.');
+    }
+  } catch {
+    toast('Error de conexión al eliminar.');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CRUD — CREAR
+// ══════════════════════════════════════════════════════════════════
+
+// CAMBIO 2: abrirModalCrear ahora siempre recarga problemáticas,
+// limpia el estado de opinión y llama renderOpinionChip
+async function abrirModalCrear() {
+  // Limpiar estado
+  docsSeleccionados   = {};
+  opinionSeleccionada = null;
+  document.getElementById('crear-texto').value      = '';
+  document.getElementById('crear-tema').value       = '';
+  document.getElementById('crear-frecuencia').value = '1';
+  document.getElementById('crear-buscar-doc').value = '';
+  document.getElementById('crear-buscar-opinion').value = '';
+  document.getElementById('crear-resultados-doc').style.display     = 'none';
+  document.getElementById('crear-resultados-doc').innerHTML         = '';
+  document.getElementById('crear-resultados-opinion').style.display = 'none';
+  document.getElementById('crear-resultados-opinion').innerHTML     = '';
+  renderChips();
+  renderOpinionChip();
+
+  // CAMBIO 1: siempre recarga problemáticas al abrir (no cachea estado roto)
+  const sel = document.getElementById('crear-problematica');
+  sel.innerHTML = '<option value="">Cargando…</option>';
+  try {
+    const r = await fetch(`${BASE}/filter/distribucion/?tipo=problematicas`);
+    const d = await r.json();
+    const probs = d.problematicas || [];
+    if (probs.length) {
+      sel.innerHTML = '<option value="">Selecciona una problemática…</option>' +
+        probs.map(p => `<option value="${p.codigo}">${p.codigo} — ${p.descripcion}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">Sin problemáticas disponibles</option>';
+    }
+  } catch {
+    sel.innerHTML = '<option value="">Error al cargar</option>';
+  }
+
+  abrirModal('modal-crear');
+}
+
+function renderChips() {
+  const el = document.getElementById('crear-docs-seleccionados');
+  const ids = Object.keys(docsSeleccionados);
+  if (!ids.length) {
+    el.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--text-muted);align-self:center;">Sin documentos seleccionados</span>';
+    return;
+  }
+  el.innerHTML = ids.map(id => `
+    <span class="doc-chip">
+      ${docsSeleccionados[id]}
+      <button onclick="deseleccionarDoc('${id}')" title="Quitar">×</button>
+    </span>`).join('');
+}
+
+// ── Control de dropdowns — blur con delay para permitir el click ──────────
+let _ocultarTimer = {};
+function ocultarDropdown(id) {
+  _ocultarTimer[id] = setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }, 200);
+}
+function cancelarOcultar(id) {
+  clearTimeout(_ocultarTimer[id]);
+}
+
+function deseleccionarDoc(id) {
+  delete docsSeleccionados[id];
+  renderChips();
+}
+
+function seleccionarDoc(id, nombre) {
+  docsSeleccionados[id] = nombre;
+  renderChips();
+  document.getElementById('crear-resultados-doc').style.display = 'none';
+  document.getElementById('crear-buscar-doc').value = '';
+}
+
+function buscarDocumentosParaCrear() {
+  clearTimeout(_buscarDocTimer);
+  const q = document.getElementById('crear-buscar-doc').value.trim();
+  const resEl = document.getElementById('crear-resultados-doc');
+
+  if (q.length < 2) {
+    resEl.style.display = 'none';
+    resEl.innerHTML = '';
+    return;
+  }
+
+  _buscarDocTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`${BASE}/busqueda/documentos/?nombre=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      const docs = d.documentos || [];
+
+      if (!docs.length) {
+        resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
+      } else {
+        resEl.innerHTML = docs.map(doc => `
+          <div class="doc-result-item"
+            data-id="${doc.id}"
+            data-nombre="${(doc.nombre ?? doc.id).replace(/"/g,'&quot;')}">
+            ${doc.nombre ?? doc.id}
+          </div>`).join('');
+        resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
+          el.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            seleccionarDoc(el.dataset.id, el.dataset.nombre);
+          });
+        });
+      }
+      resEl.style.display = 'block';
+    } catch {
+      resEl.innerHTML = '<div class="doc-result-item" style="color:var(--danger,#e74c3c);">Error al buscar</div>';
+      resEl.style.display = 'block';
+    }
+  }, 300);
+}
+
+// CAMBIO 2: funciones nuevas para opinión
+function renderOpinionChip() {
+  const el = document.getElementById('crear-opinion-seleccionada');
+  if (!opinionSeleccionada) {
+    el.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin opinión seleccionada (opcional)</span>';
+    return;
+  }
+  const label = opinionSeleccionada.barrio_nombre
+    ? `${opinionSeleccionada.tema} · ${opinionSeleccionada.barrio_nombre}`
+    : opinionSeleccionada.tema;
+  el.innerHTML = `
+    <span class="opinion-chip">
+      ${label}
+      <button onclick="deseleccionarOpinion()" title="Quitar">×</button>
+    </span>`;
+}
+
+function deseleccionarOpinion() {
+  opinionSeleccionada = null;
+  renderOpinionChip();
+}
+
+function seleccionarOpinion(id, tema, barrio_nombre) {
+  opinionSeleccionada = { id, tema, barrio_nombre };
+  renderOpinionChip();
+  document.getElementById('crear-resultados-opinion').style.display = 'none';
+  document.getElementById('crear-buscar-opinion').value = '';
+}
+
+function buscarOpinionesParaCrear() {
+  clearTimeout(_buscarOpinionTimer);
+  const q     = document.getElementById('crear-buscar-opinion').value.trim();
+  const resEl = document.getElementById('crear-resultados-opinion');
+
+  if (q.length < 2) { resEl.style.display = 'none'; resEl.innerHTML = ''; return; }
+
+  _buscarOpinionTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(`${BASE}/filter/opiniones/?buscar=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      const opiniones = d.opiniones || [];
+
+      if (!opiniones.length) {
+        resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
+      } else {
+        resEl.innerHTML = opiniones.map(o => `
+          <div class="doc-result-item"
+            data-id="${o.id}"
+            data-tema="${(o.opinion_texto ?? o.tema ?? '').replace(/"/g,'&quot;')}"
+            data-barrio="${(o.barrio_nombre ?? '').replace(/"/g,'&quot;')}">
+            <span style="font-weight:500;">${o.opinion_texto ?? o.tema}</span>
+            ${o.barrio_nombre ? `<span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:6px;">${o.barrio_nombre}</span>` : ''}
+          </div>`).join('');
+        resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
+          el.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            seleccionarOpinion(el.dataset.id, el.dataset.tema, el.dataset.barrio);
+          });
+        });
+      }
+      resEl.style.display = 'block';
+    } catch {
+      resEl.innerHTML = '<div class="doc-result-item" style="color:var(--danger,#e74c3c);">Error al buscar</div>';
+      resEl.style.display = 'block';
+    }
+  }, 300);
+}
+
+// CAMBIO 2: crearArgumento ahora envía opinionId
+async function crearArgumento() {
+  const texto           = document.getElementById('crear-texto').value.trim();
+  const tema            = document.getElementById('crear-tema').value.trim() || 'sin_clasificar';
+  const problematicaCod = document.getElementById('crear-problematica').value;
+  const frecuencia      = parseInt(document.getElementById('crear-frecuencia').value) || 1;
+  const documentoIds    = Object.keys(docsSeleccionados);
+  const opinionId       = opinionSeleccionada?.id ?? null;
+
+  if (!texto)           { toast('El texto es obligatorio.');     return; }
+  if (!problematicaCod) { toast('Selecciona una problemática.'); return; }
+
+  try {
+    const r = await fetch(`${BASE}/argumentos/`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        texto,
+        tema,
+        problematicaCod: parseInt(problematicaCod),
+        frecuencia,
+        documentoIds,
+        opinionId,
+      }),
+    });
+
+    if (r.ok) {
+      cerrarModal('modal-crear');
+      toast('Argumento creado correctamente.', 'success');
+      if (documentoIds.length === 0) {
+        cargarArgsSinDoc();
+      } else {
+        cargarTopDocs();
+      }
+    } else {
+      const d = await r.json();
+      toast(d.error || 'Error al crear el argumento.');
+    }
+  } catch {
+    toast('Error de conexión al crear.');
+  }
+}
+
+// ── Carga inicial ─────────────────────────────────────────────────────────
 function cargarTodo() {
   cargarDocsSinArgs();
   cargarArgsSinDoc();

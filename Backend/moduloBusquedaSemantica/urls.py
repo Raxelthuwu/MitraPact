@@ -18,6 +18,8 @@ from .views import (
     BarrioFilterView,
     AuditoriaFilterView,
     ConsultaSemanticaView,
+    ArgumentoDetalleView,
+    ArgumentoCreateView,
     # Frontend views
     documento_lista_vista,
     documento_form_vista,
@@ -73,4 +75,7 @@ urlpatterns = [
     # API — CONSULTA SEMÁNTICA
     # -------------------------------------------------------------------------
     path('consulta/semantica/', csrf_exempt(login_requerido(ConsultaSemanticaView.as_view())), name='consulta-semantica'),
+
+    path('argumentos/<str:pk>/', csrf_exempt(login_requerido(ArgumentoDetalleView.as_view())), name='argumento-detalle'),
+    path('argumentos/', csrf_exempt(login_requerido(ArgumentoCreateView.as_view())), name='argumento-crear'),
 ]

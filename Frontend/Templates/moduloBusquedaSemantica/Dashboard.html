@@ -409,11 +409,12 @@
       // /busqueda/documentos/  → lista todos los documentos (sin params requeridos)
       // /filter/distribucion/  → distribución global de argumentos por problemática
       // /filter/auditoria/     → conteo de fragmentos por documento
-      const [resTemas, resDocumentos, resDistribucion, resAuditoria] = await Promise.allSettled([
+      const [resTemas, resDocumentos, resDistribucion, resAuditoria, resBarrios] = await Promise.allSettled([
         fetch('/semantica/busqueda/temas/'),
         fetch('/semantica/busqueda/documentos/'),
         fetch('/semantica/filter/distribucion/?tipo=argumentos'),
         fetch('/semantica/filter/auditoria/?tipo=fragmentosPorDocumento'),
+        fetch('/semantica/filter/distribucion/?tipo=opinionesPorBarrio'),
       ]);
 
       // ── Temas → /busqueda/temas/ devuelve { temas: ["nombre1","nombre2",...] } ──
@@ -442,18 +443,47 @@
       if (resDistribucion.status === 'fulfilled' && resDistribucion.value.ok) {
         const data = await resDistribucion.value.json();
         const dist = data.distribucion || [];
+        
+        console.log("Datos del backend (Problemáticas):", dist[0]);
+
         // KPI argumentos: suma total
-        const totalArgs = dist.reduce((s, p) => s + (p.total_argumentos || 0), 0);
+        const totalArgs = dist.reduce((s, p) => s + (p.total_argumentos || p.total || 0), 0);
         setText('val-argumentos', totalArgs);
+        
         // Panel problemáticas
-        const problematicas = dist.map(p => ({ nombre: p.nombre || `Prob. ${p.cod}`, cantidad: p.total_argumentos || 0 }));
+        const problematicas = dist.map(p => ({ 
+            nombre: p.nombre || p.descripcion || `Prob. ${p.cod || p.problematicaCod}`, 
+            cantidad: p.total_argumentos || p.total || 0 
+        }));
         setText('badge-problematicas', problematicas.length);
+        
         const maxP = Math.max(...problematicas.map(p => p.cantidad), 1);
         renderBarList('lista-problematicas', problematicas, 'orange', 'nombre', 'cantidad', maxP);
+        
         // Panel barrios — usamos las problemáticas como proxy hasta tener endpoint de barrios sin params
-        setText('val-barrios', '—');
-        $('lista-barrios').innerHTML = '<div class="error-row">Usa el Dashboard por Barrio para ver cobertura detallada.</div>';
-        setText('badge-barrios-panel', '—');
+        if (resBarrios.status === 'fulfilled' && resBarrios.value.ok) {
+          const dataBarrios = await resBarrios.value.json();
+          const barrios = dataBarrios.distribucion || [];
+
+          // Deduplica por barrio_nombre para el KPI
+          const barriosUnicos = [...new Set(barrios.map(b => b.barrio_nombre).filter(Boolean))];
+          setText('val-barrios', barriosUnicos.length);
+          setText('badge-barrios-panel', barriosUnicos.length);
+
+          // Agrupa sumando total_opiniones por barrio
+          const porBarrio = {};
+          barrios.forEach(b => {
+            const key = b.barrio_nombre || 'Sin nombre';
+            porBarrio[key] = (porBarrio[key] || 0) + (b.total_opiniones || 1);
+          });
+          const barriosList = Object.entries(porBarrio).map(([nombre, cantidad]) => ({ nombre, cantidad }));
+          const maxB = Math.max(...barriosList.map(b => b.cantidad), 1);
+          renderBarList('lista-barrios', barriosList, 'blue', 'nombre', 'cantidad', maxB);
+        } else {
+          setText('val-barrios', '0');
+          setText('badge-barrios-panel', '0');
+          $('lista-barrios').innerHTML = '<div class="loading-row">Sin barrios registrados.</div>';
+        }
       } else {
         setText('val-argumentos', '—');
         $('lista-problematicas').innerHTML = '<div class="error-row">No se pudo cargar la distribución.</div>';

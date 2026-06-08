@@ -190,3 +190,30 @@ class OpinionClasificada:
         except Exception as e:
             logger.error(f"[OpinionClasificada] Error en resumenPorBarrio: {e}")
             raise
+
+    @staticmethod
+    async def buscarParaSelector(texto: str) -> list[dict]:
+        """
+        Busca opiniones por texto de encuesta o tema para el selector del modal.
+        Retorna id, resumen del texto de opinión, tema y barrio.
+        """
+        logger.info(f"[OpinionClasificada] Buscando para selector: '{texto}'")
+        sql = f"""
+            SELECT
+                o.id,
+                o.tema,
+                b.nombre                    AS barrio_nombre,
+                LEFT(e.opinion_politica, 80) AS opinion_texto
+            FROM {db.opinion_clasificada} o
+            JOIN {db.barrio} b   ON b.id = o.barrio_id
+            JOIN {db.encuesta} e ON e.id = o.encuesta_id
+            WHERE e.opinion_politica ILIKE %s
+            OR o.tema ILIKE %s
+            ORDER BY o.clasificado_en DESC
+            LIMIT 20
+        """
+        try:
+            return await _query(sql, [f"%{texto}%", f"%{texto}%"], fetchall=True)
+        except Exception as e:
+            logger.error(f"[OpinionClasificada] Error en buscarParaSelector: {e}")
+            raise

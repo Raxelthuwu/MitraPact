@@ -20,6 +20,8 @@ class FilterService(IFilterService):
     nunca opere con IDs directos.
     """
 
+    
+
     # -------------------------------------------------------------------------
     # MÉTODOS DEL SISTEMA
     # -------------------------------------------------------------------------
@@ -454,3 +456,36 @@ class FilterService(IFilterService):
             return {'seleccion_requerida': barrios}
 
         return {'barrioId': barrios[0]['id']}
+    
+
+    async def listarProblematicas(self) -> list[dict]:
+        logger.info("[FilterService] Listando catálogo de problemáticas.")
+        try:
+            return await FiltroSemantico.listarProblematicas()
+        except Exception as e:
+            logger.error(f"[FilterService] Error en listarProblematicas: {e}")
+            raise
+
+    async def obtenerCruceBarrioProblematica(self, barrioId: str, problematicaCod: int) -> list[dict]:
+        """
+        Consulta SQL para cruzar Barrio y Problematica.
+        """
+        logger.info(f"[FilterService] Ejecutando cruce real para barrio: {barrioId} y prob: {problematicaCod}")
+        
+        # Esta es la consulta que faltaba en tu servicio
+        sql = f"""
+            SELECT a.texto, a.frecuencia, a.tema
+            FROM busqueda_semantica.argumento a
+            JOIN busqueda_semantica.opinion_clasificada o ON a.opinion_id = o.id
+            WHERE o.barrio_id = %s 
+            AND a.problematica_cod = %s
+        """
+        
+        # Debes usar el helper _query que ya tienes en otros archivos
+        # Nota: Asegúrate de importar el helper _query o ejecutar la consulta vía FiltroSemantico
+        try:
+            from Backend.moduloBusquedaSemantica.models import _query
+            return await _query(sql, [barrioId, int(problematicaCod)], fetchall=True)
+        except Exception as e:
+            logger.error(f"[FilterService] Error en el cruce: {e}")
+            return []

@@ -34,7 +34,7 @@ class Argumento:
 
 
     @staticmethod
-    async def insertar(opinionId: str, texto: str, tema: str, problematicaCod: int, frecuencia: int) -> dict | None:
+    async def insertar(opinionId: str | None, texto: str, tema: str, problematicaCod: int, frecuencia: int) -> dict | None:
         logger.info(f"[Argumento] Insertando argumento | opinion_id: '{opinionId}' | tema: '{tema}'")
         sql = f"""
             INSERT INTO {db.argumento} (opinion_id, texto, tema, problematica_cod, frecuencia, identificado_en)
@@ -265,4 +265,14 @@ class Argumento:
             return await _query(sql, [argumentoId], fetchone=True)
         except Exception as e:
             logger.error(f"[Argumento] Error en incrementarFrecuencia: {e}")
+            raise
+
+    @staticmethod
+    async def eliminar(argumentoId: str) -> None:
+        logger.info(f"[Argumento] Eliminando argumento id: '{argumentoId}'")
+        sql = f"DELETE FROM {db.argumento} WHERE id = %s"
+        try:
+            await _query(sql, [argumentoId])
+        except Exception as e:
+            logger.error(f"[Argumento] Error al eliminar: {e}")
             raise

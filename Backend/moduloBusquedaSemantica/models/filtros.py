@@ -381,6 +381,39 @@ class FiltroSemantico:
             logger.error(f"[FiltroSemantico] Error en cruzarBarrioProblematica: {e}")
             raise
 
+    @staticmethod
+    async def listarProblematicas() -> list[dict]:
+        logger.info("[FiltroSemantico] Listando catálogo de problemáticas.")
+        sql = f"""
+            SELECT codigo, descripcion
+            FROM {db.catalogo_problematica}
+            ORDER BY codigo ASC
+        """
+        try:
+            return await _query(sql, fetchall=True)
+        except Exception as e:
+            logger.error(f"[FiltroSemantico] Error en listarProblematicas: {e}")
+            raise
+
+    @staticmethod
+    async def cruzarBarrioProblematica(barrioId: str, problematicaCod: int) -> list[dict]:
+        logger.info(f"[FiltroSemantico] Realizando JOIN real para barrio: {barrioId} y prob: {problematicaCod}")
+        
+        # Esta consulta une el barrio con la problemática a través de la opinión
+        sql = f"""
+            SELECT a.texto, a.frecuencia, a.tema
+            FROM busqueda_semantica.argumento a
+            JOIN busqueda_semantica.opinion_clasificada o ON a.opinion_id = o.id
+            WHERE o.barrio_id = %s 
+            AND a.problematica_cod = %s
+        """
+        try:
+            # Usamos el _query que ya tienes definido arriba en tu archivo filtros.py
+            return await _query(sql, [barrioId, int(problematicaCod)], fetchall=True)
+        except Exception as e:
+            logger.error(f"[FiltroSemantico] Error crítico en cruce: {e}")
+            return []
+
 
 # ---------------------------------------------------------------------------
 # Barrio
@@ -435,3 +468,5 @@ class Barrio:
         except Exception as e:
             logger.error(f"[Barrio] Error en listar: {e}")
             raise
+
+    

@@ -4,6 +4,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from Backend.moduloBusquedaSemantica.services import FilterService
+from Backend.moduloBusquedaSemantica.models import OpinionClasificada
 
 logger = logging.getLogger(__name__)
 _filter_svc = FilterService()
@@ -35,7 +36,13 @@ class DistribucionFilterView(View):
             if tipo == 'opinionesPorTema':
                 resultado = await _filter_svc.distribucionOpinionesPorTema()
                 return JsonResponse({'distribucion': resultado}, status=200)
+            
+            # En DistribucionFilterView.get(), antes del return de error final:
 
+            if tipo == 'problematicas':
+                resultado = await _filter_svc.listarProblematicas()
+                return JsonResponse({'problematicas': resultado}, status=200)
+    
             return JsonResponse(
                 {'error': 'El parámetro tipo es requerido. Valores válidos: argumentos, opinionesPorBarrio, opinionesPorTema.'},
                 status=400
@@ -43,7 +50,7 @@ class DistribucionFilterView(View):
 
         except Exception as e:
             logger.error(f"[DistribucionFilterView] Error en get: {e}")
-            return JsonResponse({'error': 'Error interno al obtener distribución.'}, status=500)
+            return JsonResponse({'error': 'Error interno al obtener distribución.'}, status=500) 
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -120,20 +127,28 @@ class TemaFilterView(View):
 class OpinionFilterView(View):
     """
     GET /filter/opiniones/
-    Consultas de opiniones clasificadas por fecha.
+    Consultas de opiniones clasificadas.
 
     Query params:
         ?fechaInicio=&fechaFin=   → opiniones dentro del rango (YYYY-MM-DD)
+        ?buscar=                  → busca por texto de encuesta o tema (mín. 2 chars)
     """
 
     async def get(self, request):
         try:
             fechaInicio = request.GET.get('fechaInicio', '').strip()
             fechaFin    = request.GET.get('fechaFin', '').strip()
+            buscar      = request.GET.get('buscar', '').strip()
+
+            if buscar:
+                if len(buscar) < 2:
+                    return JsonResponse({'opiniones': []}, status=200)
+                resultado = await OpinionClasificada.buscarParaSelector(buscar)
+                return JsonResponse({'opiniones': resultado}, status=200)
 
             if not fechaInicio or not fechaFin:
                 return JsonResponse(
-                    {'error': 'Los parámetros fechaInicio y fechaFin son requeridos (YYYY-MM-DD).'},
+                    {'error': 'Indica ?buscar= o los parámetros fechaInicio y fechaFin (YYYY-MM-DD).'},
                     status=400
                 )
 
@@ -181,7 +196,7 @@ class BarrioFilterView(View):
 
             if problematica:
                 resultado = await _filter_svc.cruzarBarrioProblematica(barrio, int(problematica))
-                return JsonResponse(resultado, status=200)
+                return JsonResponse({'argumentos': resultado}, status=200)
 
             if tipo == 'temas':
                 resultado = await _filter_svc.temasMasRecurrentesPorBarrio(barrio)
