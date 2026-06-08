@@ -1,0 +1,969 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Importación de Datos · Estadísticas{% endblock %}
+
+{% block nav_estadisticas %}active{% endblock %}
+
+{% block page_title %}Importación de Datos{% endblock %}
+{% block page_subtitle %}Carga y validación de archivos CSV estadísticos{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Layout principal ── */
+  .import-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── Upload zone ── */
+  .upload-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .upload-card-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .upload-card-header .icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--kpi-purple-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .upload-card-header h2 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .upload-card-header p {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    margin: 24px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+    position: relative;
+  }
+
+  .drop-zone:hover,
+  .drop-zone.drag-over {
+    border-color: var(--accent-mid);
+    background: var(--accent-light);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-zone-icon {
+    width: 52px;
+    height: 52px;
+    background: var(--border-light);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    color: var(--text-muted);
+    transition: background var(--transition), color var(--transition);
+  }
+
+  .drop-zone:hover .drop-zone-icon,
+  .drop-zone.drag-over .drop-zone-icon {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .drop-zone-title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .drop-zone-sub {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+  }
+
+  .drop-zone-sub span {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── File preview (after selection) ── */
+  .file-preview {
+    margin: 0 24px 24px;
+    background: var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .file-preview-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--success-bg);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success);
+    flex-shrink: 0;
+  }
+
+  .file-preview-info { flex: 1; min-width: 0; }
+  .file-preview-name {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-preview-meta {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .btn-remove-file {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: background var(--transition), color var(--transition);
+    flex-shrink: 0;
+  }
+  .btn-remove-file:hover { background: var(--danger-bg); color: var(--danger); }
+
+  /* ── Periodo selector ── */
+  .import-form-section {
+    padding: 0 24px 24px;
+  }
+
+  .import-form-section label {
+    display: block;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  /* ── Progress bar ── */
+  .progress-wrap {
+    padding: 0 24px 24px;
+    display: none;
+  }
+
+  .progress-bar-track {
+    height: 6px;
+    background: var(--border-light);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-mid));
+    border-radius: 99px;
+    width: 0%;
+    transition: width .3s ease;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* ── Historial sidebar ── */
+  .history-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  .history-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .history-card-header h3 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .history-list { max-height: 520px; overflow-y: auto; }
+
+  .history-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: background var(--transition);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item:hover { background: var(--border-light); }
+
+  .history-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .history-dot.success  { background: var(--success); }
+  .history-dot.warning  { background: var(--warning); }
+  .history-dot.error    { background: var(--danger); }
+  .history-dot.pending  { background: var(--info); }
+
+  .history-item-name {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+
+  .history-item-meta {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .history-item-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  /* ── Validación de columnas ── */
+  .columns-check {
+    margin: 0 24px 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: none;
+  }
+
+  .columns-check-header {
+    padding: 10px 14px;
+    background: var(--border-light);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+  }
+
+  .col-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border-top: 1px solid var(--border-light);
+    font-size: var(--font-size-sm);
+  }
+
+  .col-row svg { width: 15px !important; height: 15px !important; flex-shrink: 0; }
+  .col-row.ok  { color: var(--success); }
+  .col-row.err { color: var(--danger); }
+
+  /* ── Bottom actions ── */
+  .import-actions {
+    padding: 0 24px 24px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* ── Estado badge ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge-success  { background: var(--success-bg);  color: #065F46; }
+  .badge-warning  { background: var(--warning-bg);  color: #92400E; }
+  .badge-danger   { background: var(--danger-bg);   color: #991B1B; }
+  .badge-info     { background: var(--info-bg);     color: #1E40AF; }
+  .badge-muted    { background: var(--border-light); color: var(--text-muted); }
+
+  /* ── Empty historial ── */
+  .history-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .history-empty p { font-size: var(--font-size-sm); margin-top: 8px; }
+
+  /* ── Detail modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 560px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    animation: modalIn .2s ease;
+  }
+
+  @keyframes modalIn {
+    from { transform: scale(.97) translateY(8px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-header h3 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: background var(--transition);
+  }
+  .modal-close:hover { background: var(--border-light); color: var(--text-primary); }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: var(--font-size-sm);
+    gap: 12px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: var(--text-muted); font-weight: 500; flex-shrink: 0; }
+  .detail-value { color: var(--text-primary); font-weight: 600; text-align: right; }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .import-layout { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="import-layout">
+
+  <!-- ═══════════════════════════════════════════════
+       COLUMNA IZQUIERDA — Formulario de importación
+  ════════════════════════════════════════════════════ -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+
+    <!-- Card principal -->
+    <div class="upload-card">
+      <div class="upload-card-header">
+        <div class="icon-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+        </div>
+        <div>
+          <h2>Cargar archivo CSV</h2>
+          <p>Sube el archivo de encuesta para procesarlo estadísticamente</p>
+        </div>
+      </div>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="csvInput" accept=".csv" />
+        <div class="drop-zone-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          </svg>
+        </div>
+        <div class="drop-zone-title">Arrastra tu archivo aquí</div>
+        <div class="drop-zone-sub">o <span>haz clic para seleccionar</span></div>
+        <div class="drop-zone-sub" style="margin-top:6px;">Solo archivos .csv · Máx. 10 MB</div>
+      </div>
+
+      <!-- File preview (oculto hasta selección) -->
+      <div class="file-preview" id="filePreview" style="display:none;">
+        <div class="file-preview-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        </div>
+        <div class="file-preview-info">
+          <div class="file-preview-name" id="fileName">—</div>
+          <div class="file-preview-meta" id="fileMeta">—</div>
+        </div>
+        <button class="btn-remove-file" id="btnRemoveFile" title="Quitar archivo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Validación de columnas (oculto hasta que se analice el CSV) -->
+      <div class="columns-check" id="columnsCheck">
+        <div class="columns-check-header">Validación de columnas requeridas</div>
+        <div id="colsList"></div>
+      </div>
+
+      <!-- Separador -->
+      <div style="height:1px;background:var(--border-light);margin:0 24px;"></div>
+
+      <!-- Selección de período -->
+      <div class="import-form-section" style="padding-top:20px;">
+        <label for="selectPeriodo">Período estadístico</label>
+        <select class="form-control form-select" id="selectPeriodo">
+          <option value="">— Cargando períodos… —</option>
+        </select>
+        <div class="form-hint">El archivo quedará vinculado a este período de análisis.</div>
+      </div>
+
+      <!-- Barra de progreso (oculta hasta importar) -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-label">
+          <span id="progressText">Procesando…</span>
+          <span id="progressPct">0 %</span>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="import-actions">
+        <button class="btn btn-primary" id="btnImportar" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          Importar datos
+        </button>
+        <button class="btn btn-secondary" id="btnReset">
+          Limpiar
+        </button>
+        <span id="importResult" style="font-size:var(--font-size-xs);margin-left:4px;"></span>
+      </div>
+    </div>
+
+    <!-- Card: columnas requeridas (referencia rápida) -->
+    <div class="upload-card">
+      <div class="upload-card-header">
+        <div class="icon-wrap" style="background:var(--kpi-blue-bg);color:var(--info);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+          </svg>
+        </div>
+        <div>
+          <h2>Formato esperado del CSV</h2>
+          <p>Columnas requeridas para el procesamiento correcto</p>
+        </div>
+      </div>
+      <div style="padding:16px 24px 20px;">
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Columna</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>barrio_id</code></td><td><span class="badge badge-info">texto</span></td><td>Identificador único del barrio</td></tr>
+              <tr><td><code>ocupacion_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código de ocupación del encuestado</td></tr>
+              <tr><td><code>inclinacion_voto_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código de inclinación de voto</td></tr>
+              <tr><td><code>intencion_participacion_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código de intención de participación</td></tr>
+              <tr><td><code>problematica_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código(s) de problemática registrada</td></tr>
+              <tr><td><code>edad</code></td><td><span class="badge badge-info">entero</span></td><td>Edad del encuestado (años)</td></tr>
+              <tr><td><code>periodo_id</code></td><td><span class="badge badge-muted">opcional</span></td><td>Se puede especificar en el selector</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       COLUMNA DERECHA — Historial de importaciones
+  ════════════════════════════════════════════════════ -->
+  <div class="history-card">
+    <div class="history-card-header">
+      <h3>Historial de importaciones</h3>
+      <button class="btn btn-secondary" id="btnRefreshHistory" style="padding:5px 10px;font-size:11px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width:12px!important;height:12px!important;">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+        </svg>
+        Actualizar
+      </button>
+    </div>
+
+    <div class="history-list" id="historyList">
+      <!-- Skeleton mientras carga -->
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px;" id="historySkeleton">
+        <div class="skeleton" style="height:54px;border-radius:var(--radius-sm);"></div>
+        <div class="skeleton" style="height:54px;border-radius:var(--radius-sm);"></div>
+        <div class="skeleton" style="height:54px;border-radius:var(--radius-sm);"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Modal detalle importación ── -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Detalle de importación</h3>
+      <button class="modal-close" onclick="closeModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ── Toast container ── -->
+<div class="toast-container" id="toastContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Constantes de columnas requeridas ──────────────────────────────────
+const REQUIRED_COLS = [
+  'barrio_id',
+  'ocupacion_cod',
+  'inclinacion_voto_cod',
+  'intencion_participacion_cod',
+  'problematica_cod',
+  'edad',
+];
+
+// ── Estado ────────────────────────────────────────────────────────────
+let selectedFile   = null;
+let columnsValid   = false;
+let periodos       = [];
+
+// ── Utils ─────────────────────────────────────────────────────────────
+const API = (path, opts = {}) =>
+  fetch(`/estadisticas${path}`, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts
+  }).then(r => r.json());
+
+function fmt(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes/1024).toFixed(1)} KB`;
+  return `${(bytes/1048576).toFixed(1)} MB`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' })
+       + ' ' + d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+}
+
+function showToast(msg, type = 'success') {
+  const tc = document.getElementById('toastContainer');
+  const t  = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      ${type === 'success'
+        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>'}
+    </svg>
+    <span>${msg}</span>`;
+  tc.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 4000);
+}
+
+function estadoBadge(estado) {
+  const map = {
+    completado: 'badge-success',
+    procesando: 'badge-info',
+    error:      'badge-danger',
+    pendiente:  'badge-warning',
+  };
+  const cls = map[estado?.toLowerCase()] || 'badge-muted';
+  return `<span class="badge ${cls}">${estado ?? '—'}</span>`;
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',      e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+
+document.getElementById('csvInput').addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+
+document.getElementById('btnRemoveFile').addEventListener('click', clearFile);
+document.getElementById('btnReset').addEventListener('click', clearFile);
+
+function setFile(file) {
+  if (!file.name.endsWith('.csv')) {
+    showToast('Solo se aceptan archivos .csv', 'error');
+    return;
+  }
+  selectedFile = file;
+  document.getElementById('filePreview').style.display = 'flex';
+  document.getElementById('dropZone').style.display    = 'none';
+  document.getElementById('fileName').textContent       = file.name;
+  document.getElementById('fileMeta').textContent       = fmt(file.size) + ' · ' + new Date().toLocaleTimeString('es-CO');
+  parseCSVHeaders(file);
+}
+
+function clearFile() {
+  selectedFile  = null;
+  columnsValid  = false;
+  document.getElementById('filePreview').style.display  = 'none';
+  document.getElementById('dropZone').style.display     = '';
+  document.getElementById('columnsCheck').style.display = 'none';
+  document.getElementById('csvInput').value             = '';
+  document.getElementById('btnImportar').disabled       = true;
+  document.getElementById('importResult').textContent   = '';
+}
+
+// ── CSV header validation ─────────────────────────────────────────────
+function parseCSVHeaders(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const firstLine = e.target.result.split('\n')[0] || '';
+    const headers   = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+    renderColsCheck(headers);
+  };
+  reader.readAsText(file);
+}
+
+function renderColsCheck(headers) {
+  const check  = document.getElementById('columnsCheck');
+  const list   = document.getElementById('colsList');
+  check.style.display = '';
+
+  let allOk = true;
+  list.innerHTML = REQUIRED_COLS.map(col => {
+    const found = headers.includes(col);
+    if (!found) allOk = false;
+    return `
+      <div class="col-row ${found ? 'ok' : 'err'}">
+        ${found
+          ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>`}
+        <code style="flex:1;">${col}</code>
+        <span style="font-size:11px;">${found ? 'Encontrada' : 'No encontrada'}</span>
+      </div>`;
+  }).join('');
+
+  columnsValid = allOk;
+  updateImportBtn();
+
+  if (!allOk) showToast('El CSV tiene columnas faltantes', 'error');
+}
+
+// ── Períodos ──────────────────────────────────────────────────────────
+async function loadPeriodos() {
+  try {
+    const res = await API('/api/periodos/');
+    periodos  = res.data || [];
+    const sel = document.getElementById('selectPeriodo');
+    if (!periodos.length) {
+      sel.innerHTML = '<option value="">— Sin períodos configurados —</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— Selecciona un período —</option>'
+      + periodos.map(p => {
+          const fechas = (p.fecha_inicio && p.fecha_fin)
+            ? ` (${p.fecha_inicio} → ${p.fecha_fin})`
+            : '';
+          return `<option value="${p.id}">${p.etiqueta ?? p.id}${fechas}</option>`;
+        }).join('');
+  } catch {
+    document.getElementById('selectPeriodo').innerHTML = '<option value="">— Error al cargar —</option>';
+  }
+}
+
+document.getElementById('selectPeriodo').addEventListener('change', updateImportBtn);
+
+function updateImportBtn() {
+  const periodo = document.getElementById('selectPeriodo').value;
+  document.getElementById('btnImportar').disabled = !(selectedFile && columnsValid && periodo);
+}
+
+// ── Importar ──────────────────────────────────────────────────────────
+document.getElementById('btnImportar').addEventListener('click', async () => {
+  const periodo = document.getElementById('selectPeriodo').value;
+  if (!selectedFile || !periodo) return;
+
+  const btn = document.getElementById('btnImportar');
+  btn.disabled = true;
+  btn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="animation:spin 1s linear infinite;">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+    </svg>
+    Procesando…`;
+
+  // Mostrar barra de progreso simulada
+  const pw   = document.getElementById('progressWrap');
+  const fill = document.getElementById('progressFill');
+  const pct  = document.getElementById('progressPct');
+  const ptx  = document.getElementById('progressText');
+  pw.style.display = '';
+  let prog = 0;
+  const ticker = setInterval(() => {
+    prog = Math.min(prog + Math.random() * 8, 85);
+    fill.style.width = prog + '%';
+    pct.textContent  = Math.round(prog) + ' %';
+  }, 200);
+
+  try {
+    const formData = new FormData();
+    formData.append('archivo', selectedFile);
+    formData.append('periodo_id', periodo);
+
+    const res = await fetch('/estadisticas/api/importaciones/', {
+      method: 'POST',
+      body:   formData,
+    }).then(r => r.json());
+
+    clearInterval(ticker);
+    fill.style.width = '100%';
+    pct.textContent  = '100 %';
+    ptx.textContent  = 'Completado';
+
+    if (res.ok) {
+      showToast('Importación iniciada correctamente');
+      document.getElementById('importResult').innerHTML =
+        `<span style="color:var(--success);font-weight:600;">✓ ID: ${res.data?.importacion_id ?? '—'}</span>`;
+      await loadHistory();
+      // polling estado
+      if (res.data?.importacion_id) pollEstado(res.data.importacion_id);
+    } else {
+      showToast(res.error || 'Error en la importación', 'error');
+      document.getElementById('importResult').innerHTML =
+        `<span style="color:var(--danger);">${res.error}</span>`;
+    }
+  } catch (err) {
+    clearInterval(ticker);
+    showToast('Error de conexión al servidor', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+      </svg>
+      Importar datos`;
+    setTimeout(() => { pw.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+  }
+});
+
+// ── Polling estado ────────────────────────────────────────────────────
+async function pollEstado(id) {
+  let tries = 0;
+  const interval = setInterval(async () => {
+    tries++;
+    try {
+      const res = await API(`/api/importaciones/${id}/estado/`);
+      const est = res.data?.estado?.toLowerCase();
+      if (est === 'completado' || est === 'error' || tries > 30) {
+        clearInterval(interval);
+        await loadHistory();
+        if (est === 'completado') showToast('Importación completada con éxito');
+        if (est === 'error')      showToast('La importación terminó con errores', 'error');
+      }
+    } catch { clearInterval(interval); }
+  }, 2000);
+}
+
+// ── Historial ─────────────────────────────────────────────────────────
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  const skel = document.getElementById('historySkeleton');
+  if (skel) skel.style.display = '';
+
+  try {
+    const res  = await API('/api/importaciones/');
+    const data = (res.data || []).slice(0,20);
+
+    if (skel) skel.remove();
+
+    if (!data.length) {
+      list.innerHTML = `
+        <div class="history-empty">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="opacity:.3;margin:0 auto;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776" />
+          </svg>
+          <p>Aún no hay importaciones registradas.</p>
+        </div>`;
+      return;
+    }
+
+    const dotClass = e => {
+      const m = { completado:'success', procesando:'pending', error:'error', pendiente:'warning' };
+      return m[e?.toLowerCase()] || 'pending';
+    };
+
+    list.innerHTML = data.map(imp => `
+      <div class="history-item" role="button" onclick="openDetail('${imp.importacion_id}')" style="cursor:pointer;">
+        <div class="history-dot ${dotClass(imp.estado)}"></div>
+        <div style="flex:1;min-width:0;">
+          <div class="history-item-name" title="${imp.nombre_archivo ?? imp.importacion_id}">
+            ${imp.nombre_archivo ?? imp.importacion_id}
+          </div>
+          <div class="history-item-meta">
+            ${fmtDate(imp.fecha_creacion)}
+            ${imp.total_registros != null ? ` · ${imp.total_registros.toLocaleString('es-CO')} registros` : ''}
+          </div>
+        </div>
+        ${estadoBadge(imp.estado)}
+      </div>`).join('');
+  } catch {
+    if (skel) skel.remove();
+    list.innerHTML = `<div class="history-empty"><p>Error al cargar el historial.</p></div>`;
+  }
+}
+
+document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
+
+// ── Modal detalle ─────────────────────────────────────────────────────
+async function openDetail(id) {
+  document.getElementById('importModal').classList.add('open');
+  document.getElementById('modalBody').innerHTML = '<div class="skeleton" style="height:160px;"></div>';
+
+  try {
+    const res = await API(`/api/importaciones/${id}/`);
+    const d   = res.data || {};
+    document.getElementById('modalBody').innerHTML = `
+      <div class="detail-row"><span class="detail-label">ID</span><span class="detail-value">${d.importacion_id ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Archivo</span><span class="detail-value">${d.nombre_archivo ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Estado</span><span class="detail-value">${estadoBadge(d.estado)}</span></div>
+      <div class="detail-row"><span class="detail-label">Período</span><span class="detail-value">${d.periodo_id ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Registros totales</span><span class="detail-value">${d.total_registros?.toLocaleString('es-CO') ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Registros válidos</span><span class="detail-value">${d.registros_validos?.toLocaleString('es-CO') ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Registros con error</span><span class="detail-value">${d.registros_error?.toLocaleString('es-CO') ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Fecha carga</span><span class="detail-value">${fmtDate(d.fecha_creacion)}</span></div>
+      ${d.mensaje_error ? `<div class="detail-row"><span class="detail-label">Error</span><span class="detail-value" style="color:var(--danger);">${d.mensaje_error}</span></div>` : ''}`;
+  } catch {
+    document.getElementById('modalBody').innerHTML = '<p style="color:var(--danger);">No se pudo cargar el detalle.</p>';
+  }
+}
+
+function closeModal() {
+  document.getElementById('importModal').classList.remove('open');
+}
+document.getElementById('importModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ── Spin keyframe ──────────────────────────────────────────────────────
+const styleEl = document.createElement('style');
+styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(styleEl);
+
+// ── Init ──────────────────────────────────────────────────────────────
+loadPeriodos();
+loadHistory();
+</script>
+{% endblock %}

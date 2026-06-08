@@ -1,0 +1,932 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Cruces Estadísticos · Estadísticas{% endblock %}
+
+{% block nav_estadisticas %}active{% endblock %}
+
+{% block page_title %}Cruces Estadísticos{% endblock %}
+{% block page_subtitle %}Análisis cruzado de dimensiones del territorio{% endblock %}
+
+{% block extra_css %}
+<style>
+
+/* ── Layout ── */
+.cruces-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Panel configurador ── */
+.config-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  position: sticky;
+  top: 24px;
+}
+.config-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.config-card-header .icon {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.config-card-header h2 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.config-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+.field-label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* ── Dimension pills ── */
+.dim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.dim-pill {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: center;
+  background: var(--bg-card);
+  user-select: none;
+}
+.dim-pill:hover { border-color: var(--accent-mid); color: var(--accent); background: var(--accent-light); }
+.dim-pill.sel-a  { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+.dim-pill.sel-b  { border-color: var(--success); background: var(--success-bg); color: #065F46; }
+.dim-pill.sel-ab { border-color: var(--warning); background: var(--warning-bg); color: #92400E; }
+
+.dim-legend {
+  display: flex;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.dim-legend span { display: flex; align-items: center; gap: 4px; }
+.dim-legend .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Separador ── */
+.config-sep {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0 -20px;
+}
+
+/* ── Queue de cruces ── */
+.queue-list { display: flex; flex-direction: column; gap: 6px; }
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--border-light);
+  font-size: var(--font-size-xs);
+}
+.queue-item-dims { flex: 1; font-weight: 600; color: var(--text-primary); }
+.queue-item-sep { color: var(--text-muted); }
+.queue-remove {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.queue-remove:hover { background: var(--danger-bg); color: var(--danger); }
+
+/* ── Resultados panel ── */
+.results-panel { display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Card resultado cruce ── */
+.cruce-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.cruce-card-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cruce-card-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cruce-card-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Vista doble: tabla + heatmap ── */
+.cruce-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.cruce-body-half {
+  padding: 16px 20px;
+}
+.cruce-body-half:first-child {
+  border-right: 1px solid var(--border-light);
+}
+.cruce-half-title {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* ── Bar chart horizontal ── */
+.h-bar-list { display: flex; flex-direction: column; gap: 8px; }
+.h-bar-item {}
+.h-bar-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+.h-bar-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.h-bar-val { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
+.h-bar-track {
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.h-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Heatmap / matriz ── */
+.matrix-wrap { overflow-x: auto; }
+.matrix-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  width: 100%;
+}
+.matrix-table th {
+  padding: 5px 8px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.matrix-table th.row-header { text-align: left; }
+.matrix-table td {
+  padding: 5px 8px;
+  text-align: center;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  min-width: 44px;
+  position: relative;
+}
+.matrix-table td.row-label {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: none;
+  white-space: nowrap;
+  padding-right: 12px;
+}
+
+/* ── Historial sidebar ── */
+.historial-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.historial-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.historial-header h3 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.historial-list { max-height: 300px; overflow-y: auto; }
+.historial-item {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.historial-item:last-child { border-bottom: none; }
+.historial-item:hover { background: var(--border-light); }
+.historial-item-dims { flex: 1; font-weight: 600; color: var(--text-primary); }
+.historial-item-meta { color: var(--text-muted); white-space: nowrap; }
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 99px;
+  font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.badge-accent  { background: var(--accent-light); color: var(--accent); }
+.badge-success { background: var(--success-bg); color: #065F46; }
+.badge-muted   { background: var(--border-light); color: var(--text-muted); }
+
+/* ── Empty / loading ── */
+.empty-results {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.empty-results svg { opacity: .25; margin: 0 auto 16px; display: block; }
+.empty-results h3 { font-size: var(--font-size-md); font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-results p  { font-size: var(--font-size-sm); }
+
+/* ── Skeleton ── */
+.cruce-skeleton {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.cruce-skeleton-header { padding: 14px 20px; border-bottom: 1px solid var(--border-light); }
+
+/* ── Toast ── */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+.toast { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-radius: var(--radius-md); font-size: var(--font-size-sm); font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,.15); animation: slideUp .25s ease; max-width: 340px; }
+.toast svg { width: 16px !important; height: 16px !important; flex-shrink: 0; }
+.toast.success { background: #065F46; color: #fff; }
+.toast.error   { background: #991B1B; color: #fff; }
+@keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes spin    { to { transform: rotate(360deg); } }
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .cruces-layout { grid-template-columns: 1fr; }
+  .config-card { position: static; }
+  .cruce-body { grid-template-columns: 1fr; }
+  .cruce-body-half:first-child { border-right: none; border-bottom: 1px solid var(--border-light); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cruces-layout">
+
+  <!-- ══════════════════════════════════════════
+       PANEL IZQUIERDO — Configuración
+  ════════════════════════════════════════════ -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <div class="config-card">
+      <div class="config-card-header">
+        <div class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5" />
+          </svg>
+        </div>
+        <h2>Configurar cruce</h2>
+      </div>
+      <div class="config-body">
+
+        <!-- Período -->
+        <div>
+          <label class="field-label" for="selPeriodo">Período estadístico</label>
+          <select class="form-control form-select" id="selPeriodo">
+            <option value="">— Cargando… —</option>
+          </select>
+        </div>
+
+        <div class="config-sep"></div>
+
+        <!-- Selección de dimensiones -->
+        <div>
+          <label class="field-label">Selecciona dos dimensiones</label>
+          <div class="dim-legend" style="margin-bottom:10px;">
+            <span><span class="dot" style="background:var(--accent);"></span>Dimensión A</span>
+            <span><span class="dot" style="background:var(--success);"></span>Dimensión B</span>
+          </div>
+          <div class="dim-grid" id="dimGrid">
+            <!-- Se renderizan dinámicamente -->
+          </div>
+          <div id="dimSelLabel" style="margin-top:10px;font-size:var(--font-size-xs);color:var(--text-muted);min-height:18px;"></div>
+        </div>
+
+        <div class="config-sep"></div>
+
+        <!-- Cola de cruces -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <label class="field-label" style="margin:0;">Cola de cruces</label>
+            <button class="btn btn-secondary" id="btnAddCruce" style="font-size:11px;padding:4px 10px;" disabled>
+              + Agregar
+            </button>
+          </div>
+          <div class="queue-list" id="queueList">
+            <div style="font-size:var(--font-size-xs);color:var(--text-muted);padding:8px 0;">
+              Agrega al menos un cruce para calcular.
+            </div>
+          </div>
+        </div>
+
+        <!-- Acción principal -->
+        <button class="btn btn-primary" id="btnCalcular" disabled style="width:100%;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+          </svg>
+          Calcular cruces
+        </button>
+
+        <div id="calcStatus" style="font-size:var(--font-size-xs);color:var(--text-muted);text-align:center;min-height:16px;"></div>
+
+      </div>
+    </div>
+
+    <!-- Historial de cruces del período -->
+    <div class="historial-card" id="historialCard" style="display:none;">
+      <div class="historial-header">
+        <h3>Cruces del período</h3>
+        <span class="badge badge-muted" id="countCruces">0</span>
+      </div>
+      <div class="historial-list" id="historialList"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       PANEL DERECHO — Resultados
+  ════════════════════════════════════════════ -->
+  <div class="results-panel" id="resultsPanel">
+
+    <!-- Estado vacío inicial -->
+    <div class="empty-results" id="emptyState">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5" />
+      </svg>
+      <h3>Sin cruces calculados</h3>
+      <p>Selecciona un período, elige dos dimensiones y haz clic en <strong>Calcular cruces</strong>.</p>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ─────────────────────────────────────────────────────────────────
+// Catálogo de dimensiones disponibles
+// ─────────────────────────────────────────────────────────────────
+const DIMS = [
+  { key: 'ocupacion',               label: 'Ocupación' },
+  { key: 'inclinacion_voto',        label: 'Inclinación de voto' },
+  { key: 'intencion_participacion', label: 'Intención de participación' },
+  { key: 'problematica_1',          label: 'Problemática 1' },
+  { key: 'problematica_2',          label: 'Problemática 2' },
+];
+
+// Catálogos cargados para resolver códigos → etiqueta
+const CAT = {
+  ocupacion:               {},   // { codigo: descripcion }
+  inclinacion_voto:        {},
+  intencion_participacion: {},
+  problematica_1:          {},
+  problematica_2:          {},
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Estado
+// ─────────────────────────────────────────────────────────────────
+let periodoActual = '';
+let dimA = '';
+let dimB = '';
+let queue = [];            // [{ dimension_a, dimension_b }]
+let resultados = [];       // cruces del período (historial)
+
+// ─────────────────────────────────────────────────────────────────
+// Utils
+// ─────────────────────────────────────────────────────────────────
+const API = (path, opts = {}) =>
+  fetch(`/estadisticas${path}`, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  }).then(r => r.json());
+
+function showToast(msg, type = 'success') {
+  const tc = document.getElementById('toastContainer');
+  const t  = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      ${type === 'success'
+        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>'}
+    </svg><span>${msg}</span>`;
+  tc.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 4500);
+}
+
+function spinBtn(btn, on) {
+  if (on) {
+    btn.dataset.orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="animation:spin 1s linear infinite;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg> Calculando…`;
+  } else {
+    btn.disabled = queue.length === 0 || !periodoActual;
+    btn.innerHTML = btn.dataset.orig || btn.innerHTML;
+  }
+}
+
+// Resuelve un código numérico a su descripción usando el catálogo
+function resolveLabel(dimKey, val) {
+  if (!val) return '—';
+  // Los catálogos de problematica_1 y problematica_2 comparten la misma tabla
+  const catKey = dimKey.startsWith('problematica') ? 'problematica_1' : dimKey;
+  return CAT[catKey]?.[String(val)] ?? `Cód. ${val}`;
+}
+
+function dimLabel(key) {
+  return DIMS.find(d => d.key === key)?.label ?? key;
+}
+
+// Colores de heatmap: mayor valor → más intenso
+function heatColor(pct) {
+  // 0% = gris claro, 100% = acento fuerte
+  const t = Math.min(pct / 100, 1);
+  const r = Math.round(99  + (124 - 99)  * t);
+  const g = Math.round(102 + (58  - 102) * t);
+  const b = Math.round(241 + (237 - 241) * t);
+  return `rgba(${r},${g},${b},${0.12 + t * 0.55})`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Catálogos
+// ─────────────────────────────────────────────────────────────────
+async function loadCatalogos() {
+  const [oc, iv, ip, pr] = await Promise.all([
+    API('/api/catalogos/ocupaciones/'),
+    API('/api/catalogos/inclinaciones-voto/'),
+    API('/api/catalogos/intenciones-participacion/'),
+    API('/api/catalogos/problematicas/'),
+  ]);
+  (oc.data||[]).forEach(x => { CAT.ocupacion[x.codigo] = x.descripcion; });
+  (iv.data||[]).forEach(x => { CAT.inclinacion_voto[x.codigo] = x.descripcion; });
+  (ip.data||[]).forEach(x => { CAT.intencion_participacion[x.codigo] = x.descripcion; });
+  (pr.data||[]).forEach(x => { CAT.problematica_1[x.codigo] = x.descripcion; CAT.problematica_2[x.codigo] = x.descripcion; });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Períodos
+// ─────────────────────────────────────────────────────────────────
+async function loadPeriodos() {
+  const sel = document.getElementById('selPeriodo');
+  try {
+    const res = await API('/api/periodos/');
+    const data = res.data || [];
+    if (!data.length) {
+      sel.innerHTML = '<option value="">— Sin períodos —</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— Selecciona un período —</option>'
+      + data.map(p => {
+          const fechas = (p.fecha_inicio && p.fecha_fin)
+            ? ` (${p.fecha_inicio} → ${p.fecha_fin})` : '';
+          return `<option value="${p.id}">${p.etiqueta}${fechas}</option>`;
+        }).join('');
+  } catch { sel.innerHTML = '<option value="">— Error —</option>'; }
+}
+
+document.getElementById('selPeriodo').addEventListener('change', async e => {
+  periodoActual = e.target.value;
+  queue = [];
+  dimA = ''; dimB = '';
+  renderQueue();
+  renderDimGrid();
+  updateAddBtn();
+  updateCalcBtn();
+  if (periodoActual) {
+    await loadHistorial();
+  } else {
+    document.getElementById('historialCard').style.display = 'none';
+    clearResults();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Dimensiones
+// ─────────────────────────────────────────────────────────────────
+function renderDimGrid() {
+  const grid = document.getElementById('dimGrid');
+  grid.innerHTML = DIMS.map(d => {
+    let cls = '';
+    if (d.key === dimA && d.key === dimB) cls = 'sel-ab';
+    else if (d.key === dimA) cls = 'sel-a';
+    else if (d.key === dimB) cls = 'sel-b';
+    return `<button class="dim-pill ${cls}" data-dim="${d.key}">${d.label}</button>`;
+  }).join('');
+
+  grid.querySelectorAll('.dim-pill').forEach(pill => {
+    pill.addEventListener('click', () => toggleDim(pill.dataset.dim));
+  });
+
+  // Label selección
+  const lbl = document.getElementById('dimSelLabel');
+  if (!dimA && !dimB) {
+    lbl.textContent = 'Selecciona la dimensión A (primera selección)';
+  } else if (dimA && !dimB) {
+    lbl.innerHTML = `<span style="color:var(--accent);font-weight:600;">A: ${dimLabel(dimA)}</span> · Ahora selecciona la dimensión B`;
+  } else if (dimA && dimB) {
+    lbl.innerHTML = `<span style="color:var(--accent);font-weight:600;">A: ${dimLabel(dimA)}</span> × <span style="color:var(--success);font-weight:600;">B: ${dimLabel(dimB)}</span>`;
+  }
+}
+
+function toggleDim(key) {
+  if (!dimA) {
+    dimA = key;
+  } else if (!dimB) {
+    if (key === dimA) { dimA = ''; }
+    else { dimB = key; }
+  } else {
+    // Resetear selección
+    dimA = key; dimB = '';
+  }
+  renderDimGrid();
+  updateAddBtn();
+}
+
+function updateAddBtn() {
+  document.getElementById('btnAddCruce').disabled = !(dimA && dimB && dimA !== dimB);
+}
+
+function updateCalcBtn() {
+  document.getElementById('btnCalcular').disabled = queue.length === 0 || !periodoActual;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Queue
+// ─────────────────────────────────────────────────────────────────
+document.getElementById('btnAddCruce').addEventListener('click', () => {
+  if (!dimA || !dimB || dimA === dimB) return;
+  // Evitar duplicados
+  if (queue.some(q => q.dimension_a === dimA && q.dimension_b === dimB)) {
+    showToast('Ese cruce ya está en la cola', 'error');
+    return;
+  }
+  queue.push({ dimension_a: dimA, dimension_b: dimB });
+  dimA = ''; dimB = '';
+  renderDimGrid();
+  renderQueue();
+  updateAddBtn();
+  updateCalcBtn();
+});
+
+function renderQueue() {
+  const el = document.getElementById('queueList');
+  if (!queue.length) {
+    el.innerHTML = '<div style="font-size:var(--font-size-xs);color:var(--text-muted);padding:8px 0;">Agrega al menos un cruce para calcular.</div>';
+    return;
+  }
+  el.innerHTML = queue.map((q, i) => `
+    <div class="queue-item">
+      <span class="queue-item-dims">
+        <span style="color:var(--accent);">${dimLabel(q.dimension_a)}</span>
+        <span class="queue-item-sep"> × </span>
+        <span style="color:var(--success);">${dimLabel(q.dimension_b)}</span>
+      </span>
+      <button class="queue-remove" onclick="removeQueue(${i})" title="Quitar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>`).join('');
+}
+
+function removeQueue(i) {
+  queue.splice(i, 1);
+  renderQueue();
+  updateCalcBtn();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Calcular
+// ─────────────────────────────────────────────────────────────────
+document.getElementById('btnCalcular').addEventListener('click', async () => {
+  if (!periodoActual || !queue.length) return;
+  const btn = document.getElementById('btnCalcular');
+  const status = document.getElementById('calcStatus');
+  spinBtn(btn, true);
+  status.textContent = `Calculando ${queue.length} cruce(s)…`;
+
+  // Mostrar skeletons
+  showSkeletons(queue.length);
+
+  try {
+    const res = await API('/api/cruces/calcular-multiples/', {
+      method: 'POST',
+      body: JSON.stringify({ periodo_id: periodoActual, cruces: queue }),
+    });
+
+    if (res.ok) {
+      showToast(`${queue.length} cruce(s) calculados`);
+      queue = [];
+      dimA = ''; dimB = '';
+      renderQueue();
+      renderDimGrid();
+      updateAddBtn();
+      status.textContent = '';
+      await loadHistorial();
+      renderResultados(resultados);
+    } else {
+      showToast(res.error || 'Error al calcular', 'error');
+      clearResults();
+      status.textContent = '';
+    }
+  } catch {
+    showToast('Error de conexión', 'error');
+    clearResults();
+    status.textContent = '';
+  } finally {
+    spinBtn(btn, false);
+    updateCalcBtn();
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Historial
+// ─────────────────────────────────────────────────────────────────
+async function loadHistorial() {
+  try {
+    const res = await API(`/api/cruces/?periodo_id=${periodoActual}`);
+    resultados = res.data || [];
+
+    const card = document.getElementById('historialCard');
+    const list = document.getElementById('historialList');
+    document.getElementById('countCruces').textContent = resultados.length;
+
+    if (!resultados.length) {
+      card.style.display = 'none';
+      clearResults();
+      return;
+    }
+    card.style.display = '';
+
+    // Agrupar por par dim_a × dim_b
+    const pairs = {};
+    resultados.forEach(r => {
+      const key = `${r.dimension_a}__${r.dimension_b}`;
+      if (!pairs[key]) pairs[key] = { dim_a: r.dimension_a, dim_b: r.dimension_b, count: 0, ts: r.generado_en };
+      pairs[key].count++;
+    });
+
+    list.innerHTML = Object.values(pairs).map(p => `
+      <div class="historial-item" onclick="filtrarPar('${p.dim_a}','${p.dim_b}')">
+        <div class="historial-item-dims">
+          <span style="color:var(--accent);">${dimLabel(p.dim_a)}</span>
+          <span style="color:var(--text-muted);"> × </span>
+          <span style="color:var(--success);">${dimLabel(p.dim_b)}</span>
+        </div>
+        <span class="badge badge-muted">${p.count}</span>
+      </div>`).join('');
+
+    renderResultados(resultados);
+  } catch { showToast('Error al cargar historial', 'error'); }
+}
+
+function filtrarPar(da, db) {
+  const filtrados = resultados.filter(r => r.dimension_a === da && r.dimension_b === db);
+  renderResultados(resultados, da, db);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Render resultados
+// ─────────────────────────────────────────────────────────────────
+function clearResults() {
+  const panel = document.getElementById('resultsPanel');
+  panel.innerHTML = `
+    <div class="empty-results" id="emptyState">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5"/>
+      </svg>
+      <h3>Sin cruces calculados</h3>
+      <p>Selecciona un período, elige dos dimensiones y haz clic en <strong>Calcular cruces</strong>.</p>
+    </div>`;
+}
+
+function showSkeletons(n) {
+  const panel = document.getElementById('resultsPanel');
+  panel.innerHTML = Array(n).fill(0).map(() => `
+    <div class="cruce-skeleton">
+      <div class="cruce-skeleton-header">
+        <div class="skeleton" style="height:18px;width:260px;border-radius:4px;"></div>
+      </div>
+      <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="skeleton" style="height:160px;border-radius:6px;"></div>
+        <div class="skeleton" style="height:160px;border-radius:6px;"></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderResultados(data, filterA = null, filterB = null) {
+  const panel = document.getElementById('resultsPanel');
+
+  // Agrupar por par dimensión
+  const pairs = {};
+  data.forEach(r => {
+    if (filterA && filterB && (r.dimension_a !== filterA || r.dimension_b !== filterB)) return;
+    const key = `${r.dimension_a}__${r.dimension_b}`;
+    if (!pairs[key]) pairs[key] = { dim_a: r.dimension_a, dim_b: r.dimension_b, rows: [] };
+    pairs[key].rows.push(r);
+  });
+
+  const pairList = Object.values(pairs);
+  if (!pairList.length) { clearResults(); return; }
+
+  panel.innerHTML = pairList.map(p => renderCruceCard(p)).join('');
+
+  // Animar barras
+  setTimeout(() => {
+    panel.querySelectorAll('.h-bar-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 50);
+}
+
+function renderCruceCard({ dim_a, dim_b, rows }) {
+  const total = rows.reduce((s, r) => s + (r.cantidad || 0), 0) || 1;
+
+  // Ordenar por cantidad DESC
+  const sorted = [...rows].sort((a, b) => (b.cantidad || 0) - (a.cantidad || 0));
+  const top = sorted.slice(0, 10);
+
+  // Valores únicos de A y B para la matriz
+  const valsA = [...new Set(rows.map(r => r.valor_a))].slice(0, 6);
+  const valsB = [...new Set(rows.map(r => r.valor_b))].slice(0, 6);
+
+  // Índice rápido para la matriz
+  const idx = {};
+  rows.forEach(r => { idx[`${r.valor_a}__${r.valor_b}`] = r; });
+
+  // Colores para las barras
+  const COLORS = [
+    'var(--accent)', 'var(--success)', 'var(--warning)',
+    'var(--danger)', 'var(--info)', '#8B5CF6', '#EC4899',
+    '#14B8A6', '#F97316', '#6366F1',
+  ];
+
+  const ts = rows[0]?.generado_en
+    ? new Date(rows[0].generado_en).toLocaleString('es-CO', { dateStyle:'short', timeStyle:'short' })
+    : '—';
+
+  return `
+    <div class="cruce-card">
+      <div class="cruce-card-header">
+        <div class="cruce-card-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5"/>
+          </svg>
+          <span style="color:var(--accent);">${dimLabel(dim_a)}</span>
+          <span style="color:var(--text-muted);font-weight:400;">×</span>
+          <span style="color:var(--success);">${dimLabel(dim_b)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="cruce-card-meta">${rows.length} combinaciones · ${ts}</span>
+          <span class="badge badge-muted">${rows.reduce((s,r)=>s+(r.cantidad||0),0).toLocaleString('es-CO')} registros</span>
+        </div>
+      </div>
+
+      <div class="cruce-body">
+
+        <!-- Top combinaciones (barras horizontales) -->
+        <div class="cruce-body-half">
+          <div class="cruce-half-title">Top combinaciones</div>
+          <div class="h-bar-list">
+            ${top.map((r, i) => {
+              const la = resolveLabel(dim_a, r.valor_a);
+              const lb = resolveLabel(dim_b, r.valor_b);
+              const pct = parseFloat(r.porcentaje) || 0;
+              return `
+                <div class="h-bar-item">
+                  <div class="h-bar-header">
+                    <span class="h-bar-label" title="${la} + ${lb}">${la} <span style="opacity:.5;">+</span> ${lb}</span>
+                    <span class="h-bar-val">${pct.toFixed(1)} %</span>
+                  </div>
+                  <div class="h-bar-track">
+                    <div class="h-bar-fill" data-w="${Math.min(pct, 100)}"
+                         style="background:${COLORS[i % COLORS.length]};width:0%;"></div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Matriz / heatmap -->
+        <div class="cruce-body-half">
+          <div class="cruce-half-title">Matriz de frecuencia</div>
+          <div class="matrix-wrap">
+            <table class="matrix-table">
+              <thead>
+                <tr>
+                  <th class="row-header">${dimLabel(dim_a)} / ${dimLabel(dim_b)}</th>
+                  ${valsB.map(vb => `<th>${resolveLabel(dim_b, vb)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${valsA.map(va => `
+                  <tr>
+                    <td class="row-label">${resolveLabel(dim_a, va)}</td>
+                    ${valsB.map(vb => {
+                      const cell = idx[`${va}__${vb}`];
+                      const pct  = cell ? parseFloat(cell.porcentaje) : 0;
+                      const cant = cell ? (cell.cantidad || 0) : 0;
+                      return `<td style="background:${heatColor(pct)};" title="${pct.toFixed(1)}%">
+                        ${cant > 0 ? cant.toLocaleString('es-CO') : '<span style="opacity:.25;">—</span>'}
+                      </td>`;
+                    }).join('')}
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${valsA.length > 6 || valsB.length > 6
+            ? `<div style="font-size:10px;color:var(--text-muted);margin-top:8px;">Mostrando hasta 6 valores por dimensión.</div>`
+            : ''}
+        </div>
+
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────
+renderDimGrid();
+
+Promise.all([loadPeriodos(), loadCatalogos()]);
+</script>
+{% endblock %}
