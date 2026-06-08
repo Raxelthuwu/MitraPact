@@ -21,7 +21,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'Backend.moduloEventos',
-    'Backend.moduloLogin'
+    'Backend.moduloLogin',
+    'Backend.moduloBusquedaSemantica',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +90,10 @@ logging.info(f"Conexión semántica: Directorio de persistencia de ChromaDB asig
 SENTENCE_TRANSFORMER_MODEL = 'paraphrase-multilingual-MiniLM-L12-v2'
 logging.info(f"Modelo IA: SentenceTransformer configurado con el modelo de lenguaje: '{SENTENCE_TRANSFORMER_MODEL}'")
 
+# Umbrales de similitud semántica
+SEMANTIC_MATCH_THRESHOLD   = 0.85  
+SEMANTIC_RELATED_THRESHOLD = 0.60  
+SEMANTIC_FRAGMENT_MATCH_THRESHOLD = 0.75
 # PDFs subidos para indexación documental 
 DOCUMENTOS_PDF_DIR = MEDIA_ROOT / 'documentos'
 logging.info(f"Almacenamiento: Directorio para indexación de PDFs definido en: '{DOCUMENTOS_PDF_DIR}'")
@@ -98,3 +103,4 @@ CSV_IMPORT_DIR = MEDIA_ROOT / 'csv_imports'
 logging.info(f"Almacenamiento: Directorio para importación de archivos CSV definido en: '{CSV_IMPORT_DIR}'")
 
 logging.info("Estructura de variables de configuración cargada correctamente.")
+

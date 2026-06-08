@@ -1,0 +1,183 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Documentos · Búsqueda Semántica{% endblock %}
+{% block nav_busqueda %}active{% endblock %}
+{% block page_title %}Búsqueda Semántica{% endblock %}
+{% block page_subtitle %}Gestión y análisis de documentos{% endblock %}
+
+{% block topbar_extra %}
+<a href="{% url 'documento-form-vista' %}" class="btn btn-primary btn-sm">+ Nuevo documento</a>
+{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiDocs">0</div><div class="kpi-label">Documentos</div></div></div>
+    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiTemas">0</div><div class="kpi-label">Temas</div></div></div>
+    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiFragmentos">0</div><div class="kpi-label">Fragmentos</div></div></div>
+    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiArgumentos">0</div><div class="kpi-label">Argumentos</div></div></div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header"><h3 class="card-title">Documentos indexados</h3></div>
+    <div class="card-body" id="lista"></div>
+</div>
+
+<div class="modal-overlay" id="modalEditar">
+    <div class="modal">
+        <h3>Editar Documento</h3>
+        <input type="hidden" id="editId">
+        <div class="form-group"><label>Nombre</label><input id="editNombre" type="text" class="form-control"></div>
+        <div class="form-group"><label>Temas</label><input id="editTemas" type="text" class="form-control" placeholder="tema1, tema2, tema3"></div>
+        <div class="form-group"><label>Reemplazar PDF</label><input id="editArchivo" type="file" class="form-control"></div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="cerrarModal('modalEditar')">Cancelar</button>
+            <button class="btn btn-primary" id="btnGuardarEdicion" onclick="guardarEdicion()"><span class="btn-text">Guardar</span></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalEliminar">
+    <div class="modal">
+        <h3>Eliminar documento</h3>
+        <p>¿Seguro de eliminar <strong id="eliminarNombre"></strong>?</p>
+        <input type="hidden" id="eliminarId">
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+            <button id="btnConfirmarEliminar" class="btn btn-danger" onclick="confirmarEliminar()"><span class="btn-text">Eliminar</span></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function cargarDocumentos() {
+        const res = await fetch('/semantica/busqueda/documentos/');
+        const data = await res.json();
+        const docs = data.documentos || [];
+        renderizar(docs);
+        actualizarKPIs(docs);
+    }
+
+    function renderizar(docs) {
+        document.getElementById('lista').innerHTML = docs.map(d => `
+            <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong>${d.nombre}</strong>
+                    ${d.temas && d.temas.length > 0
+                        ? `<div style="margin-top:4px; font-size:0.85em;">${d.temas.map(t => `<span style="background:#f0eaff;color:#7c3aed;padding:2px 8px;border-radius:999px;margin-right:4px;">${t}</span>`).join('')}</div>`
+                        : '<div style="margin-top:4px;font-size:0.85em;color:#aaa;">Sin temas</div>'}
+                </div>
+                <div>
+                    <button class="btn btn-sm" onclick="abrirEditar('${d.id}', '${d.nombre.replace(/'/g,"\\'")}', '${(d.temas||[]).join(', ')}')">Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="abrirEliminar('${d.id}', '${d.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function actualizarKPIs(docs) {
+        document.getElementById('kpiDocs').textContent = docs.length;
+
+        const temasUnicos = new Set(docs.flatMap(d => d.temas || []));
+        document.getElementById('kpiTemas').textContent = temasUnicos.size;
+
+        const totalFragmentos = docs.reduce((s, d) => s + (d.total_fragmentos || 0), 0);
+        document.getElementById('kpiFragmentos').textContent = totalFragmentos;
+
+        const totalArgumentos = docs.reduce((s, d) => s + (d.total_argumentos || 0), 0);
+        document.getElementById('kpiArgumentos').textContent = totalArgumentos;
+    }
+
+    function abrirEditar(id, nombre, temas) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editNombre').value = nombre;
+        document.getElementById('editTemas').value = temas;
+        document.getElementById('modalEditar').classList.add('open');
+    }
+
+    function abrirEliminar(id, nombre) {
+        document.getElementById('eliminarId').value = id;
+        document.getElementById('eliminarNombre').textContent = nombre;
+        document.getElementById('modalEliminar').classList.add('open');
+    }
+
+    async function guardarEdicion() {
+        const id = document.getElementById('editId').value;
+        const btn = document.getElementById('btnGuardarEdicion');
+
+        const formData = new FormData();
+        formData.append('nombre', document.getElementById('editNombre').value);
+        formData.append('temas', document.getElementById('editTemas').value);
+        formData.append('temas_enviado', '1');
+
+        const file = document.getElementById('editArchivo').files[0];
+        if (file) formData.append('archivo', file);
+
+        btn.disabled = true;
+        btn.querySelector('.btn-text').textContent = 'Guardando...';
+
+        try {
+            const res = await fetch(`/semantica/documentos/${id}/`, {
+                method: 'PUT',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Error en el servidor');
+            }
+
+            cerrarModal('modalEditar');
+            await cargarDocumentos();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.querySelector('.btn-text').textContent = 'Guardar';
+        }
+    }
+
+    async function confirmarEliminar() {
+        const btn = document.getElementById('btnConfirmarEliminar');
+        const id = document.getElementById('eliminarId').value;
+        btn.disabled = true;
+        btn.querySelector('.btn-text').textContent = 'Eliminando...';
+        try {
+            const res = await fetch(`/semantica/documentos/${id}/`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            if (!res.ok) throw new Error();
+            cerrarModal('modalEliminar');
+            await cargarDocumentos();
+        } catch {
+            alert('Error al eliminar');
+        } finally {
+            btn.disabled = false;
+            btn.querySelector('.btn-text').textContent = 'Eliminar';
+        }
+    }
+
+    function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    cargarDocumentos();
+</script>
+{% endblock %}

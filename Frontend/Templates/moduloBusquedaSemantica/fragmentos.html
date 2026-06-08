@@ -1,0 +1,261 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Fragmentos · Búsqueda Semántica{% endblock %}
+{% block nav_busqueda %}active{% endblock %}
+{% block page_title %}Fragmentos{% endblock %}
+{% block page_subtitle %}Contenido paginado de documentos indexados{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'eventos.css' %}">
+<style>
+  .fragmento-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    transition: box-shadow var(--transition);
+  }
+  .fragmento-item:hover { box-shadow: var(--shadow-hover); }
+  .fragmento-pagina {
+    min-width: 48px;
+    height: 48px;
+    background: var(--accent-light);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .fragmento-pagina .num {
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .fragmento-pagina .lbl {
+    font-size: var(--font-size-xs);
+    color: var(--accent-mid);
+    font-weight: 500;
+  }
+  .fragmento-texto {
+    flex: 1;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .fragmento-texto mark {
+    background: var(--warning-bg);
+    color: var(--text-primary);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+  #docSelector { max-width: 480px; }
+</style>
+{% endblock %}
+
+{% block topbar_extra %}
+<a href="{% url 'documento-lista-vista' %}" class="btn btn-ghost btn-sm">
+  ← Documentos
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Búsqueda -->
+<div class="card">
+  <div class="card-body">
+    <div class="eventos-toolbar">
+      <div class="search-box" style="flex:1;max-width:420px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </svg>
+        <input id="inputNombre" type="text" placeholder="Nombre del documento…" autocomplete="off" />
+      </div>
+      <input id="inputPagina" type="number" class="form-control" placeholder="Página (opcional)" min="1" style="width:160px;" />
+      <input id="inputTexto" type="text" class="form-control" placeholder="Buscar texto en fragmento…" style="width:220px;" />
+      <button class="btn btn-primary" onclick="buscar()">Buscar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Selector de documento cuando hay múltiples resultados -->
+<div id="docSelector" style="display:none;">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Selecciona el documento</span>
+    </div>
+    <div class="card-body" id="docSelectorList"></div>
+  </div>
+</div>
+
+<!-- Resultado: header del documento activo -->
+<div id="docHeader" style="display:none;" class="d-flex align-center gap-3 mb-3">
+  <span class="section-label" id="docNombreActivo"></span>
+  <span class="status-badge info" id="docTotalFragmentos"></span>
+</div>
+
+<!-- Lista de fragmentos -->
+<div id="listaFragmentos"></div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const URL_FRAGMENTOS = '/semantica/busqueda/fragmentos/';
+
+  let _nombreActivo = '';
+
+  // ── Utilidades ────────────────────────────────────────────────────────────
+
+  function toast(msg, tipo = 'success') {
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`;
+    t.textContent = msg;
+    document.getElementById('toastContainer').appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  function skeleton() {
+    return Array.from({length: 3}, (_, i) =>
+      `<div class="skeleton skeleton-card" style="height:90px;margin-bottom:10px;animation-delay:${i * .1}s"></div>`
+    ).join('');
+  }
+
+  function renderFragmentos(fragmentos, textoBusqueda = '') {
+    const lista = document.getElementById('listaFragmentos');
+    if (!fragmentos || fragmentos.length === 0) {
+      lista.innerHTML = `
+        <div class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+          </svg>
+          <h3>Sin fragmentos</h3>
+          <p>No se encontraron fragmentos para los criterios ingresados.</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('docTotalFragmentos').textContent = `${fragmentos.length} fragmento${fragmentos.length !== 1 ? 's' : ''}`;
+    document.getElementById('docHeader').style.display = 'flex';
+
+    // Resaltar texto buscado
+    function highlight(texto) {
+      if (!textoBusqueda) return escHtml(texto);
+      const re = new RegExp(`(${textoBusqueda.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return escHtml(texto).replace(re, '<mark>$1</mark>');
+    }
+
+    lista.innerHTML = fragmentos.map(f => `
+      <div class="fragmento-item">
+        <div class="fragmento-pagina">
+          <span class="num">${f.pagina ?? '—'}</span>
+          <span class="lbl">pág.</span>
+        </div>
+        <div class="fragmento-texto">${highlight(f.contenido || '')}</div>
+      </div>`).join('');
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Selector cuando hay múltiples documentos ──────────────────────────────
+
+  function mostrarSelector(documentos) {
+    const lista = document.getElementById('docSelectorList');
+    lista.innerHTML = documentos.map(d => `
+      <div class="doc-item" style="cursor:pointer;" onclick="elegirDoc('${escHtml(d.nombre)}')">
+        <span class="doc-name">${escHtml(d.nombre)}</span>
+        <span class="doc-type">PDF</span>
+      </div>`).join('');
+    document.getElementById('docSelector').style.display = 'block';
+    document.getElementById('listaFragmentos').innerHTML = '';
+    document.getElementById('docHeader').style.display = 'none';
+  }
+
+  async function elegirDoc(nombre) {
+    document.getElementById('docSelector').style.display = 'none';
+    document.getElementById('inputNombre').value = nombre;
+    await cargarFragmentos(nombre);
+  }
+
+  // ── Carga principal ───────────────────────────────────────────────────────
+
+  async function cargarFragmentos(nombre, pagina = '', texto = '') {
+    _nombreActivo = nombre;
+    document.getElementById('docNombreActivo').textContent = nombre;
+    document.getElementById('listaFragmentos').innerHTML = skeleton();
+    document.getElementById('docHeader').style.display = 'none';
+
+    let url = `${URL_FRAGMENTOS}?nombre=${encodeURIComponent(nombre)}`;
+    if (pagina) url += `&pagina=${pagina}`;
+    if (texto)  url += `&texto=${encodeURIComponent(texto)}`;
+
+    try {
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      if (!res.ok) { toast(data.error || 'Error al buscar fragmentos.', 'error'); return; }
+
+      // Múltiples documentos → elegir
+      if (data.seleccion_requerida) {
+        mostrarSelector(data.seleccion_requerida);
+        return;
+      }
+
+      // Un fragmento (búsqueda por página)
+      if (data.fragmento !== undefined) {
+        renderFragmentos(data.fragmento ? [data.fragmento] : [], texto);
+        return;
+      }
+
+      // Lista de fragmentos
+      renderFragmentos(data.fragmentos || [], texto);
+
+    } catch (err) {
+      toast('Error de conexión.', 'error');
+      document.getElementById('listaFragmentos').innerHTML = '';
+    }
+  }
+
+  // ── Acción del usuario ────────────────────────────────────────────────────
+
+  function buscar() {
+    const nombre = document.getElementById('inputNombre').value.trim();
+    const pagina = document.getElementById('inputPagina').value.trim();
+    const texto  = document.getElementById('inputTexto').value.trim();
+
+    if (!nombre) { toast('Ingresa el nombre del documento.', 'error'); return; }
+
+    document.getElementById('docSelector').style.display = 'none';
+    cargarFragmentos(nombre, pagina, texto);
+  }
+
+  // Enter en cualquier campo dispara búsqueda
+  ['inputNombre','inputPagina','inputTexto'].forEach(id =>
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') buscar();
+    })
+  );
+
+  // Si viene ?nombre= en la URL, carga automáticamente
+  const params = new URLSearchParams(window.location.search);
+  const nombreParam = params.get('nombre');
+  if (nombreParam) {
+    document.getElementById('inputNombre').value = nombreParam;
+    cargarFragmentos(nombreParam);
+  }
+</script>
+{% endblock %}

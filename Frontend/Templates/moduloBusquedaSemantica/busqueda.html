@@ -1,0 +1,222 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Buscar Documentos · Búsqueda Semántica{% endblock %}
+{% block nav_busqueda %}active{% endblock %}
+{% block page_title %}Buscar Documentos{% endblock %}
+{% block page_subtitle %}Filtra por nombre, fecha o tema{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'eventos.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros -->
+<div class="card">
+  <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+
+    <!-- Por nombre -->
+    <div style="flex:1;min-width:200px;">
+      <label class="form-label">Nombre del documento</label>
+      <div class="search-box">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </svg>
+        <input type="text" id="inputNombre" placeholder="Buscar por nombre…"
+          onkeydown="if(event.key==='Enter') buscarPorNombre()">
+      </div>
+    </div>
+
+    <!-- Por tema -->
+    <div style="min-width:180px;">
+      <label class="form-label">Tema</label>
+      <select class="filter-select" id="selectTema" onchange="buscarPorTema()">
+        <option value="">Todos los temas</option>
+      </select>
+    </div>
+
+    <!-- Por fecha -->
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+      <div>
+        <label class="form-label">Desde</label>
+        <input type="date" class="form-control" id="inputDesde" style="width:auto;">
+      </div>
+      <div>
+        <label class="form-label">Hasta</label>
+        <input type="date" class="form-control" id="inputHasta" style="width:auto;">
+      </div>
+      <button class="btn btn-outline" onclick="buscarPorFecha()">Buscar</button>
+    </div>
+
+    <button class="btn btn-ghost" onclick="cargarTodos()">Ver todos</button>
+  </div>
+</div>
+
+<!-- Badge de búsqueda activa -->
+<div id="badgeBusqueda" style="display:none;align-items:center;gap:8px;">
+  <span class="tipo-pill" id="txtBadge"></span>
+  <button class="btn btn-ghost btn-sm" onclick="cargarTodos()">✕ Limpiar</button>
+  <span id="conteoResultados" style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:4px;"></span>
+</div>
+
+<!-- Lista de resultados -->
+<div id="listaDocumentos"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /* ── Capa front automática: carga temas y documentos al entrar ── */
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarTemas();
+    cargarTodos();
+  });
+
+  /* ── Carga temas en el select ── */
+  async function cargarTemas() {
+    try {
+      const res  = await fetch('/semantica/busqueda/temas/');
+      const data = await res.json();
+      const sel  = document.getElementById('selectTema');
+      (data.temas || []).forEach(t => {
+        const op = document.createElement('option');
+        op.value = t; op.textContent = t;
+        sel.appendChild(op);
+      });
+    } catch { /* silencioso */ }
+  }
+
+  /* ── Carga todos los documentos ── */
+  async function cargarTodos() {
+    limpiarFiltros();
+    await buscar('/semantica/busqueda/documentos/');
+  }
+
+  /* ── Acciones del usuario ── */
+  async function buscarPorNombre() {
+    const nombre = document.getElementById('inputNombre').value.trim();
+    if (!nombre) return cargarTodos();
+    mostrarBadge(`Nombre: "${nombre}"`);
+    await buscar(`/semantica/busqueda/documentos/?nombre=${encodeURIComponent(nombre)}`);
+  }
+
+  async function buscarPorTema() {
+    const tema = document.getElementById('selectTema').value;
+    if (!tema) return cargarTodos();
+    mostrarBadge(`Tema: "${tema}"`);
+    await buscar(`/semantica/busqueda/documentos/?tema=${encodeURIComponent(tema)}`);
+  }
+
+  async function buscarPorFecha() {
+    const desde = document.getElementById('inputDesde').value;
+    const hasta = document.getElementById('inputHasta').value;
+    if (!desde || !hasta) { toast('Selecciona ambas fechas.', 'error'); return; }
+    mostrarBadge(`Fecha: ${desde} → ${hasta}`);
+    await buscar(`/semantica/busqueda/documentos/?fechaInicio=${desde}&fechaFin=${hasta}`);
+  }
+
+  /* ── Fetch genérico ── */
+  async function buscar(url) {
+    renderSkeleton();
+    try {
+      const res  = await fetch(url);
+      const data = await res.json();
+      const docs = (data.documentos || []).map(d => ({
+        ...d,
+        temas: Array.isArray(d.temas)
+          ? d.temas
+          : (d.temas ? String(d.temas).replace(/^{|}$/g,'').split(',').filter(Boolean) : [])
+      }));
+      renderDocs(docs);
+    } catch {
+      toast('Error al cargar documentos.', 'error');
+      renderDocs([]);
+    }
+  }
+
+  /* ── Render ── */
+  function renderDocs(docs) {
+    const conteo = document.getElementById('conteoResultados');
+    if (conteo) conteo.textContent = `${docs.length} resultado${docs.length !== 1 ? 's' : ''}`;
+
+    if (!docs.length) {
+      document.getElementById('listaDocumentos').innerHTML = `
+        <div class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
+                 a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504
+                 -1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+          </svg>
+          <h3>Sin documentos</h3>
+          <p>No hay resultados para esta búsqueda.</p>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('listaDocumentos').innerHTML = docs.map(d => {
+      const temas = (d.temas || []).map(t => `<span class="tipo-pill">${t}</span>`).join('');
+      const fecha = d.registrado_en ? new Date(d.registrado_en).toLocaleDateString('es-CO') : '—';
+      return `
+        <div class="evento-card" onclick="irFragmentos('${d.nombre}')">
+          <div class="evento-card-date">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;color:var(--accent);">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
+                   a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25
+                   c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+            </svg>
+          </div>
+          <div class="evento-card-body">
+            <div class="evento-card-title">${d.nombre}</div>
+            <div class="evento-card-meta">
+              <span>${fecha}</span>
+              ${d.total_fragmentos != null ? `<span>${d.total_fragmentos} fragmentos</span>` : ''}
+              ${d.total_argumentos != null ? `<span>${d.total_argumentos} argumentos</span>` : ''}
+            </div>
+            <div class="evento-card-tipos">${temas || '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin temas</span>'}</div>
+          </div>
+          <div class="evento-card-right">
+            <span class="btn btn-ghost btn-sm">Ver fragmentos →</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderSkeleton() {
+    document.getElementById('listaDocumentos').innerHTML =
+      [1,2,3].map(() => `<div class="skeleton" style="height:80px;border-radius:var(--radius-md);margin-bottom:10px;"></div>`).join('');
+  }
+
+  /* ── Helpers ── */
+  function irFragmentos(nombre) {
+    window.location.href = `/semantica/fragmentos/?nombre=${encodeURIComponent(nombre)}`;
+  }
+
+  function mostrarBadge(texto) {
+    const badge = document.getElementById('badgeBusqueda');
+    badge.style.display = 'flex';
+    document.getElementById('txtBadge').textContent = texto;
+  }
+
+  function limpiarFiltros() {
+    document.getElementById('inputNombre').value  = '';
+    document.getElementById('selectTema').value   = '';
+    document.getElementById('inputDesde').value   = '';
+    document.getElementById('inputHasta').value   = '';
+    document.getElementById('badgeBusqueda').style.display = 'none';
+  }
+
+  function toast(msg, tipo = 'success') {
+    const c = document.querySelector('.toast-container') || (() => {
+      const d = document.createElement('div'); d.className = 'toast-container';
+      document.body.appendChild(d); return d;
+    })();
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`; t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+</script>
+{% endblock %}

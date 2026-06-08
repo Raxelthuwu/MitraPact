@@ -12,9 +12,7 @@
     .nav-item svg           { width: 18px !important; height: 18px !important; flex-shrink: 0; }
     .btn svg                { width: 15px !important; height: 15px !important; flex-shrink: 0; }
     .kpi-icon svg           { width: 24px !important; height: 24px !important; }
-    .btn-notif svg          { width: 20px !important; height: 20px !important; }
     .btn-menu svg           { width: 20px !important; height: 20px !important; }
-    .date-range-display svg { width: 15px !important; height: 15px !important; }
     .empty-state svg        { width: 40px !important; height: 40px !important; }
     .toast svg              { width: 16px !important; height: 16px !important; }
     .sidebar-user svg       { width: 14px !important; height: 14px !important; }
@@ -28,6 +26,43 @@
       color: var(--text-muted);
       padding: 14px 12px 4px;
     }
+
+    /* Contenedor del calendario desplegable */
+    .calendar-dropdown-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 12px;
+      gap: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      cursor: pointer;
+    }
+
+    .calendar-dropdown-wrapper svg {
+      width: 15px !important;
+      height: 15px !important;
+      color: #64748b;
+    }
+
+    /* Input invisible superpuesto para disparar el calendario nativo */
+    .calendar-native-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    #dateRangeLabel {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1e293b;
+    }
   </style>
 </head>
 <body>
@@ -36,7 +71,6 @@
 
 <div class="app-shell">
 
-  <!-- ── SIDEBAR ── -->
   <aside class="sidebar" id="sidebar">
 
     <div class="sidebar-logo">
@@ -47,7 +81,6 @@
 
     <nav class="sidebar-nav" aria-label="Menú principal">
 
-      <!-- ── Eventos ── -->
       <div class="nav-separator">Eventos</div>
 
       <a href="{% url 'eventos_frontend' %}" class="nav-item {% block nav_eventos %}{% endblock %}">
@@ -57,7 +90,6 @@
         Gestión de Eventos
       </a>
 
-      <!-- ── Estadísticas ── -->
       <div class="nav-separator">Análisis</div>
 
       <a href="#" class="nav-item {% block nav_estadisticas %}{% endblock %}">
@@ -67,10 +99,9 @@
         Estadísticas Territoriales
       </a>
 
-      <!-- ── Búsqueda Semántica ── -->
       <div class="nav-separator">Inteligencia</div>
 
-      <a href="#" class="nav-item {% block nav_busqueda %}{% endblock %}">
+      <a href="{% url 'semantica-inicio' %}" class="nav-item {% block nav_busqueda %}{% endblock %}">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
@@ -130,24 +161,15 @@
       <div class="topbar-actions">
         {% block topbar_extra %}{% endblock %}
 
-        <button class="btn-notif" aria-label="Notificaciones">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
-               stroke-width="1.7" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-          </svg>
-        </button>
-
-        <div class="date-range-display">
+        <div class="calendar-dropdown-wrapper">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
           </svg>
-          <span id="dateRangeLabel">Este mes</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24"
-               stroke-width="2.5" stroke="currentColor">
+          <span id="dateRangeLabel">Cargando...</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
           </svg>
+          <input type="date" class="calendar-native-input" id="calendarInput" onchange="updateDateLabel(this.value)">
         </div>
       </div>
     </header>
@@ -185,13 +207,27 @@
     document.body.style.overflow = '';
   }
 
-  (function () {
-    const now    = new Date();
-    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    const label  = `1 ${months[now.getMonth()]} – ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
-    const el     = document.getElementById('dateRangeLabel');
-    if (el) el.textContent = label;
-  })();
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  function initCalendar() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    document.getElementById('calendarInput').value = `${yyyy}-${mm}-${dd}`;
+    document.getElementById('dateRangeLabel').textContent = `${now.getDate()} ${months[now.getMonth()]} ${yyyy}`;
+  }
+
+  function updateDateLabel(dateString) {
+    if (!dateString) return;
+    const parts = dateString.split('-');
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    document.getElementById('dateRangeLabel').textContent = `${day} ${months[monthIndex]} ${year}`;
+  }
+
+  initCalendar();
 
   document.querySelectorAll('.messages-container .alert').forEach(function (el) {
     setTimeout(function () {

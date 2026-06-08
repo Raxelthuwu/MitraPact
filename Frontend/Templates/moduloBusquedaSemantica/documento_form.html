@@ -1,0 +1,453 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Cargar Documento · Búsqueda Semántica{% endblock %}
+{% block nav_busqueda %}active{% endblock %}
+{% block page_title %}Búsqueda Semántica{% endblock %}
+{% block page_subtitle %}Carga e indexación de documentos PDF{% endblock %}
+
+{% block extra_css %}
+<style>
+.upload-wrapper{
+    max-width:900px;
+    margin:0 auto;
+}
+
+.upload-card{
+    background:var(--surface, #fff);
+    border:1px solid var(--border, #e5e7eb);
+    border-radius:20px;
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(0,0,0,.05);
+}
+
+.upload-header{
+    padding:28px;
+    border-bottom:1px solid var(--border, #e5e7eb);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.upload-title{
+    display:flex;
+    align-items:center;
+    gap:14px;
+}
+
+.upload-icon{
+    width:52px;
+    height:52px;
+    border-radius:14px;
+    background:rgba(59,130,246,.12);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:24px;
+}
+
+.upload-title h2{
+    margin:0;
+    font-size:1.2rem;
+}
+
+.upload-title p{
+    margin:4px 0 0;
+    color:var(--text-muted,#6b7280);
+    font-size:.9rem;
+}
+
+.upload-body{
+    padding:28px;
+}
+
+.dropzone{
+    border:2px dashed var(--border,#d1d5db);
+    border-radius:18px;
+    padding:48px 24px;
+    text-align:center;
+    cursor:pointer;
+    transition:.25s;
+    margin-bottom:24px;
+}
+
+.dropzone:hover{
+    border-color:var(--accent,#3b82f6);
+    background:rgba(59,130,246,.04);
+}
+
+.dropzone.dragover{
+    border-color:var(--accent,#3b82f6);
+    background:rgba(59,130,246,.08);
+}
+
+.dropzone-icon{
+    font-size:48px;
+    margin-bottom:12px;
+}
+
+.dropzone h3{
+    margin:0;
+    font-size:1.1rem;
+}
+
+.dropzone p{
+    margin:8px 0;
+    color:var(--text-muted,#6b7280);
+}
+
+.file-info{
+    display:none;
+    margin-top:15px;
+    padding:12px 14px;
+    border-radius:12px;
+    background:#f8fafc;
+    border:1px solid #e5e7eb;
+    text-align:left;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+@media (max-width:768px){
+    .grid{
+        grid-template-columns:1fr;
+    }
+}
+
+.form-group{
+    margin-bottom:20px;
+}
+
+.form-label{
+    display:block;
+    margin-bottom:8px;
+    font-weight:600;
+}
+
+.progress-wrapper{
+    display:none;
+    margin-top:20px;
+}
+
+.progress-bar-bg{
+    height:8px;
+    background:#e5e7eb;
+    border-radius:999px;
+    overflow:hidden;
+}
+
+.progress-bar{
+    height:100%;
+    width:0%;
+    border-radius:999px;
+    background:linear-gradient(90deg,#2563eb,#3b82f6);
+    transition:width .3s;
+}
+
+.progress-text{
+    margin-top:10px;
+    font-size:.9rem;
+    color:#6b7280;
+}
+
+.footer-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    margin-top:30px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-wrapper">
+
+    <div class="upload-card">
+
+        <div class="upload-header">
+
+            <div class="upload-title">
+                <div class="upload-icon">
+                    📄
+                </div>
+
+                <div>
+                    <h2>Nuevo Documento</h2>
+                    <p>Sube un PDF para indexación y búsqueda semántica.</p>
+                </div>
+            </div>
+
+            <a href="{% url 'documento-lista-vista' %}" class="btn btn-ghost">
+                ← Volver
+            </a>
+
+        </div>
+
+        <div class="upload-body">
+
+            <div id="dropzone" class="dropzone">
+                <div class="dropzone-icon">☁️</div>
+
+                <h3>Arrastra tu PDF aquí</h3>
+
+                <p>o haz clic para seleccionarlo</p>
+
+                <small>Solo archivos PDF</small>
+
+                <input
+                    id="inputArchivo"
+                    type="file"
+                    accept=".pdf"
+                    hidden
+                >
+
+                <div id="fileInfo" class="file-info"></div>
+            </div>
+
+            <div class="grid">
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Nombre del documento *
+                    </label>
+
+                    <input
+                        id="inputNombre"
+                        type="text"
+                        class="form-control"
+                        placeholder="Ej. Plan de Desarrollo 2024"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Temas
+                    </label>
+
+                    <input
+                        id="inputTemas"
+                        type="text"
+                        class="form-control"
+                        placeholder="salud, educación, vivienda"
+                    >
+                </div>
+
+            </div>
+
+            <div
+                id="progreso"
+                class="progress-wrapper"
+            >
+                <div class="progress-bar-bg">
+                    <div
+                        id="barra"
+                        class="progress-bar"
+                    ></div>
+                </div>
+
+                <div
+                    id="progresoLabel"
+                    class="progress-text"
+                >
+                    Preparando documento...
+                </div>
+            </div>
+
+            <div class="footer-actions">
+
+                <a
+                    href="{% url 'documento-lista-vista' %}"
+                    class="btn btn-ghost"
+                >
+                    Cancelar
+                </a>
+
+                <button
+                    id="btnCargar"
+                    class="btn btn-primary"
+                    onclick="cargar()"
+                >
+                    📤 Cargar Documento
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+function toast(msg, tipo = 'success') {
+    const c = document.getElementById('toastContainer');
+
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`;
+    t.textContent = msg;
+
+    c.appendChild(t);
+
+    setTimeout(() => t.remove(), 3500);
+}
+
+const inputArchivo = document.getElementById('inputArchivo');
+const dropzone = document.getElementById('dropzone');
+const fileInfo = document.getElementById('fileInfo');
+
+dropzone.addEventListener('click', () => {
+    inputArchivo.click();
+});
+
+dropzone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+});
+
+dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+});
+
+dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+
+    dropzone.classList.remove('dragover');
+
+    if (e.dataTransfer.files.length) {
+        inputArchivo.files = e.dataTransfer.files;
+        mostrarArchivo();
+    }
+});
+
+inputArchivo.addEventListener('change', mostrarArchivo);
+
+function mostrarArchivo() {
+
+    const archivo = inputArchivo.files[0];
+
+    if (!archivo) return;
+
+    fileInfo.style.display = 'block';
+
+    fileInfo.innerHTML = `
+        <strong>${archivo.name}</strong><br>
+        ${(archivo.size / 1024 / 1024).toFixed(2)} MB
+    `;
+}
+
+async function cargar() {
+
+    const nombre = document.getElementById('inputNombre').value.trim();
+    const temas = document.getElementById('inputTemas').value.trim();
+    const archivo = inputArchivo.files[0];
+
+    if (!nombre)
+        return toast('El nombre es requerido.', 'error');
+
+    if (!archivo)
+        return toast('Selecciona un archivo PDF.', 'error');
+
+    const btn = document.getElementById('btnCargar');
+
+    btn.disabled = true;
+    btn.textContent = 'Procesando...';
+
+    const progreso = document.getElementById('progreso');
+    const barra = document.getElementById('barra');
+    const label = document.getElementById('progresoLabel');
+
+    progreso.style.display = 'block';
+
+    const estados = [
+        'Subiendo PDF...',
+        'Extrayendo texto...',
+        'Dividiendo contenido...',
+        'Generando embeddings...',
+        'Guardando información...'
+    ];
+
+    let pct = 0;
+    let idx = 0;
+
+    const intervalo = setInterval(() => {
+
+        pct = Math.min(pct + 4, 90);
+
+        barra.style.width = pct + '%';
+
+        label.textContent =
+            estados[Math.min(idx++, estados.length - 1)];
+
+    }, 500);
+
+    const fd = new FormData();
+
+    fd.append('nombre', nombre);
+    fd.append('archivo', archivo);
+
+    if (temas)
+        fd.append('temas', temas);
+
+    try {
+
+        const res = await fetch(
+            '/semantica/documentos/',
+            {
+                method: 'POST',
+                body: fd
+            }
+        );
+
+        const data = await res.json();
+
+        clearInterval(intervalo);
+
+        barra.style.width = '100%';
+
+        label.textContent =
+            'Documento indexado correctamente';
+
+        if (!res.ok)
+            throw new Error(
+                data.error || 'Error al cargar'
+            );
+
+        toast(
+            'Documento cargado correctamente'
+        );
+
+        setTimeout(() => {
+
+            window.location.href =
+                "{% url 'documento-lista-vista' %}";
+
+        }, 1200);
+
+    }
+    catch (err) {
+
+        clearInterval(intervalo);
+
+        progreso.style.display = 'none';
+
+        btn.disabled = false;
+        btn.textContent =
+            '📤 Cargar Documento';
+
+        toast(
+            err.message,
+            'error'
+        );
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Auditoría — Búsqueda Semántica{% endblock %}
+
+{% block content %}
+<div class="page-content">
+
+  <!-- Topbar -->
+  <div class="topbar" style="position:sticky;top:0;z-index:90;">
+    <div class="topbar-title">
+      <h1>Auditoría del Índice</h1>
+      <p>Verificación de integridad semántica</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="cargarTodo()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Recargar todo
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="kpi-card" id="kpi-docsSinArgs">
+      <div class="kpi-icon orange">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 9.414V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="val-docsSinArgs">—</div>
+        <div class="kpi-label">Docs sin argumentos</div>
+      </div>
+    </div>
+
+    <div class="kpi-card" id="kpi-argsSinDoc">
+      <div class="kpi-icon orange">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="val-argsSinDoc">—</div>
+        <div class="kpi-label">Args sin documento</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon blue">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M4 6h16M4 10h16M4 14h16M4 18h7"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="val-totalFrags">—</div>
+        <div class="kpi-label">Total fragmentos</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon purple">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="val-topDoc">—</div>
+        <div class="kpi-label">Más argumentos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid principal: 2 columnas -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+    <!-- Documentos sin argumentos -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Documentos sin argumentos</span>
+        <span class="status-badge warning" id="badge-docsSinArgs">cargando…</span>
+      </div>
+      <div class="card-body" id="lista-docsSinArgs">
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </div>
+
+    <!-- Argumentos sin documento -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Argumentos sin documento</span>
+        <span class="status-badge warning" id="badge-argsSinDoc">cargando…</span>
+      </div>
+      <div class="card-body" id="lista-argsSinDoc">
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Fragmentos por documento -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Fragmentos por documento</span>
+      <span class="text-muted text-xs" id="badge-frags">cargando…</span>
+    </div>
+    <div class="card-body" id="tabla-frags">
+      <div class="skeleton skeleton-card"></div>
+    </div>
+  </div>
+
+  <!-- Top documentos con más argumentos -->
+  <div class="card">
+    <div class="card-header" style="align-items:center;">
+      <span class="card-title">Top documentos con más argumentos</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label class="text-xs text-muted" for="limiteTop">Límite</label>
+        <select id="limiteTop" class="form-control form-select" style="width:80px;padding:4px 28px 4px 8px;" onchange="cargarTopDocs()">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body" id="lista-topDocs">
+      <div class="skeleton skeleton-card"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const BASE = '/semantica';
+
+function toast(msg, tipo = 'error') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${tipo}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ─── Documentos sin argumentos ─────────────────────────────────────────────
+async function cargarDocsSinArgs() {
+  try {
+    const r  = await fetch(`${BASE}/filter/auditoria/?tipo=documentosSinArgumentos`);
+    const d  = await r.json();
+    const items = d.documentos || [];
+    document.getElementById('val-docsSinArgs').textContent = items.length;
+    const badge = document.getElementById('badge-docsSinArgs');
+    badge.textContent = `${items.length} registros`;
+    badge.className   = `status-badge ${items.length > 0 ? 'warning' : 'success'}`;
+
+    const el = document.getElementById('lista-docsSinArgs');
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state" style="padding:24px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p>Sin problemas detectados</p>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="doc-list">${items.map(doc => `
+      <div class="doc-item">
+        <span class="doc-name">${doc.nombre ?? doc.id ?? '—'}</span>
+        <span class="doc-type">${doc.registrado_en ? new Date(doc.registrado_en).toLocaleDateString('es-CO') : ''}</span>
+      </div>`).join('')}
+    </div>`;
+  } catch {
+    toast('Error al cargar documentos sin argumentos');
+  }
+}
+
+// ─── Argumentos sin documento ───────────────────────────────────────────────
+async function cargarArgsSinDoc() {
+  try {
+    const r  = await fetch(`${BASE}/filter/auditoria/?tipo=argumentosSinDocumento`);
+    const d  = await r.json();
+    const items = d.argumentos || [];
+    document.getElementById('val-argsSinDoc').textContent = items.length;
+    const badge = document.getElementById('badge-argsSinDoc');
+    badge.textContent = `${items.length} registros`;
+    badge.className   = `status-badge ${items.length > 0 ? 'warning' : 'success'}`;
+
+    const el = document.getElementById('lista-argsSinDoc');
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state" style="padding:24px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p>Sin problemas detectados</p>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="doc-list">${items.map(arg => `
+      <div class="doc-item">
+        <span class="doc-name">${arg.texto ?? arg.id ?? '—'}</span>
+        <span class="doc-type">${arg.problematica_cod ? `P-${arg.problematica_cod}` : ''}</span>
+      </div>`).join('')}
+    </div>`;
+  } catch {
+    toast('Error al cargar argumentos sin documento');
+  }
+}
+
+// ─── Fragmentos por documento ───────────────────────────────────────────────
+async function cargarFrags() {
+  try {
+    const r  = await fetch(`${BASE}/filter/auditoria/?tipo=fragmentosPorDocumento`);
+    const d  = await r.json();
+    const items = d.fragmentos || [];
+
+    const totalFrags = items.reduce((s, i) => s + (i.total_fragmentos ?? 0), 0);
+    document.getElementById('val-totalFrags').textContent = totalFrags;
+    document.getElementById('badge-frags').textContent = `${items.length} documentos`;
+
+    const el = document.getElementById('tabla-frags');
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Sin datos</p></div>`;
+      return;
+    }
+
+    const max = Math.max(...items.map(i => i.total_fragmentos ?? 0));
+    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">
+      ${items.map(i => {
+        const pct = max > 0 ? Math.round((i.total_fragmentos / max) * 100) : 0;
+        return `<div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span class="text-sm">${i.nombre ?? i.documento_id ?? '—'}</span>
+            <span class="text-xs text-muted fw-600">${i.total_fragmentos} frags</span>
+          </div>
+          <div class="cobertura-bar-bg">
+            <div class="cobertura-bar-fill" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } catch {
+    toast('Error al cargar fragmentos');
+  }
+}
+
+// ─── Top docs con más argumentos ────────────────────────────────────────────
+async function cargarTopDocs() {
+  const limite = document.getElementById('limiteTop').value;
+  try {
+    const r  = await fetch(`${BASE}/filter/auditoria/?limite=${limite}`);
+    const d  = await r.json();
+    const items = d.documentos || [];
+
+    if (items.length) {
+      document.getElementById('val-topDoc').textContent = items[0].nombre ?? items[0].id ?? '—';
+    }
+
+    const el = document.getElementById('lista-topDocs');
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Sin datos</p></div>`;
+      return;
+    }
+
+    const max = Math.max(...items.map(i => i.total_argumentos ?? 0));
+    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">
+      ${items.map((i, idx) => {
+        const pct = max > 0 ? Math.round((i.total_argumentos / max) * 100) : 0;
+        const medal = idx === 0 ? '#F59E0B' : idx === 1 ? '#9CA3AF' : idx === 2 ? '#D97706' : 'var(--accent)';
+        return `<div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-family:var(--font-display);font-size:var(--font-size-sm);font-weight:700;color:${medal};min-width:20px;">${idx+1}</span>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span class="text-sm">${i.nombre ?? i.id ?? '—'}</span>
+              <span class="text-xs text-muted fw-600">${i.total_argumentos} args</span>
+            </div>
+            <div class="cobertura-bar-bg">
+              <div class="cobertura-bar-fill" style="width:${pct}%;background:${medal};"></div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } catch {
+    toast('Error al cargar top documentos');
+  }
+}
+
+// ─── Carga inicial ───────────────────────────────────────────────────────────
+function cargarTodo() {
+  cargarDocsSinArgs();
+  cargarArgsSinDoc();
+  cargarFrags();
+  cargarTopDocs();
+}
+
+cargarTodo();
+</script>
+{% endblock %}

@@ -13,12 +13,11 @@ class ChromaService:
         logging.info("[ChromaService] Cliente de ChromaDB conectado.")
 
     def getOrCreateCollection(self, name: str, metadata: dict = None):
-        #Mantiene un comportamiento síncrono al ser una asignación de referencia local.
         logging.info(f"[Colección] Obteniendo o creando colección: '{name}'")
-        collection = self.client.get_or_create_collection(
-            name=name,
-            metadata=metadata or {}
-        )
+        kwargs = {"name": name}
+        if metadata:
+            kwargs["metadata"] = metadata
+        collection = self.client.get_or_create_collection(**kwargs)
         return collection
 
 
@@ -35,9 +34,10 @@ class ChromaService:
             ids=[fragmentoId],
             embeddings=[embedding],
             documents=[""],
+
             metadatas=[{
-                "fragmento_id": fragmentoId,
-                "documento_id": documentoId,
+                "fragmento_id": str(fragmentoId),
+                "documento_id": str(documentoId),
                 "pagina":       pagina
             }]
         )
@@ -100,8 +100,8 @@ class ChromaService:
             embeddings=[embedding],
             documents=[""],
             metadatas=[{
-                "encuesta_id":      encuestaId,
-                "barrio_id":        barrioId,
+                "encuesta_id":      str(encuestaId),
+                "barrio_id":        str(barrioId),
                 "inclinacion_voto": inclinacionVoto
             }]
         )
@@ -146,10 +146,10 @@ class ChromaService:
             embeddings=[embedding],
             documents=[""],
             metadatas=[{
-                "argumento_id":     argumentoId,
+                "argumento_id":     str(argumentoId),
                 "tema":             tema,
                 "problematica_cod": problematicaCod,
-                "barrio_id":        barrioId
+                "barrio_id":        str(barrioId)
             }]
         )
         logging.info(f"[Argumentos] Upsert asíncrono completado con éxito para argumento_id: '{argumentoId}'")

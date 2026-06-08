@@ -1,0 +1,248 @@
+{% extends "base.HTML" %}
+{% load static %}
+
+{% block title %}Consulta Semántica · Búsqueda Semántica{% endblock %}
+{% block nav_busqueda %}active{% endblock %}
+{% block page_title %}Consulta Semántica{% endblock %}
+{% block page_subtitle %}Búsqueda por lenguaje natural y por problemática{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'eventos.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Selector de modo -->
+<div class="card">
+  <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <button class="btn btn-primary" id="btnModoNatural" onclick="setModo('natural')">Lenguaje natural</button>
+    <button class="btn btn-ghost"   id="btnModoProblematica" onclick="setModo('problematica')">Por problemática</button>
+    <span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:auto;">
+      Resultados:
+      <select class="filter-select" id="selN" style="margin-left:6px;" onchange="limpiarResultados()">
+        <option value="3">3</option>
+        <option value="5" selected>5</option>
+        <option value="10">10</option>
+        <option value="20">20</option>
+      </select>
+    </span>
+  </div>
+</div>
+
+<!-- Input de consulta -->
+<div class="card">
+  <div class="card-body">
+    <div class="form-group mb-0">
+      <label class="form-label" id="lblInput">Escribe tu consulta</label>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <textarea id="inputConsulta" class="form-control" rows="3"
+          placeholder="Ej: ¿Cuáles son los argumentos sobre seguridad en los barrios?"
+          style="resize:vertical;flex:1;"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();buscar();}"></textarea>
+        <button class="btn btn-primary" onclick="buscar()" id="btnBuscar" style="white-space:nowrap;">
+          Buscar
+        </button>
+      </div>
+      <p class="form-hint">Enter para buscar · Shift+Enter para salto de línea</p>
+    </div>
+  </div>
+</div>
+
+<!-- Resultados -->
+<div id="contenedorResultados" style="display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+    <span class="section-label" id="lblResultados"></span>
+    <button class="btn btn-ghost btn-sm" onclick="limpiarResultados()">Limpiar</button>
+  </div>
+  <div id="listaResultados"></div>
+</div>
+
+<!-- Empty / loading -->
+<div id="estadoVacio" class="empty-state">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round"
+      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+  </svg>
+  <h3>Haz tu primera consulta</h3>
+  <p>Escribe en lenguaje natural o selecciona el modo por problemática</p>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /* ── Estado ── */
+  let _modo = 'natural'; // 'natural' | 'problematica'
+
+  /* ── Capa front automática: configura modo al cargar ── */
+  document.addEventListener('DOMContentLoaded', () => setModo('natural'));
+
+  /* ── Cambiar modo ── */
+  function setModo(modo) {
+    _modo = modo;
+    const esNatural = modo === 'natural';
+    document.getElementById('btnModoNatural').className      = esNatural ? 'btn btn-primary' : 'btn btn-ghost';
+    document.getElementById('btnModoProblematica').className = esNatural ? 'btn btn-ghost'   : 'btn btn-primary';
+    document.getElementById('lblInput').textContent          = esNatural
+      ? 'Escribe tu consulta en lenguaje natural'
+      : 'Código o nombre de la problemática';
+    document.getElementById('inputConsulta').placeholder    = esNatural
+      ? 'Ej: ¿Cuáles son los argumentos sobre seguridad en los barrios?'
+      : 'Ej: 12 o "Seguridad ciudadana"';
+    limpiarResultados();
+  }
+
+  /* ── Acción del usuario: buscar ── */
+  async function buscar() {
+    const texto = document.getElementById('inputConsulta').value.trim();
+    if (!texto) return;
+
+    const n      = document.getElementById('selN').value;
+    const btn    = document.getElementById('btnBuscar');
+    btn.disabled = true;
+    btn.textContent = 'Buscando…';
+    ocultarResultados();
+
+    try {
+      const param = _modo === 'natural'
+        ? `consulta=${encodeURIComponent(texto)}&nResultados=${n}`
+        : `problematica=${encodeURIComponent(texto)}&nResultados=${n}`;
+
+      const res  = await fetch(`/semantica/consulta/?${param}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast(data.error || 'Error en la consulta.', 'error');
+        return;
+      }
+
+      if (_modo === 'natural') {
+        renderFragmentos(data.fragmentos || [], texto);
+      } else {
+        renderArgumentos(data.argumentos || [], texto);
+      }
+    } catch {
+      toast('Error de conexión.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Buscar';
+    }
+  }
+
+  /* ── Render fragmentos (modo natural) ── */
+  function renderFragmentos(items, consulta) {
+    const label = document.getElementById('lblResultados');
+    label.textContent = `${items.length} fragmento${items.length !== 1 ? 's' : ''} — "${consulta}"`;
+
+    if (!items.length) {
+      mostrarVacio('Sin resultados para esta consulta.');
+      return;
+    }
+
+    const html = items.map((f, i) => {
+      const score   = f.score != null ? Math.round(f.score * 100) : null;
+      const badgeColor = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
+      return `
+        <div class="card" style="margin-bottom:10px;">
+          <div class="card-body">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px;flex-wrap:wrap;">
+              <span style="font-family:var(--font-display);font-size:var(--font-size-sm);font-weight:600;color:var(--text-primary);">
+                ${f.nombre_documento || 'Documento'}
+                ${f.pagina != null ? `<span style="color:var(--text-muted);font-weight:400;"> · pág. ${f.pagina}</span>` : ''}
+              </span>
+              ${score != null ? `<span class="status-badge" style="background:${badgeColor}20;color:${badgeColor};">
+                ${score}% similitud
+              </span>` : ''}
+            </div>
+            <p style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.6;margin:0;
+              overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;"
+              id="frag-${i}">${f.contenido || ''}</p>
+            <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="expandir('frag-${i}', this)">
+              Ver más
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    mostrarResultados(html);
+  }
+
+  /* ── Render argumentos (modo problemática) ── */
+  function renderArgumentos(items, consulta) {
+    const label = document.getElementById('lblResultados');
+    label.textContent = `${items.length} argumento${items.length !== 1 ? 's' : ''} — problemática "${consulta}"`;
+
+    if (!items.length) {
+      mostrarVacio('Sin argumentos para esta problemática.');
+      return;
+    }
+
+    const html = items.map((a, i) => `
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-body" style="display:flex;gap:16px;align-items:flex-start;">
+          <span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;
+            color:var(--accent);opacity:.4;min-width:32px;text-align:right;">${i + 1}</span>
+          <div style="flex:1;">
+            <p style="font-size:var(--font-size-sm);color:var(--text-primary);line-height:1.6;margin:0 0 8px;">
+              ${a.descripcion || a.argumento || ''}
+            </p>
+            ${a.nombre_documento ? `<span class="tipo-pill">${a.nombre_documento}</span>` : ''}
+            ${a.problematica ? `<span class="tipo-pill" style="margin-left:6px;">${a.problematica}</span>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+
+    mostrarResultados(html);
+  }
+
+  /* ── Helpers UI ── */
+  function expandir(id, btn) {
+    const el = document.getElementById(id);
+    const expandido = el.style.webkitLineClamp === 'unset';
+    el.style.webkitLineClamp  = expandido ? '4' : 'unset';
+    el.style.display          = expandido ? '-webkit-box' : 'block';
+    btn.textContent           = expandido ? 'Ver más' : 'Ver menos';
+  }
+
+  function mostrarResultados(html) {
+    document.getElementById('estadoVacio').style.display        = 'none';
+    document.getElementById('contenedorResultados').style.display = 'block';
+    document.getElementById('listaResultados').innerHTML        = html;
+  }
+
+  function ocultarResultados() {
+    document.getElementById('contenedorResultados').style.display = 'none';
+    document.getElementById('estadoVacio').style.display        = 'none';
+  }
+
+  function mostrarVacio(msg) {
+    document.getElementById('contenedorResultados').style.display = 'none';
+    const el = document.getElementById('estadoVacio');
+    el.style.display = 'flex';
+    el.querySelector('p').textContent = msg;
+  }
+
+  function limpiarResultados() {
+    document.getElementById('inputConsulta').value = '';
+    ocultarResultados();
+    document.getElementById('estadoVacio').style.display = 'flex';
+    document.getElementById('estadoVacio').querySelector('p').textContent =
+      'Escribe en lenguaje natural o selecciona el modo por problemática';
+  }
+
+  /* ── Toast ── */
+  function toast(msg, tipo = 'success') {
+    const c = document.querySelector('.toast-container') || (() => {
+      const d = document.createElement('div');
+      d.className = 'toast-container';
+      document.body.appendChild(d);
+      return d;
+    })();
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+</script>
+{% endblock %}
