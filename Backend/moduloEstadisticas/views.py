@@ -6,6 +6,8 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.shortcuts import render
+from Backend.moduloLogin.views import login_requerido
+
 
 from Backend.moduloEstadisticas.services import (
     CatalogoOcupacionService,
@@ -50,24 +52,28 @@ _resumen_svc                   = ResumenEstadisticoService()
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+@login_requerido
 def dashboard_estadisticas(request):
     return render(
         request,
         "moduloEstadisticas/dashboard.html"
     )
 
+@login_requerido
 def cruces_estadisticas(request):
     return render(
         request,
         "moduloEstadisticas/cruces.html"
     )
 
+@login_requerido
 def importacion_estadisticas(request):
     return render(
         request,
         "moduloEstadisticas/importacion.html"
     )
 
+@login_requerido
 def analisis_territorial_estadisticas(request):
     return render(
         request,
