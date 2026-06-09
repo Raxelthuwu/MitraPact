@@ -1,24 +1,9 @@
 from .services import (
-<<<<<<< HEAD
-=======
     # Catálogos
->>>>>>> origin/ModuloAnalisisEstadisticoBanckend
     CatalogoOcupacionService,
     CatalogoInclinacionVotoService,
     CatalogoIntencionParticipacionService,
     CatalogoProblematicaService,
-<<<<<<< HEAD
-    RangoEdadService,
-    PeriodoEstadisticoService,
-    ImportacionCsvService,
-    EncuestaService,
-    SnapshotTerritorialService,
-    VariacionTemporalService,
-    RankingProblematicaService,
-    ResultadoCruceService,
-    CaracterizacionTerritorialService,
-    ExportacionResultadoService,
-=======
     # Rango de edad
     RangoEdadService,
     # Período estadístico
@@ -40,7 +25,6 @@ from .services import (
     # Exportación
     ExportacionResultadoService,
     # Resumen estadístico
->>>>>>> origin/ModuloAnalisisEstadisticoBanckend
     ResumenEstadisticoService,
 )
 
