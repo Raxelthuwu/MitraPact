@@ -1,344 +1,321 @@
 from django.urls import path
-from .views import dashboard_estadisticas, cruces_estadisticas, importacion_estadisticas, analisis_territorial_estadisticas
-
-from Backend.moduloEstadisticas.views import (
+from .views import (
     # Catálogos
-    CatalogoOcupacionListView,
-    CatalogoOcupacionDetailView,
-    CatalogoInclinacionVotoListView,
-    CatalogoInclinacionVotoDetailView,
-    CatalogoIntencionParticipacionListView,
-    CatalogoIntencionParticipacionDetailView,
-    CatalogoProblematicaListView,
-    CatalogoProblematicaDetailView,
+    CatalogoOcupacionView,
+    CatalogoInclinacionVotoView,
+    CatalogoIntencionParticipacionView,
+    CatalogoProblematicaView,
     # Rango de edad
     RangoEdadListView,
     RangoEdadDetailView,
     # Período estadístico
-    PeriodoEstadisticoListView,
-    PeriodoEstadisticoDetailView,
+    PeriodoListView,
+    PeriodoDetailView,
     # Importación CSV
-    ImportacionCsvListView,
-    ImportacionCsvDetailView,
-    ImportacionCsvEstadoView,
+    ImportacionListView,
+    ImportacionUploadView,
+    ImportacionDetailView,
     # Encuesta
     EncuestaListView,
     EncuestaDetailView,
     # Snapshot territorial
-    SnapshotTerritorialListView,
-    SnapshotTerritorialDetailView,
+    SnapshotListView,
+    SnapshotDetailView,
     SnapshotGenerarView,
     SnapshotGenerarTodosView,
     # Variación temporal
-    VariacionTemporalListView,
-    VariacionTemporalDetailView,
+    VariacionListView,
+    VariacionDetailView,
     VariacionCalcularView,
     VariacionCalcularTodosView,
     # Ranking problemática
-    RankingProblematicaListView,
-    RankingProblematicaDetailView,
+    RankingListView,
+    RankingDetailView,
     RankingCalcularView,
     RankingCalcularTodosView,
     # Resultado cruce
-    ResultadoCruceListView,
-    ResultadoCruceDetailView,
-    ResultadoCruceCalcularView,
-    ResultadoCruceCalcularMultiplesView,
-    ResultadoCruceEliminarPeriodoView,
+    CruceListView,
+    CruceDetailView,
+    CruceCalcularView,
+    CruceCalcularMultiplesView,
+    CruceEliminarPeriodoView,
     # Caracterización territorial
-    CaracterizacionTerritorialListView,
-    CaracterizacionTerritorialDetailView,
+    CaracterizacionListView,
+    CaracterizacionDetailView,
     CaracterizacionGenerarView,
     CaracterizacionGenerarTodosView,
-    # Exportación resultado
-    ExportacionResultadoListView,
-    ExportacionResultadoDetailView,
-    ExportacionResultadoExportarView,
+    # Exportación
+    ExportacionListView,
+    ExportacionDetailView,
+    ExportacionGenerarView,
     # Resumen estadístico
-    ResumenEstadisticoListView,
-    ResumenEstadisticoDetailView,
+    ResumenListView,
+    ResumenDetailView,
     ResumenGenerarView,
     ResumenGenerarTodosView,
 )
 
-app_name = "moduloEstadisticas"
-
 urlpatterns = [
 
-    # ─── Vistas HTML ─────────────────────────────────────────────────────────
+    # =========================================================================
+    # CATÁLOGOS  (solo lectura — RF-EST-03, 06, 08, 11)
+    # =========================================================================
     path(
-        "dashboard/",
-        dashboard_estadisticas,
-        name="dashboard-estadisticas"
+        "catalogos/ocupacion/",
+        CatalogoOcupacionView.as_view(),
+        name="catalogo-ocupacion",
     ),
     path(
-        "analisis_territorial/",
-        analisis_territorial_estadisticas,
-        name="analisis_territorial-estadisticas"
+        "catalogos/inclinacion-voto/",
+        CatalogoInclinacionVotoView.as_view(),
+        name="catalogo-inclinacion-voto",
     ),
     path(
-        "cruces/",
-        cruces_estadisticas,
-        name="cruces-estadisticas"
+        "catalogos/intencion-participacion/",
+        CatalogoIntencionParticipacionView.as_view(),
+        name="catalogo-intencion-participacion",
     ),
     path(
-        "importacion/",
-        importacion_estadisticas,
-        name="importacion-estadisticas"
-    ),
-
-    # ─── API REST — Catálogos (solo lectura) ──────────────────────────────────
-    path(
-        "api/catalogos/ocupaciones/",
-        CatalogoOcupacionListView.as_view(),
-        name="catalogo-ocupacion-list",
-    ),
-    path(
-        "api/catalogos/ocupaciones/<int:codigo>/",
-        CatalogoOcupacionDetailView.as_view(),
-        name="catalogo-ocupacion-detail",
-    ),
-    path(
-        "api/catalogos/inclinaciones-voto/",
-        CatalogoInclinacionVotoListView.as_view(),
-        name="catalogo-inclinacion-list",
-    ),
-    path(
-        "api/catalogos/inclinaciones-voto/<int:codigo>/",
-        CatalogoInclinacionVotoDetailView.as_view(),
-        name="catalogo-inclinacion-detail",
-    ),
-    path(
-        "api/catalogos/intenciones-participacion/",
-        CatalogoIntencionParticipacionListView.as_view(),
-        name="catalogo-intencion-list",
-    ),
-    path(
-        "api/catalogos/intenciones-participacion/<int:codigo>/",
-        CatalogoIntencionParticipacionDetailView.as_view(),
-        name="catalogo-intencion-detail",
-    ),
-    path(
-        "api/catalogos/problematicas/",
-        CatalogoProblematicaListView.as_view(),
-        name="catalogo-problematica-list",
-    ),
-    path(
-        "api/catalogos/problematicas/<int:codigo>/",
-        CatalogoProblematicaDetailView.as_view(),
-        name="catalogo-problematica-detail",
+        "catalogos/problematica/",
+        CatalogoProblematicaView.as_view(),
+        name="catalogo-problematica",
     ),
 
-    # ─── API REST — Rango de edad ─────────────────────────────────────────────
+    # =========================================================================
+    # RANGOS DE EDAD  (RF-EST-36, 37, 38)
+    # =========================================================================
     path(
-        "api/rangos-edad/",
+        "rangos-edad/",
         RangoEdadListView.as_view(),
         name="rango-edad-list",
     ),
     path(
-        "api/rangos-edad/<str:rango_id>/",
+        "rangos-edad/<str:rango_id>/",
         RangoEdadDetailView.as_view(),
         name="rango-edad-detail",
     ),
 
-    # ─── API REST — Período estadístico ──────────────────────────────────────
+    # =========================================================================
+    # PERÍODOS ESTADÍSTICOS  (RF-EST-05, 33)
+    # =========================================================================
     path(
-        "api/periodos/",
-        PeriodoEstadisticoListView.as_view(),
+        "periodos/",
+        PeriodoListView.as_view(),
         name="periodo-list",
     ),
     path(
-        "api/periodos/<str:periodo_id>/",
-        PeriodoEstadisticoDetailView.as_view(),
+        "periodos/<str:periodo_id>/",
+        PeriodoDetailView.as_view(),
         name="periodo-detail",
     ),
 
-    # ─── API REST — Acciones anidadas bajo período ────────────────────────────
+    # =========================================================================
+    # IMPORTACIÓN CSV  (RF-EST-01, 02)
+    # =========================================================================
     path(
-        "api/periodos/<str:periodo_id>/snapshots/generar/",
-        SnapshotGenerarView.as_view(),
-        name="snapshot-generar",
-    ),
-    path(
-        "api/periodos/<str:periodo_id>/snapshots/generar-todos/",
-        SnapshotGenerarTodosView.as_view(),
-        name="snapshot-generar-todos",
-    ),
-    path(
-        "api/periodos/<str:periodo_id>/caracterizaciones/generar/",
-        CaracterizacionGenerarView.as_view(),
-        name="caracterizacion-generar",
-    ),
-    path(
-        "api/periodos/<str:periodo_id>/caracterizaciones/generar-todos/",
-        CaracterizacionGenerarTodosView.as_view(),
-        name="caracterizacion-generar-todos",
-    ),
-    path(
-        "api/periodos/<str:periodo_id>/resumenes/generar/",
-        ResumenGenerarView.as_view(),
-        name="resumen-generar",
-    ),
-    path(
-        "api/periodos/<str:periodo_id>/resumenes/generar-todos/",
-        ResumenGenerarTodosView.as_view(),
-        name="resumen-generar-todos",
-    ),
-
-    # ─── API REST — Importación CSV ───────────────────────────────────────────
-    path(
-        "api/importaciones/",
-        ImportacionCsvListView.as_view(),
+        "importaciones/",
+        ImportacionListView.as_view(),
         name="importacion-list",
     ),
     path(
-        "api/importaciones/<str:importacion_id>/estado/",
-        ImportacionCsvEstadoView.as_view(),
-        name="importacion-estado",
+        "importaciones/upload/",
+        ImportacionUploadView.as_view(),
+        name="importacion-upload",
     ),
     path(
-        "api/importaciones/<str:importacion_id>/",
-        ImportacionCsvDetailView.as_view(),
+        "importaciones/<str:importacion_id>/",
+        ImportacionDetailView.as_view(),
         name="importacion-detail",
     ),
 
-    # ─── API REST — Encuesta ──────────────────────────────────────────────────
+    # =========================================================================
+    # ENCUESTAS  (RF-EST-03 al 07, 11)
+    # Filtros vía query params: ?importacion_id= | ?barrio_id= | ?periodo_id=
+    # =========================================================================
     path(
-        "api/encuestas/",
+        "encuestas/",
         EncuestaListView.as_view(),
         name="encuesta-list",
     ),
     path(
-        "api/encuestas/<str:encuesta_id>/",
+        "encuestas/<str:encuesta_id>/",
         EncuestaDetailView.as_view(),
         name="encuesta-detail",
     ),
 
-    # ─── API REST — Snapshot territorial ─────────────────────────────────────
+    # =========================================================================
+    # SNAPSHOTS TERRITORIALES  (RF-EST-03, 04, 06, 07, 35)
+    # Filtros: ?barrio_id= | ?periodo_id=
+    # =========================================================================
     path(
-        "api/snapshots/",
-        SnapshotTerritorialListView.as_view(),
+        "snapshots/",
+        SnapshotListView.as_view(),
         name="snapshot-list",
     ),
     path(
-        "api/snapshots/<str:snapshot_id>/",
-        SnapshotTerritorialDetailView.as_view(),
+        "snapshots/generar/",
+        SnapshotGenerarView.as_view(),
+        name="snapshot-generar",
+    ),
+    path(
+        "snapshots/generar-todos/",
+        SnapshotGenerarTodosView.as_view(),
+        name="snapshot-generar-todos",
+    ),
+    path(
+        "snapshots/<str:snapshot_id>/",
+        SnapshotDetailView.as_view(),
         name="snapshot-detail",
     ),
 
-    # ─── API REST — Variación temporal ───────────────────────────────────────
+    # =========================================================================
+    # VARIACIÓN TEMPORAL  (RF-EST-05, 33)
+    # Filtros: ?barrio_id= | ?periodo_actual_id=
+    # =========================================================================
     path(
-        "api/variaciones/",
-        VariacionTemporalListView.as_view(),
+        "variaciones/",
+        VariacionListView.as_view(),
         name="variacion-list",
     ),
-    # rutas fijas ANTES de <str:variacion_id> para evitar sombrado
     path(
-        "api/variaciones/calcular/",
+        "variaciones/calcular/",
         VariacionCalcularView.as_view(),
         name="variacion-calcular",
     ),
     path(
-        "api/variaciones/calcular-todos/",
+        "variaciones/calcular-todos/",
         VariacionCalcularTodosView.as_view(),
         name="variacion-calcular-todos",
     ),
     path(
-        "api/variaciones/<str:variacion_id>/",
-        VariacionTemporalDetailView.as_view(),
+        "variaciones/<str:variacion_id>/",
+        VariacionDetailView.as_view(),
         name="variacion-detail",
     ),
 
-    # ─── API REST — Ranking problemática ─────────────────────────────────────
+    # =========================================================================
+    # RANKING PROBLEMÁTICA  (RF-EST-08, 09, 10, 19)
+    # Filtros: ?periodo_id= | ?barrio_id=
+    # =========================================================================
     path(
-        "api/rankings/",
-        RankingProblematicaListView.as_view(),
+        "rankings/",
+        RankingListView.as_view(),
         name="ranking-list",
     ),
-    # rutas fijas ANTES de <str:ranking_id>
     path(
-        "api/rankings/calcular/",
+        "rankings/calcular/",
         RankingCalcularView.as_view(),
         name="ranking-calcular",
     ),
     path(
-        "api/rankings/calcular-todos/",
+        "rankings/calcular-todos/",
         RankingCalcularTodosView.as_view(),
         name="ranking-calcular-todos",
     ),
     path(
-        "api/rankings/<str:ranking_id>/",
-        RankingProblematicaDetailView.as_view(),
+        "rankings/<str:ranking_id>/",
+        RankingDetailView.as_view(),
         name="ranking-detail",
     ),
 
-    # ─── API REST — Resultado cruce ───────────────────────────────────────────
+    # =========================================================================
+    # CRUCES  (RF-EST-12, 13, 18, 20, 30, 31, 36, 37)
+    # GET requiere ?periodo_id=
+    # =========================================================================
     path(
-        "api/cruces/",
-        ResultadoCruceListView.as_view(),
+        "cruces/",
+        CruceListView.as_view(),
         name="cruce-list",
     ),
-    # rutas fijas ANTES de <str:cruce_id>
     path(
-        "api/cruces/calcular/",
-        ResultadoCruceCalcularView.as_view(),
+        "cruces/calcular/",
+        CruceCalcularView.as_view(),
         name="cruce-calcular",
     ),
     path(
-        "api/cruces/calcular-multiples/",
-        ResultadoCruceCalcularMultiplesView.as_view(),
+        "cruces/calcular-multiples/",
+        CruceCalcularMultiplesView.as_view(),
         name="cruce-calcular-multiples",
     ),
     path(
-        "api/cruces/periodo/<str:periodo_id>/",
-        ResultadoCruceEliminarPeriodoView.as_view(),
+        "cruces/periodo/<str:periodo_id>/",
+        CruceEliminarPeriodoView.as_view(),
         name="cruce-eliminar-periodo",
     ),
     path(
-        "api/cruces/<str:cruce_id>/",
-        ResultadoCruceDetailView.as_view(),
+        "cruces/<str:cruce_id>/",
+        CruceDetailView.as_view(),
         name="cruce-detail",
     ),
 
-    # ─── API REST — Caracterización territorial ───────────────────────────────
+    # =========================================================================
+    # CARACTERIZACIÓN TERRITORIAL
+    # (RF-EST-21, 22, 23, 27, 28, 29, 32, 35)
+    # Filtros: ?barrio_id= | ?periodo_id=
+    # =========================================================================
     path(
-        "api/caracterizaciones/",
-        CaracterizacionTerritorialListView.as_view(),
+        "caracterizaciones/",
+        CaracterizacionListView.as_view(),
         name="caracterizacion-list",
     ),
     path(
-        "api/caracterizaciones/<str:caracterizacion_id>/",
-        CaracterizacionTerritorialDetailView.as_view(),
+        "caracterizaciones/generar/",
+        CaracterizacionGenerarView.as_view(),
+        name="caracterizacion-generar",
+    ),
+    path(
+        "caracterizaciones/generar-todos/",
+        CaracterizacionGenerarTodosView.as_view(),
+        name="caracterizacion-generar-todos",
+    ),
+    path(
+        "caracterizaciones/<str:caracterizacion_id>/",
+        CaracterizacionDetailView.as_view(),
         name="caracterizacion-detail",
     ),
 
-    # ─── API REST — Exportación resultado ────────────────────────────────────
+    # =========================================================================
+    # EXPORTACIÓN  (RF-EST-26)
+    # Filtro GET: ?periodo_id=
+    # =========================================================================
     path(
-        "api/exportaciones/",
-        ExportacionResultadoListView.as_view(),
+        "exportaciones/",
+        ExportacionListView.as_view(),
         name="exportacion-list",
     ),
-    # ruta fija ANTES de <str:exportacion_id>
     path(
-        "api/exportaciones/exportar/",
-        ExportacionResultadoExportarView.as_view(),
-        name="exportacion-exportar",
+        "exportaciones/generar/",
+        ExportacionGenerarView.as_view(),
+        name="exportacion-generar",
     ),
     path(
-        "api/exportaciones/<str:exportacion_id>/",
-        ExportacionResultadoDetailView.as_view(),
+        "exportaciones/<str:exportacion_id>/",
+        ExportacionDetailView.as_view(),
         name="exportacion-detail",
     ),
 
-    # ─── API REST — Resumen estadístico ──────────────────────────────────────
+    # =========================================================================
+    # RESUMEN ESTADÍSTICO  (RF-EST-34)
+    # Filtros: ?barrio_id= | ?periodo_id=
+    # =========================================================================
     path(
-        "api/resumenes/",
-        ResumenEstadisticoListView.as_view(),
+        "resumenes/",
+        ResumenListView.as_view(),
         name="resumen-list",
     ),
     path(
-        "api/resumenes/<str:resumen_id>/",
-        ResumenEstadisticoDetailView.as_view(),
+        "resumenes/generar/",
+        ResumenGenerarView.as_view(),
+        name="resumen-generar",
+    ),
+    path(
+        "resumenes/generar-todos/",
+        ResumenGenerarTodosView.as_view(),
+        name="resumen-generar-todos",
+    ),
+    path(
+        "resumenes/<str:resumen_id>/",
+        ResumenDetailView.as_view(),
         name="resumen-detail",
     ),
 ]
