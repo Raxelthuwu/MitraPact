@@ -1,415 +1,361 @@
-{% extends "base.html" %}
+{% extends "base.HTML" %}
 {% load static %}
 
-{% block title %}Dashboard General — Búsqueda Semántica{% endblock %}
+{% block title %}Dashboard Semántico · Pacto Histórico{% endblock %}
+{% block nav_busqueda %}active{% endblock %}
+{% block page_title %}Dashboard Semántico{% endblock %}
+{% block page_subtitle %}Resumen del índice — documentos, fragmentos, argumentos y territorio{% endblock %}
+
+{% block topbar_extra %}
+<button id="btnRefrescar" onclick="cargarDashboard()" style="
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 13px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  font-size:var(--font-size-sm);
+  font-weight:500;
+  color:var(--text-secondary);
+  cursor:pointer;
+  transition:background var(--transition);
+">
+  <svg id="iconRefrescar" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+  </svg>
+  Actualizar
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { animation: spin .8s linear infinite; }
+
+/* ── Shortcuts ── */
+.shortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.sc-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background var(--transition), box-shadow var(--transition);
+}
+.sc-link:hover { background: var(--border-light); box-shadow: var(--shadow-card); text-decoration: none; }
+.sc-link svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--text-muted); }
+
+/* ── KPI row ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.kpi-box {
+  background: var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+.kpi-lbl {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+.kpi-val {
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+/* ── Panels ── */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.panel-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.panel-badge {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--border-light);
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+.panel-link {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--accent);
+}
+.panel-link:hover { text-decoration: underline; }
+.panel-body {
+  padding: 4px 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* ── Bar rows ── */
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 16px;
+  transition: background var(--transition);
+}
+.bar-row:hover { background: var(--border-light); }
+.bar-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.bar-track {
+  width: 64px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.bar-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+.bar-num {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Doc rows ── */
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border-light);
+  transition: background var(--transition);
+}
+.doc-row:last-child { border-bottom: none; }
+.doc-row:hover { background: var(--border-light); }
+.doc-ico {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--border-light);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.doc-ico svg { width: 13px; height: 13px; }
+.doc-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Empty / error ── */
+.dash-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+.dash-error {
+  padding: 12px 16px;
+  font-size: var(--font-size-sm);
+  color: var(--danger);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .kpi-row, .shortcuts { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .kpi-row, .shortcuts, .panels { grid-template-columns: 1fr !important; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-content">
 
-  <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-    <div>
-      <h2 style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--text-primary);">
-        Dashboard General
-      </h2>
-      <p style="font-size:var(--font-size-sm);color:var(--text-muted);margin-top:4px;">
-        Resumen ejecutivo del índice semántico — documentos, fragmentos, argumentos y cobertura territorial
-      </p>
-    </div>
-    <button id="btn-refrescar" class="btn-refresh" onclick="cargarDashboard()">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-      </svg>
-      Actualizar
-    </button>
+<!-- Accesos rápidos -->
+<div>
+  <div class="section-label" style="margin-bottom:8px;">Accesos rápidos</div>
+  <div class="shortcuts">
+    <a href="{% url 'consulta-semantica-vista' %}" class="sc-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+      Consulta semántica
+    </a>
+    <a href="{% url 'documento-form-vista' %}" class="sc-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+      Cargar documento
+    </a>
+    <a href="{% url 'dashboard-barrio-vista' %}" class="sc-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+      Dashboard barrio
+    </a>
+    <a href="{% url 'auditoria-vista' %}" class="sc-link">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+      Auditoría
+    </a>
   </div>
+</div>
 
-  <!-- KPIs -->
-  <div id="kpi-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
-    <div class="kpi-card purple" id="kpi-documentos">
-      <div class="kpi-icon">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 9.414V19a2 2 0 01-2 2z"/>
-        </svg>
-      </div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="val-documentos">—</div>
-        <div class="kpi-label">Documentos</div>
-      </div>
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi-box">
+    <div class="kpi-lbl">Documentos</div>
+    <div class="kpi-val" id="valDocumentos">—</div>
+  </div>
+  <div class="kpi-box">
+    <div class="kpi-lbl">Fragmentos</div>
+    <div class="kpi-val" id="valFragmentos">—</div>
+  </div>
+  <div class="kpi-box">
+    <div class="kpi-lbl">Argumentos</div>
+    <div class="kpi-val" id="valArgumentos">—</div>
+  </div>
+  <div class="kpi-box">
+    <div class="kpi-lbl">Barrios cubiertos</div>
+    <div class="kpi-val" id="valBarrios">—</div>
+  </div>
+</div>
+
+<!-- Paneles -->
+<div class="panels">
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Temas</span>
+      <span class="panel-badge" id="badgeTemas">—</span>
     </div>
-
-    <div class="kpi-card blue" id="kpi-fragmentos">
-      <div class="kpi-icon">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M4 6h16M4 10h16M4 14h16M4 18h7"/>
-        </svg>
-      </div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="val-fragmentos">—</div>
-        <div class="kpi-label">Fragmentos</div>
-      </div>
-    </div>
-
-    <div class="kpi-card green" id="kpi-argumentos">
-      <div class="kpi-icon">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4v-4z"/>
-        </svg>
-      </div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="val-argumentos">—</div>
-        <div class="kpi-label">Argumentos</div>
-      </div>
-    </div>
-
-    <div class="kpi-card orange" id="kpi-barrios">
-      <div class="kpi-icon">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-          <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      </div>
-      <div class="kpi-body">
-        <div class="kpi-value" id="val-barrios">—</div>
-        <div class="kpi-label">Barrios cubiertos</div>
-      </div>
+    <div class="panel-body" id="listaTemas">
+      <div class="dash-empty">Cargando…</div>
     </div>
   </div>
 
-  <!-- Fila central: Distribución por tema + Cobertura por barrio -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-
-    <!-- Distribución por tema -->
-    <div class="dash-panel">
-      <div class="panel-header">
-        <span class="panel-title">Distribución por tema</span>
-        <span class="panel-badge" id="badge-temas">—</span>
-      </div>
-      <div id="lista-temas" class="item-list">
-        <div class="loading-row">Cargando…</div>
-      </div>
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Cobertura por barrio</span>
+      <span class="panel-badge" id="badgeBarrios">—</span>
     </div>
-
-    <!-- Cobertura por barrio -->
-    <div class="dash-panel">
-      <div class="panel-header">
-        <span class="panel-title">Cobertura por barrio</span>
-        <span class="panel-badge" id="badge-barrios-panel">—</span>
-      </div>
-      <div id="lista-barrios" class="item-list">
-        <div class="loading-row">Cargando…</div>
-      </div>
+    <div class="panel-body" id="listaBarrios">
+      <div class="dash-empty">Cargando…</div>
     </div>
-
   </div>
 
-  <!-- Fila inferior: Problemáticas + Documentos recientes -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-
-    <!-- Problemáticas -->
-    <div class="dash-panel">
-      <div class="panel-header">
-        <span class="panel-title">Problemáticas activas</span>
-        <span class="panel-badge" id="badge-problematicas">—</span>
-      </div>
-      <div id="lista-problematicas" class="item-list">
-        <div class="loading-row">Cargando…</div>
-      </div>
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Problemáticas activas</span>
+      <span class="panel-badge" id="badgeProblematicas">—</span>
     </div>
-
-    <!-- Documentos recientes -->
-    <div class="dash-panel">
-      <div class="panel-header">
-        <span class="panel-title">Documentos recientes</span>
-        <a href="{% url 'documento-lista-vista' %}" class="panel-link">Ver todos →</a>
-      </div>
-      <div id="lista-documentos-recientes" class="item-list">
-        <div class="loading-row">Cargando…</div>
-      </div>
+    <div class="panel-body" id="listaProblematicas">
+      <div class="dash-empty">Cargando…</div>
     </div>
-
   </div>
 
-  <!-- Accesos rápidos -->
-  <div>
-    <div class="section-label">Accesos rápidos</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-
-      <a href="{% url 'consulta-semantica-vista' %}" class="quick-card orange">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-        </svg>
-        Consulta semántica
-      </a>
-
-      <a href="{% url 'documento-form-vista' %}" class="quick-card green">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M12 4v16m8-8H4"/>
-        </svg>
-        Cargar documento
-      </a>
-
-      <a href="{% url 'dashboard-barrio-vista' %}" class="quick-card blue">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-          <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        Dashboard barrio
-      </a>
-
-      <a href="{% url 'auditoria-vista' %}" class="quick-card purple">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-        </svg>
-        Auditoría
-      </a>
-
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Documentos recientes</span>
+      <a href="{% url 'documento-lista-vista' %}" class="panel-link">Ver todos →</a>
+    </div>
+    <div class="panel-body" id="listaDocumentos">
+      <div class="dash-empty">Cargando…</div>
     </div>
   </div>
 
 </div>
 
-<!-- ─── Estilos locales ──────────────────────────────────────────────────── -->
-<style>
-/* KPI cards */
-.kpi-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-}
-.kpi-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.kpi-card.purple .kpi-icon { background: var(--kpi-purple-bg); color: var(--accent); }
-.kpi-card.blue   .kpi-icon { background: var(--kpi-blue-bg);   color: var(--info); }
-.kpi-card.green  .kpi-icon { background: var(--kpi-green-bg);  color: var(--success); }
-.kpi-card.orange .kpi-icon { background: var(--kpi-orange-bg); color: var(--warning); }
-.kpi-value {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
-}
-.kpi-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  margin-top: 4px;
-}
+{% endblock %}
 
-/* Panels */
-.dash-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.panel-title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.panel-badge {
-  background: var(--kpi-purple-bg);
-  color: var(--accent);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 999px;
-}
-.panel-link {
-  font-size: var(--font-size-sm);
-  color: var(--accent);
-  text-decoration: none;
-}
-.panel-link:hover { text-decoration: underline; }
-
-/* Item list */
-.item-list {
-  padding: 8px 0;
-  max-height: 260px;
-  overflow-y: auto;
-}
-.item-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 20px;
-  gap: 12px;
-  transition: background var(--transition);
-}
-.item-row:hover { background: var(--bg-hover, rgba(0,0,0,.04)); }
-.item-name {
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 220px;
-}
-.item-count {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.bar-wrap {
-  flex: 1;
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  min-width: 40px;
-}
-.bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width .6s ease;
-}
-.bar-fill.purple { background: var(--accent); }
-.bar-fill.blue   { background: var(--info); }
-.bar-fill.green  { background: var(--success); }
-.bar-fill.orange { background: var(--warning); }
-
-.loading-row {
-  padding: 20px;
-  text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-}
-.error-row {
-  padding: 16px 20px;
-  font-size: var(--font-size-sm);
-  color: var(--danger, #e74c3c);
-}
-
-/* Quick access cards */
-.quick-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  font-family: var(--font-display);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  text-decoration: none;
-  transition: box-shadow var(--transition), transform var(--transition);
-}
-.quick-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); text-decoration: none; }
-.quick-card.purple { background: var(--kpi-purple-bg); color: var(--accent); }
-.quick-card.blue   { background: var(--kpi-blue-bg);   color: var(--info); }
-.quick-card.green  { background: var(--kpi-green-bg);  color: var(--success); }
-.quick-card.orange { background: var(--kpi-orange-bg); color: var(--warning); }
-
-/* Refresh button */
-.btn-refresh {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background var(--transition), box-shadow var(--transition);
-}
-.btn-refresh:hover { background: var(--bg-hover, #f5f5f5); box-shadow: var(--shadow-card); }
-.btn-refresh.spin svg { animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Responsive */
-@media (max-width: 1024px) {
-  #kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
-}
-@media (max-width: 700px) {
-  #kpi-grid,
-  div[style*="grid-template-columns:1fr 1fr"],
-  div[style*="grid-template-columns:repeat(4"] {
-    grid-template-columns: 1fr !important;
-  }
-}
-</style>
-
-<!-- ─── JavaScript ───────────────────────────────────────────────────────── -->
+{% block extra_js %}
 <script>
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const $ = id => document.getElementById(id);
+  const $  = id => document.getElementById(id);
+  const set = (id, v) => { const el=$(id); if(el) el.textContent=v; };
 
-  function setText(id, val) {
+  const DOC_ICON = `<svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>`;
+
+  function renderBarList(id, items, color, labelKey, countKey, max) {
     const el = $(id);
-    if (el) el.textContent = val;
-  }
-
-  function renderBarList(containerId, items, colorClass, labelKey, countKey, total) {
-    const el = $(containerId);
-    if (!items || items.length === 0) {
-      el.innerHTML = '<div class="loading-row">Sin datos disponibles.</div>';
-      return;
-    }
+    if (!items?.length) { el.innerHTML = '<div class="dash-empty">Sin datos disponibles.</div>'; return; }
     el.innerHTML = items.map(item => {
-      const pct = total > 0 ? Math.round((item[countKey] / total) * 100) : 0;
-      return `
-        <div class="item-row">
-          <span class="item-name" title="${item[labelKey]}">${item[labelKey]}</span>
-          <div class="bar-wrap"><div class="bar-fill ${colorClass}" style="width:${pct}%"></div></div>
-          <span class="item-count">${item[countKey]}</span>
-        </div>`;
+      const pct = max > 0 ? Math.round((item[countKey] / max) * 100) : 0;
+      return `<div class="bar-row">
+        <span class="bar-name" title="${item[labelKey]}">${item[labelKey]}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color};"></div></div>
+        <span class="bar-num">${item[countKey]}</span>
+      </div>`;
     }).join('');
   }
 
-  function renderDocumentosList(containerId, docs) {
-    const el = $(containerId);
-    if (!docs || docs.length === 0) {
-      el.innerHTML = '<div class="loading-row">Sin documentos recientes.</div>';
-      return;
-    }
+  function renderDocList(id, docs) {
+    const el = $(id);
+    if (!docs?.length) { el.innerHTML = '<div class="dash-empty">Sin documentos recientes.</div>'; return; }
     el.innerHTML = docs.slice(0, 8).map(d => {
-      const fecha = d.fecha_carga ? new Date(d.fecha_carga).toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' }) : '—';
-      return `
-        <div class="item-row">
-          <span class="item-name" title="${d.nombre || d.titulo || 'Sin nombre'}">${d.nombre || d.titulo || 'Sin nombre'}</span>
-          <span class="item-count">${fecha}</span>
-        </div>`;
+      const nombre = d.nombre || d.titulo || 'Sin nombre';
+      const fecha  = d.fecha_carga
+        ? new Date(d.fecha_carga).toLocaleDateString('es-CO', {day:'2-digit', month:'short'})
+        : '—';
+      return `<div class="doc-row">
+        <div class="doc-ico">${DOC_ICON}</div>
+        <span class="doc-name" title="${nombre}">${nombre}</span>
+        <span class="doc-date">${fecha}</span>
+      </div>`;
     }).join('');
   }
 
-  // ── Carga principal ───────────────────────────────────────────────────────
   async function cargarDashboard() {
-    const btn = $('btn-refrescar');
-    btn.classList.add('spin');
+    const btn  = $('btnRefrescar');
+    const icon = $('iconRefrescar');
+    if (btn)  btn.disabled = true;
+    if (icon) icon.classList.add('spinning');
 
     try {
-      // Llamadas paralelas — usando los endpoints correctos de la API
-      // /busqueda/temas/       → lista todos los temas (sin params requeridos)
-      // /busqueda/documentos/  → lista todos los documentos (sin params requeridos)
-      // /filter/distribucion/  → distribución global de argumentos por problemática
-      // /filter/auditoria/     → conteo de fragmentos por documento
-      const [resTemas, resDocumentos, resDistribucion, resAuditoria, resBarrios] = await Promise.allSettled([
+      const [resTemas, resDocs, resDist, resAuditoria, resBarrios] = await Promise.allSettled([
         fetch('/semantica/busqueda/temas/'),
         fetch('/semantica/busqueda/documentos/'),
         fetch('/semantica/filter/distribucion/?tipo=argumentos'),
@@ -417,96 +363,82 @@
         fetch('/semantica/filter/distribucion/?tipo=opinionesPorBarrio'),
       ]);
 
-      // ── Temas → /busqueda/temas/ devuelve { temas: ["nombre1","nombre2",...] } ──
-      if (resTemas.status === 'fulfilled' && resTemas.value.ok) {
-        const data = await resTemas.value.json();
-        // La API devuelve array de strings, no objetos con cantidad
+      /* Temas */
+      if (resTemas.status==='fulfilled' && resTemas.value.ok) {
+        const data  = await resTemas.value.json();
         const temas = (data.temas || []).map(t => ({ nombre: t, cantidad: 1 }));
-        setText('badge-temas', temas.length);
-        renderBarList('lista-temas', temas, 'purple', 'nombre', 'cantidad', temas.length);
+        set('badgeTemas', temas.length);
+        renderBarList('listaTemas', temas, 'var(--accent)', 'nombre', 'cantidad', 1);
       } else {
-        $('lista-temas').innerHTML = '<div class="error-row">No se pudieron cargar los temas.</div>';
+        $('listaTemas').innerHTML = '<div class="dash-error">No se pudieron cargar los temas.</div>';
       }
 
-      // ── Documentos → /busqueda/documentos/ devuelve { documentos: [...] } ──
-      if (resDocumentos.status === 'fulfilled' && resDocumentos.value.ok) {
-        const data = await resDocumentos.value.json();
+      /* Documentos */
+      if (resDocs.status==='fulfilled' && resDocs.value.ok) {
+        const data = await resDocs.value.json();
         const docs = data.documentos || [];
-        setText('val-documentos', docs.length);
-        renderDocumentosList('lista-documentos-recientes', docs);
+        set('valDocumentos', docs.length);
+        renderDocList('listaDocumentos', docs);
       } else {
-        setText('val-documentos', '—');
-        $('lista-documentos-recientes').innerHTML = '<div class="error-row">No se pudieron cargar los documentos.</div>';
+        set('valDocumentos', '—');
+        $('listaDocumentos').innerHTML = '<div class="dash-error">No se pudieron cargar los documentos.</div>';
       }
 
-      // ── Distribución de argumentos → { distribucion: [{cod, nombre, total_argumentos},...] } ──
-      if (resDistribucion.status === 'fulfilled' && resDistribucion.value.ok) {
-        const data = await resDistribucion.value.json();
-        const dist = data.distribucion || [];
-        
-        console.log("Datos del backend (Problemáticas):", dist[0]);
-
-        // KPI argumentos: suma total
-        const totalArgs = dist.reduce((s, p) => s + (p.total_argumentos || p.total || 0), 0);
-        setText('val-argumentos', totalArgs);
-        
-        // Panel problemáticas
-        const problematicas = dist.map(p => ({ 
-            nombre: p.nombre || p.descripcion || `Prob. ${p.cod || p.problematicaCod}`, 
-            cantidad: p.total_argumentos || p.total || 0 
+      /* Argumentos + problemáticas */
+      if (resDist.status==='fulfilled' && resDist.value.ok) {
+        const data  = await resDist.value.json();
+        const dist  = data.distribucion || [];
+        const total = dist.reduce((s, p) => s + (p.total_argumentos || p.total || 0), 0);
+        set('valArgumentos', total);
+        const probs = dist.map(p => ({
+          nombre:   p.nombre || p.descripcion || `Prob. ${p.cod || p.problematicaCod}`,
+          cantidad: p.total_argumentos || p.total || 0,
         }));
-        setText('badge-problematicas', problematicas.length);
-        
-        const maxP = Math.max(...problematicas.map(p => p.cantidad), 1);
-        renderBarList('lista-problematicas', problematicas, 'orange', 'nombre', 'cantidad', maxP);
-        
-        // Panel barrios — usamos las problemáticas como proxy hasta tener endpoint de barrios sin params
-        if (resBarrios.status === 'fulfilled' && resBarrios.value.ok) {
-          const dataBarrios = await resBarrios.value.json();
-          const barrios = dataBarrios.distribucion || [];
-
-          // Deduplica por barrio_nombre para el KPI
-          const barriosUnicos = [...new Set(barrios.map(b => b.barrio_nombre).filter(Boolean))];
-          setText('val-barrios', barriosUnicos.length);
-          setText('badge-barrios-panel', barriosUnicos.length);
-
-          // Agrupa sumando total_opiniones por barrio
-          const porBarrio = {};
-          barrios.forEach(b => {
-            const key = b.barrio_nombre || 'Sin nombre';
-            porBarrio[key] = (porBarrio[key] || 0) + (b.total_opiniones || 1);
-          });
-          const barriosList = Object.entries(porBarrio).map(([nombre, cantidad]) => ({ nombre, cantidad }));
-          const maxB = Math.max(...barriosList.map(b => b.cantidad), 1);
-          renderBarList('lista-barrios', barriosList, 'blue', 'nombre', 'cantidad', maxB);
-        } else {
-          setText('val-barrios', '0');
-          setText('badge-barrios-panel', '0');
-          $('lista-barrios').innerHTML = '<div class="loading-row">Sin barrios registrados.</div>';
-        }
+        set('badgeProblematicas', probs.length);
+        const maxP = Math.max(...probs.map(p => p.cantidad), 1);
+        renderBarList('listaProblematicas', probs, 'var(--warning)', 'nombre', 'cantidad', maxP);
       } else {
-        setText('val-argumentos', '—');
-        $('lista-problematicas').innerHTML = '<div class="error-row">No se pudo cargar la distribución.</div>';
+        set('valArgumentos', '—');
+        $('listaProblematicas').innerHTML = '<div class="dash-error">No se pudo cargar la distribución.</div>';
       }
 
-      // ── Auditoría fragmentos → { fragmentos: [{documento_id, nombre, total_fragmentos},...] } ──
-      if (resAuditoria.status === 'fulfilled' && resAuditoria.value.ok) {
+      /* Fragmentos */
+      if (resAuditoria.status==='fulfilled' && resAuditoria.value.ok) {
         const data = await resAuditoria.value.json();
-        const frags = data.fragmentos || [];
-        const totalFrags = frags.reduce((s, f) => s + (f.total_fragmentos || 0), 0);
-        setText('val-fragmentos', totalFrags);
+        set('valFragmentos', (data.fragmentos || []).reduce((s, f) => s + (f.total_fragmentos || 0), 0));
       } else {
-        setText('val-fragmentos', '—');
+        set('valFragmentos', '—');
       }
 
-    } catch (err) {
-      console.error('Error cargando dashboard:', err);
+      /* Barrios */
+      if (resBarrios.status==='fulfilled' && resBarrios.value.ok) {
+        const data   = await resBarrios.value.json();
+        const raw    = data.distribucion || [];
+        const unicos = [...new Set(raw.map(b => b.barrio_nombre).filter(Boolean))];
+        set('valBarrios', unicos.length);
+        set('badgeBarrios', unicos.length);
+        const mapa = {};
+        raw.forEach(b => {
+          const k = b.barrio_nombre || 'Sin nombre';
+          mapa[k] = (mapa[k] || 0) + (b.total_opiniones || 1);
+        });
+        const lista = Object.entries(mapa).map(([nombre, cantidad]) => ({ nombre, cantidad }));
+        const maxB  = Math.max(...lista.map(b => b.cantidad), 1);
+        renderBarList('listaBarrios', lista, 'var(--info)', 'nombre', 'cantidad', maxB);
+      } else {
+        set('valBarrios', '0');
+        set('badgeBarrios', '0');
+        $('listaBarrios').innerHTML = '<div class="dash-empty">Sin barrios registrados.</div>';
+      }
+
+    } catch(e) {
+      console.error('Error cargando dashboard:', e);
     } finally {
-      btn.classList.remove('spin');
+      if (btn)  btn.disabled = false;
+      if (icon) icon.classList.remove('spinning');
     }
   }
 
-  // Carga automática al abrir la página
   document.addEventListener('DOMContentLoaded', cargarDashboard);
 </script>
 {% endblock %}

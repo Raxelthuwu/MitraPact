@@ -1,130 +1,605 @@
 {% extends "base.HTML" %}
 {% load static %}
 
-{% block title %}Consulta Semántica · Búsqueda Semántica{% endblock %}
+{% block title %}Búsqueda Semántica · Pacto Histórico{% endblock %}
 {% block nav_busqueda %}active{% endblock %}
-{% block page_title %}Consulta Semántica{% endblock %}
-{% block page_subtitle %}Búsqueda por lenguaje natural y por problemática{% endblock %}
+{% block page_title %}Búsqueda Semántica{% endblock %}
+{% block page_subtitle %}Consulta por lenguaje natural o por problemática{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'eventos.css' %}">
+<style>
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── Overlay ── */
+#uiOverlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(244,246,251,.72);
+  backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+}
+.overlay-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 24px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: var(--shadow-hover);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.spin { animation: spin .8s linear infinite; color: var(--accent); flex-shrink: 0; }
+
+/* ── Banner superior ── */
+.sem-banner {
+  background: linear-gradient(130deg, var(--accent) 0%, #9333EA 100%);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.sem-banner::before {
+  content: '';
+  position: absolute; top: -50px; right: -30px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: rgba(255,255,255,.06);
+  pointer-events: none;
+}
+.sem-banner::after {
+  content: '';
+  position: absolute; bottom: -70px; right: 100px;
+  width: 260px; height: 260px; border-radius: 50%;
+  background: rgba(255,255,255,.04);
+  pointer-events: none;
+}
+.sem-banner-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.sem-banner-sub {
+  font-size: var(--font-size-sm);
+  opacity: .85;
+  max-width: 540px;
+  line-height: 1.55;
+  margin-bottom: 18px;
+}
+.sem-banner-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.sem-chip {
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 99px;
+  padding: 4px 12px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.sem-chip svg { width: 11px; height: 11px; }
+
+/* ── Tabs de modo ── */
+.modo-tabs {
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 5px;
+  width: fit-content;
+  gap: 4px;
+  box-shadow: var(--shadow-card);
+}
+.modo-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  border: none; background: transparent;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.modo-tab:hover { color: var(--text-primary); background: var(--border-light); }
+.modo-tab.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(109,40,217,.28);
+}
+.modo-tab svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ── Panel de búsqueda ── */
+.sem-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.sem-panel-head {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.sem-panel-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-muted);
+}
+.sem-panel-label svg { width: 13px; height: 13px; }
+.sem-panel-body { padding: 18px 20px; }
+
+/* Textarea de búsqueda */
+.sem-textarea {
+  width: 100%;
+  border: none; outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  resize: none;
+  line-height: 1.65;
+  min-height: 68px;
+}
+.sem-textarea::placeholder { color: var(--text-muted); }
+.sem-panel-foot {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-app);
+  gap: 10px; flex-wrap: wrap;
+}
+.sem-shortcuts {
+  display: flex; gap: 14px; align-items: center;
+  flex-wrap: wrap;
+}
+.sem-shortcut {
+  display: flex; align-items: center; gap: 5px;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+.kbd {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+/* ── Barra de filtros ── */
+.sem-filters {
+  display: flex; align-items: center;
+  gap: 10px; flex-wrap: wrap;
+}
+.filter-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-card);
+}
+.filter-chip label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.filter-chip select {
+  border: none; outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 80px;
+}
+
+/* ── Tarjetas de información ── */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.info-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+  box-shadow: var(--shadow-card);
+}
+.info-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.info-icon svg { width: 17px; height: 17px; }
+.info-card-title {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+.info-card-desc {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Select de problemática ── */
+.prob-select-wrap {
+  position: relative;
+}
+.prob-select {
+  width: 100%;
+  border: none; outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 2px 0;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  background-size: 16px;
+  padding-right: 28px;
+}
+.prob-count {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--font-size-xs); font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 99px;
+  padding: 3px 10px;
+}
+
+/* ── Resultados ── */
+.results-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+}
+.results-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.results-query { color: var(--accent); font-style: italic; font-weight: 400; }
+
+/* Tarjeta de fragmento */
+.frag-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition), border-color var(--transition);
+  animation: fadeIn .25s ease both;
+}
+.frag-card:hover { box-shadow: var(--shadow-hover); border-color: #d4d4d8; }
+
+.frag-card-head {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+  gap: 10px; flex-wrap: wrap;
+  background: var(--bg-app);
+}
+.frag-doc-name {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.frag-doc-name svg { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; }
+.frag-pag {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: var(--font-size-xs);
+  margin-left: 2px;
+}
+
+.score-row { display: flex; align-items: center; gap: 8px; }
+.score-track {
+  width: 80px; height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.score-fill { height: 100%; border-radius: 99px; }
+.score-val {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  min-width: 32px;
+}
+
+.frag-card-body { padding: 16px 18px; }
+.frag-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.75;
+  margin: 0 0 12px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+.frag-foot {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 8px;
+}
+
+/* Tarjeta argumento */
+.arg-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  padding: 18px 20px;
+  display: flex; gap: 16px; align-items: flex-start;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--transition);
+  animation: fadeIn .25s ease both;
+}
+.arg-card:hover { box-shadow: var(--shadow-hover); }
+.arg-num {
+  font-family: var(--font-display);
+  font-size: 20px; font-weight: 800;
+  color: var(--accent); opacity: .25;
+  min-width: 26px; line-height: 1;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.arg-body { flex: 1; }
+.arg-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin: 0 0 10px;
+}
+.arg-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+</style>
 {% endblock %}
 
 {% block content %}
 
-<div id="uiOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,0.55);backdrop-filter:blur(2px);cursor:wait;align-items:center;justify-content:center;">
-  <div style="background:var(--surface,#fff);border:1px solid var(--border-color,#e5e7eb);border-radius:12px;padding:20px 32px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 24px rgba(0,0,0,0.10);font-size:var(--font-size-sm,14px);color:var(--text-secondary,#6b7280);">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 0.8s linear infinite;flex-shrink:0;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-    Buscando…
+<!-- Overlay de carga -->
+<div id="uiOverlay">
+  <div class="overlay-box">
+    <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+    Analizando consulta…
   </div>
 </div>
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
-<!-- Selector de modo -->
-<div class="card">
-  <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <button class="btn btn-primary" id="btnModoNatural"      onclick="setModo('natural')">Lenguaje natural</button>
-    <button class="btn btn-ghost"   id="btnModoProblematica" onclick="setModo('problematica')">Por problemática</button>
-    <span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:auto;">
-      Resultados:
-      <select class="filter-select" id="selN" style="margin-left:6px;" onchange="limpiarResultados()">
+<!-- Banner -->
+<div class="sem-banner">
+  <div class="sem-banner-title">Motor de Búsqueda Semántica</div>
+  <div class="sem-banner-sub">
+    Busca por significado, no por palabras exactas. El sistema entiende preguntas
+    en lenguaje natural y las conecta con fragmentos de documentos y argumentos ciudadanos.
+  </div>
+  <div class="sem-banner-chips">
+    <span class="sem-chip">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+      Búsqueda por significado
+    </span>
+    <span class="sem-chip">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12"/></svg>
+      {{ documentos_count|default:"2" }} documentos indexados
+    </span>
+    <span class="sem-chip">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
+      Análisis por problemática
+    </span>
+  </div>
+</div>
+
+<!-- Tabs de modo -->
+<div class="modo-tabs">
+  <button class="modo-tab active" id="tabNatural" onclick="setModo('natural')">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+    Lenguaje natural
+  </button>
+  <button class="modo-tab" id="tabProblematica" onclick="setModo('problematica')">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
+    Por problemática
+  </button>
+</div>
+
+<!-- ─────────────────── MODO NATURAL ─────────────────── -->
+<div id="secNatural">
+
+  <!-- Caja de texto principal -->
+  <div class="sem-panel">
+    <div class="sem-panel-head">
+      <div class="sem-panel-label">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+        Tu consulta
+      </div>
+    </div>
+    <div class="sem-panel-body">
+      <textarea id="inputConsulta" class="sem-textarea"
+        placeholder="Ej: ¿Cuáles son las propuestas sobre seguridad en los barrios del sur?"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();buscar();}"></textarea>
+    </div>
+    <div class="sem-panel-foot">
+      <div class="sem-shortcuts">
+        <span class="sem-shortcut"><span class="kbd">Enter</span> buscar</span>
+        <span class="sem-shortcut"><span class="kbd">Shift+Enter</span> nueva línea</span>
+      </div>
+      <button class="btn btn-primary" onclick="buscar()" id="btnBuscar">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+        Buscar
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="sem-filters">
+    <div class="filter-chip">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+      <label>Documento</label>
+      <select id="selDocumento" class="filter-select" style="max-width:240px;" onchange="onDocumentoChange()">
+        <option value="">Todos</option>
+      </select>
+      <button id="btnLimpiarDoc" onclick="limpiarDocumento()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1;">✕</button>
+    </div>
+    <div class="filter-chip">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/></svg>
+      <label>Resultados</label>
+      <select id="selN" class="filter-select" onchange="limpiarResultados()">
         <option value="3">3</option>
         <option value="5" selected>5</option>
         <option value="10">10</option>
         <option value="20">20</option>
       </select>
-    </span>
-  </div>
-</div>
-
-<!-- Selector de documento (solo modo natural) -->
-<div class="card" id="cardDocumento">
-  <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <label class="form-label" style="margin:0;white-space:nowrap;min-width:fit-content;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7"
-           stroke="currentColor" width="15" height="15" style="vertical-align:middle;margin-right:4px;">
-        <path stroke-linecap="round" stroke-linejoin="round"
-          d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
-             a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625
-             c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75
-             c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-      </svg>
-      Documento
-    </label>
-    <select class="filter-select" id="selDocumento" style="flex:1;min-width:200px;" onchange="onDocumentoChange()">
-      <option value="">— Todos los documentos —</option>
-    </select>
-    <button class="btn btn-ghost btn-sm" onclick="limpiarDocumento()" id="btnLimpiarDoc" style="display:none;">
-      ✕ Quitar
-    </button>
-  </div>
-</div>
-
-<!-- Selector de problemática (solo modo problemática) -->
-<div class="card" id="cardProblematica" style="display:none;">
-  <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <label class="form-label" style="margin:0;white-space:nowrap;min-width:fit-content;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7"
-           stroke="currentColor" width="15" height="15" style="vertical-align:middle;margin-right:4px;">
-        <path stroke-linecap="round" stroke-linejoin="round"
-          d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108
-             c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0
-             c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75
-             24a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
-             a3.375 3.375 0 0 0-3.375-3.375H8.25"/>
-      </svg>
-      Problemática
-    </label>
-    <select class="filter-select" id="selProblematica" style="flex:1;min-width:200px;">
-      <option value="">Cargando problemáticas…</option>
-    </select>
-    <span id="selProblematicaInfo" style="font-size:var(--font-size-xs);color:var(--text-muted);white-space:nowrap;"></span>
-  </div>
-</div>
-
-<!-- Input de consulta (solo modo natural) -->
-<div class="card" id="cardInputNatural">
-  <div class="card-body">
-    <div class="form-group mb-0">
-      <label class="form-label" id="lblInput">Escribe tu consulta en lenguaje natural</label>
-      <div style="display:flex;gap:10px;align-items:flex-start;">
-        <textarea id="inputConsulta" class="form-control" rows="3"
-          placeholder="Ej: ¿Cuáles son los argumentos sobre seguridad en los barrios?"
-          style="resize:vertical;flex:1;"
-          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();buscar();}"></textarea>
-        <button class="btn btn-primary" onclick="buscar()" id="btnBuscar" style="white-space:nowrap;">
-          Buscar
-        </button>
-      </div>
-      <p class="form-hint">Enter para buscar · Shift+Enter para salto de línea</p>
     </div>
   </div>
+
+  <!-- Info cards -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-icon" style="background:var(--accent-light);">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--accent)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>
+      </div>
+      <div>
+        <div class="info-card-title">Cómo usarla</div>
+        <div class="info-card-desc">Escribe una pregunta completa o describe lo que buscas. Más contexto da mejores resultados.</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon" style="background:var(--warning-bg);">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--warning)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+      </div>
+      <div>
+        <div class="info-card-title">Limitaciones</div>
+        <div class="info-card-desc">Solo busca en documentos indexados. No interpreta fechas ni contexto histórico externo.</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon" style="background:var(--success-bg);">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+      </div>
+      <div>
+        <div class="info-card-title">Para qué sirve</div>
+        <div class="info-card-desc">Identificar posiciones ciudadanas, cruzar argumentos con propuestas oficiales de campaña.</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon" style="background:var(--info-bg);">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--info)"><path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/></svg>
+      </div>
+      <div>
+        <div class="info-card-title">Porcentaje de similitud</div>
+        <div class="info-card-desc">Sobre 70% es muy relevante. Entre 40–70% es moderado. Bajo 40% puede ser coincidencia.</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- Botón buscar (solo modo problemática) -->
-<div id="cardBtnProblematica" style="display:none;margin-bottom:16px;">
-  <button class="btn btn-primary" onclick="buscar()" id="btnBuscarProb" style="width:100%;">
-    Buscar argumentos de esta problemática
-  </button>
+<!-- ─────────────────── MODO PROBLEMÁTICA ─────────────────── -->
+<div id="secProblematica" style="display:none;">
+
+  <div class="sem-panel">
+    <div class="sem-panel-head">
+      <div class="sem-panel-label">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
+        Selecciona una problemática
+      </div>
+      <span id="probCountBadge" class="prob-count" style="display:none;"></span>
+    </div>
+    <div class="sem-panel-body">
+      <div class="prob-select-wrap">
+        <select id="selProblematica" class="prob-select">
+          <option value="">Cargando problemáticas…</option>
+        </select>
+      </div>
+      <div id="probInfo" style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:8px;min-height:16px;"></div>
+    </div>
+    <div class="sem-panel-foot" style="justify-content:flex-end;">
+      <div class="filter-chip" style="box-shadow:none;border:none;background:transparent;padding-right:0;">
+        <label>Resultados</label>
+        <select id="selNProb" class="filter-select">
+          <option value="3">3</option>
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="buscar()" id="btnBuscarProb">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+        Ver argumentos
+      </button>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-icon" style="background:var(--accent-light);">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--accent)"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
+      </div>
+      <div>
+        <div class="info-card-title">Cómo usarla</div>
+        <div class="info-card-desc">Elige una problemática del catálogo para ver todos los argumentos ciudadanos asociados.</div>
+      </div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon" style="background:var(--warning-bg);">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--warning)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+      </div>
+      <div>
+        <div class="info-card-title">Limitaciones</div>
+        <div class="info-card-desc">Solo muestra argumentos ya clasificados. Los nuevos sin clasificar no aparecen aquí.</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- Resultados -->
+<!-- ─────────────────── RESULTADOS ─────────────────── -->
 <div id="contenedorResultados" style="display:none;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-    <span class="section-label" id="lblResultados"></span>
-    <button class="btn btn-ghost btn-sm" onclick="limpiarResultados()">Limpiar</button>
+  <div class="results-bar">
+    <div class="results-title" id="lblResultados"></div>
+    <button class="btn btn-ghost btn-sm" onclick="limpiarResultados()">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      Limpiar
+    </button>
   </div>
   <div id="listaResultados"></div>
 </div>
 
-<!-- Empty / loading -->
+<!-- Estado vacío -->
 <div id="estadoVacio" class="empty-state">
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round"
-      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
   </svg>
   <h3>Haz tu primera consulta</h3>
-  <p>Escribe en lenguaje natural o selecciona una problemática de la lista</p>
+  <p id="emptyMsg">Escribe en lenguaje natural o selecciona una problemática</p>
 </div>
 
 {% endblock %}
@@ -132,14 +607,13 @@
 {% block extra_js %}
 <script>
   let _modo = 'natural';
+  let _buscando = false;
 
   document.addEventListener('DOMContentLoaded', () => {
-    setModo('natural');
     cargarDocumentos();
     cargarProblematicas();
   });
 
-  /* ── Carga documentos en el selector ── */
   async function cargarDocumentos() {
     try {
       const res  = await fetch('/semantica/busqueda/documentos/');
@@ -151,77 +625,64 @@
         op.textContent = d.nombre.length > 55 ? d.nombre.slice(0, 55) + '…' : d.nombre;
         sel.appendChild(op);
       });
-    } catch (e) {
-      console.error('[cargarDocumentos]', e);
-    }
+    } catch(e) { console.error('[cargarDocumentos]', e); }
   }
 
-  /* ── Carga problemáticas desde el catálogo ── */
   async function cargarProblematicas() {
-    const sel  = document.getElementById('selProblematica');
-    const info = document.getElementById('selProblematicaInfo');
+    const sel   = document.getElementById('selProblematica');
+    const badge = document.getElementById('probCountBadge');
     try {
-      const res  = await fetch('/semantica/filter/distribucion/?tipo=argumentos');
-      const data = await res.json();
+      const res   = await fetch('/semantica/filter/distribucion/?tipo=argumentos');
+      const data  = await res.json();
       const items = data.distribucion || [];
-
       sel.innerHTML = '<option value="">— Selecciona una problemática —</option>';
-
       items.forEach(p => {
         const op = document.createElement('option');
-        op.value       = p.codigo;
-        op.dataset.desc = p.descripcion || '';
+        op.value = p.codigo;
         op.dataset.total = p.total_argumentos || 0;
-        op.textContent = `${p.descripcion}`;
+        op.textContent   = p.descripcion;
         sel.appendChild(op);
       });
-
-      if (items.length === 0) {
-        sel.innerHTML = '<option value="">Sin problemáticas registradas</option>';
+      if (items.length) {
+        badge.textContent = `${items.length} disponibles`;
+        badge.style.display = 'inline-flex';
       } else {
-        info.textContent = `${items.length} problemáticas disponibles`;
+        sel.innerHTML = '<option value="">Sin problemáticas registradas</option>';
       }
-
       sel.addEventListener('change', onProblematicaChange);
-    } catch (e) {
+    } catch(e) {
       console.error('[cargarProblematicas]', e);
-      sel.innerHTML = '<option value="">Error al cargar problemáticas</option>';
+      sel.innerHTML = '<option value="">Error al cargar</option>';
     }
   }
 
   function onProblematicaChange() {
-    const sel  = document.getElementById('selProblematica');
-    const info = document.getElementById('selProblematicaInfo');
-    const opt  = sel.selectedOptions[0];
-    if (opt && opt.dataset.total) {
-      info.textContent = `${opt.dataset.total} argumento${opt.dataset.total != 1 ? 's' : ''} registrado${opt.dataset.total != 1 ? 's' : ''}`;
-    } else {
-      info.textContent = '';
-    }
+    const sel = document.getElementById('selProblematica');
+    const opt = sel.selectedOptions[0];
+    const info = document.getElementById('probInfo');
+    info.textContent = opt?.dataset.total
+      ? `${opt.dataset.total} argumento${opt.dataset.total != 1 ? 's' : ''} registrado${opt.dataset.total != 1 ? 's' : ''}`
+      : '';
   }
 
-  /* ── Cambiar modo ── */
   function setModo(modo) {
     _buscando = false;
     _modo = modo;
-    const esNatural = modo === 'natural';
+    const nat = modo === 'natural';
 
-    document.getElementById('btnModoNatural').className      = esNatural ? 'btn btn-primary' : 'btn btn-ghost';
-    document.getElementById('btnModoProblematica').className = esNatural ? 'btn btn-ghost'   : 'btn btn-primary';
-
-    // Mostrar/ocultar secciones según modo
-    document.getElementById('cardDocumento').style.display        = esNatural ? 'block' : 'none';
-    document.getElementById('cardInputNatural').style.display     = esNatural ? 'block' : 'none';
-    document.getElementById('cardProblematica').style.display     = esNatural ? 'none'  : 'block';
-    document.getElementById('cardBtnProblematica').style.display  = esNatural ? 'none'  : 'block';
-
+    document.getElementById('tabNatural').className      = nat ? 'modo-tab active' : 'modo-tab';
+    document.getElementById('tabProblematica').className = nat ? 'modo-tab'        : 'modo-tab active';
+    document.getElementById('secNatural').style.display      = nat ? 'block' : 'none';
+    document.getElementById('secProblematica').style.display = nat ? 'none'  : 'block';
     limpiarResultados();
+    document.getElementById('emptyMsg').textContent = nat
+      ? 'Escribe en lenguaje natural o selecciona una problemática'
+      : 'Elige una problemática y pulsa Ver argumentos';
   }
 
-  /* ── Selector de documento ── */
   function onDocumentoChange() {
-    const tiene = !!document.getElementById('selDocumento').value;
-    document.getElementById('btnLimpiarDoc').style.display = tiene ? 'inline-flex' : 'none';
+    document.getElementById('btnLimpiarDoc').style.display =
+      document.getElementById('selDocumento').value ? 'inline-block' : 'none';
   }
 
   function limpiarDocumento() {
@@ -231,221 +692,170 @@
 
   function bloquearUI() {
     document.getElementById('uiOverlay').style.display = 'flex';
-    document.querySelectorAll('button, select, textarea, input').forEach(el => {
-      el.disabled = true;
-    });
+    document.querySelectorAll('button, select, textarea').forEach(el => el.disabled = true);
   }
-
   function desbloquearUI() {
     document.getElementById('uiOverlay').style.display = 'none';
-    document.querySelectorAll('button, select, textarea, input').forEach(el => {
-      el.disabled = false;
-    });
+    document.querySelectorAll('button, select, textarea').forEach(el => el.disabled = false);
   }
 
-  let _buscando = false;
-
-  /* ── Buscar ── */
   async function buscar() {
     if (_buscando) return;
     _buscando = true;
-    const n   = document.getElementById('selN').value;
-    let btn, otroBtn;
 
     if (_modo === 'natural') {
       const texto = document.getElementById('inputConsulta').value.trim();
       if (!texto) { _buscando = false; document.getElementById('inputConsulta').focus(); return; }
 
-      btn = document.getElementById('btnBuscar');
-      btn.textContent = 'Buscando…';
-      ocultarResultados();
-      bloquearUI();
+      const btn = document.getElementById('btnBuscar');
+      btn.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Buscando…';
+      ocultarResultados(); bloquearUI();
 
+      const n         = document.getElementById('selN').value;
       const documento = document.getElementById('selDocumento').value;
       try {
-        let res, data, fragmentos;
+        let fragmentos;
         if (documento) {
-          const url = `/semantica/busqueda/documentos/?consulta=${encodeURIComponent(texto)}&nResultados=${n}&documento=${encodeURIComponent(documento)}`;
-          res  = await fetch(url);
-          data = await res.json();
-          fragmentos = (data.fragmentos || []).map(f => ({
-            ...f,
-            score:            f.similitud ?? f.score ?? null,
-            nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
-          }));
+          const res  = await fetch(`/semantica/busqueda/documentos/?consulta=${encodeURIComponent(texto)}&nResultados=${n}&documento=${encodeURIComponent(documento)}`);
+          const data = await res.json();
+          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.similitud ?? f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento'}));
         } else {
-          const url = `/semantica/consulta/semantica/?consulta=${encodeURIComponent(texto)}&nResultados=${n}`;
-          res  = await fetch(url);
-          data = await res.json();
-          if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error('non-ok'); }
-          console.log('[todos-docs] primer fragmento:', JSON.stringify((data.fragmentos||[])[0]));
-          fragmentos = (data.fragmentos || []).map(f => ({
-            ...f,
-            score:            f.score ?? null,
-            nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
-          }));
+          const res  = await fetch(`/semantica/consulta/semantica/?consulta=${encodeURIComponent(texto)}&nResultados=${n}`);
+          const data = await res.json();
+          if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
+          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento'}));
         }
         renderFragmentos(fragmentos, texto, documento);
       } catch { toast('Error de conexión.', 'error'); }
-      finally { desbloquearUI(); btn.textContent = 'Buscar'; _buscando = false; }
+      finally {
+        desbloquearUI();
+        btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Buscar';
+        _buscando = false;
+      }
 
     } else {
-      // Modo problemática — usa el código del selector, no texto libre
       const sel = document.getElementById('selProblematica');
       const cod = sel.value;
       if (!cod) { _buscando = false; sel.focus(); toast('Selecciona una problemática primero.', 'error'); return; }
 
-      const opt   = sel.selectedOptions[0];
-      const label = opt ? opt.textContent.trim() : `Problemática ${cod}`;
-
-      btn = document.getElementById('btnBuscarProb');
+      const label = sel.selectedOptions[0]?.textContent.trim() ?? `Problemática ${cod}`;
+      const btn   = document.getElementById('btnBuscarProb');
+      const n     = document.getElementById('selNProb').value;
       btn.textContent = 'Buscando…';
-      ocultarResultados();
-      bloquearUI();
+      ocultarResultados(); bloquearUI();
 
       try {
-        const url = `/semantica/consulta/semantica/?problematica=${encodeURIComponent(cod)}&nResultados=${n}`;
-        const res  = await fetch(url);
+        const res  = await fetch(`/semantica/consulta/semantica/?problematica=${encodeURIComponent(cod)}&nResultados=${n}`);
         const data = await res.json();
-
-        console.log('[buscarProblematica] status:', res.status, '| data:', JSON.stringify(data).slice(0, 400));
-
-        if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error('non-ok'); }
-
-        // La API puede devolver { argumentos: [...] } o [ ... ] directamente
-        const argumentos = Array.isArray(data) ? data
-                         : Array.isArray(data.argumentos) ? data.argumentos
-                         : [];
-
+        if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
+        const argumentos = Array.isArray(data) ? data : (data.argumentos || []);
         renderArgumentos(argumentos, label);
-      } catch (err) {
-        console.error('[buscarProblematica]', err);
-        toast('Error de conexión.', 'error');
-      } finally {
+      } catch(e) { console.error(e); toast('Error de conexión.', 'error'); }
+      finally {
         desbloquearUI();
-        btn.textContent = 'Buscar argumentos de esta problemática';
+        btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Ver argumentos';
         _buscando = false;
       }
     }
   }
 
-  /* ── Render fragmentos ── */
   function renderFragmentos(items, consulta, documento) {
-    const label = document.getElementById('lblResultados');
     const scope = documento ? ` en "${documento.length > 35 ? documento.slice(0,35)+'…' : documento}"` : '';
-    label.textContent = `${items.length} fragmento${items.length !== 1 ? 's' : ''} — "${consulta}"${scope}`;
+    document.getElementById('lblResultados').innerHTML =
+      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">· "${consulta}"${scope}</span>`;
 
     if (!items.length) { mostrarVacio('Sin resultados para esta consulta.'); return; }
 
     const html = items.map((f, i) => {
-      const score      = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
-      const badgeColor = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
+      const score = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
+      const col   = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
       return `
-        <div class="card" style="margin-bottom:10px;">
-          <div class="card-body">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px;flex-wrap:wrap;">
-              <span style="font-family:var(--font-display);font-size:var(--font-size-sm);font-weight:600;color:var(--text-primary);">
-                ${f.nombre_documento || 'Documento'}
-                ${f.pagina != null ? `<span style="color:var(--text-muted);font-weight:400;"> · pág. ${f.pagina}</span>` : ''}
-              </span>
-              ${score != null ? `<span class="status-badge" style="background:${badgeColor}20;color:${badgeColor};">${score}% similitud</span>` : ''}
-            </div>
-            <p style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.6;margin:0;
-              overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;"
-              id="frag-${i}">${f.contenido || ''}</p>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
-              <button class="btn btn-ghost btn-sm" onclick="expandir('frag-${i}', this)">Ver más</button>
-              ${f.pagina != null ? `
-                <a class="btn btn-ghost btn-sm"
-                   href="/semantica/fragmentos/?nombre=${encodeURIComponent(f.nombre_documento || '')}&pagina=${f.pagina}"
-                   style="color:var(--accent);">
-                  Ver en contexto →
-                </a>` : ''}
-            </div>
+      <div class="frag-card">
+        <div class="frag-card-head">
+          <div class="frag-doc-name">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            ${f.nombre_documento || 'Documento'}
+            ${f.pagina != null ? `<span class="frag-pag">· pág. ${f.pagina}</span>` : ''}
           </div>
-        </div>`;
-    }).join('');
-
-    mostrarResultados(html);
-  }
-
-
-  /* ── Render argumentos ── */
-  function renderArgumentos(items, label) {
-    const lbl = document.getElementById('lblResultados');
-    lbl.textContent = `${items.length} argumento${items.length !== 1 ? 's' : ''} — ${label}`;
-
-    if (!items.length) {
-      mostrarVacio('Sin argumentos registrados para esta problemática.');
-      return;
-    }
-
-    const html = items.map((a, i) => {
-      // El modelo retorna: id, texto, tema, frecuencia, identificado_en, problematica_descripcion, documentos[]
-      const contenido = a.texto || a.descripcion || a.argumento || '(sin contenido)';
-      const docs = Array.isArray(a.documentos) && a.documentos.length
-        ? a.documentos.map(d => `<span class="tipo-pill" style="background:#f8fafc;">${d.nombre || d}</span>`).join('')
-        : '';
-      return `
-      <div class="card" style="margin-bottom:10px;">
-        <div class="card-body" style="display:flex;gap:16px;align-items:flex-start;">
-          <span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;
-            color:var(--accent);opacity:.4;min-width:32px;text-align:right;">${i + 1}</span>
-          <div style="flex:1;">
-            <p style="font-size:var(--font-size-sm);color:var(--text-primary);line-height:1.6;margin:0 0 10px;">
-              ${contenido}
-            </p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${a.tema ? `<span class="tipo-pill">${a.tema}</span>` : ''}
-              ${a.problematica_descripcion ? `<span class="tipo-pill" style="background:#ede9fe;color:#5b21b6;">${a.problematica_descripcion}</span>` : ''}
-              ${a.frecuencia != null ? `<span class="tipo-pill" style="background:#f0fdf4;color:#15803d;">x${a.frecuencia} veces</span>` : ''}
-              ${docs}
-            </div>
+          ${score != null ? `
+          <div class="score-row">
+            <div class="score-track"><div class="score-fill" style="width:${score}%;background:${col};"></div></div>
+            <span class="score-val" style="color:${col};">${score}%</span>
+          </div>` : ''}
+        </div>
+        <div class="frag-card-body">
+          <p class="frag-text" id="frag-${i}">${f.contenido || ''}</p>
+          <div class="frag-foot">
+            <button class="btn btn-ghost btn-sm" onclick="expandir('frag-${i}',this)">Ver más</button>
+            ${f.pagina != null ? `
+            <a class="btn btn-ghost btn-sm" style="color:var(--accent);"
+               href="/semantica/fragmentos/?nombre=${encodeURIComponent(f.nombre_documento||'')}&pagina=${f.pagina}">
+              Ver en contexto →
+            </a>` : ''}
           </div>
         </div>
       </div>`;
     }).join('');
-
     mostrarResultados(html);
   }
 
-  /* ── Helpers UI ── */
+  function renderArgumentos(items, label) {
+    document.getElementById('lblResultados').innerHTML =
+      `<span>${items.length} argumento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">· ${label}</span>`;
+
+    if (!items.length) { mostrarVacio('Sin argumentos registrados para esta problemática.'); return; }
+
+    const html = items.map((a, i) => {
+      const contenido = a.texto || a.descripcion || a.argumento || '(sin contenido)';
+      const docs = Array.isArray(a.documentos) && a.documentos.length
+        ? a.documentos.map(d => `<span class="tipo-pill" style="background:#f8fafc;">${d.nombre || d}</span>`).join('') : '';
+      return `
+      <div class="arg-card">
+        <div class="arg-num">${i + 1}</div>
+        <div class="arg-body">
+          <p class="arg-text">${contenido}</p>
+          <div class="arg-pills">
+            ${a.tema ? `<span class="tipo-pill">${a.tema}</span>` : ''}
+            ${a.problematica_descripcion ? `<span class="tipo-pill" style="background:#ede9fe;color:#5b21b6;">${a.problematica_descripcion}</span>` : ''}
+            ${a.frecuencia != null ? `<span class="tipo-pill" style="background:#f0fdf4;color:#15803d;">× ${a.frecuencia} menciones</span>` : ''}
+            ${docs}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    mostrarResultados(html);
+  }
+
   function expandir(id, btn) {
-    const el       = document.getElementById(id);
-    const expandido = el.style.webkitLineClamp === 'unset';
-    el.style.webkitLineClamp = expandido ? '4'           : 'unset';
-    el.style.display         = expandido ? '-webkit-box' : 'block';
-    btn.textContent          = expandido ? 'Ver más'     : 'Ver menos';
+    const el = document.getElementById(id);
+    const exp = el.style.webkitLineClamp === 'unset';
+    el.style.webkitLineClamp = exp ? '4' : 'unset';
+    el.style.display         = exp ? '-webkit-box' : 'block';
+    btn.textContent          = exp ? 'Ver más' : 'Ver menos';
   }
 
   function mostrarResultados(html) {
-    document.getElementById('estadoVacio').style.display          = 'none';
+    document.getElementById('estadoVacio').style.display = 'none';
     document.getElementById('contenedorResultados').style.display = 'block';
-    document.getElementById('listaResultados').innerHTML          = html;
+    document.getElementById('listaResultados').innerHTML = html;
   }
-
   function ocultarResultados() {
     document.getElementById('contenedorResultados').style.display = 'none';
-    document.getElementById('estadoVacio').style.display          = 'none';
+    document.getElementById('estadoVacio').style.display = 'none';
   }
-
   function mostrarVacio(msg) {
     document.getElementById('contenedorResultados').style.display = 'none';
     const el = document.getElementById('estadoVacio');
     el.style.display = 'flex';
     el.querySelector('p').textContent = msg;
   }
-
   function limpiarResultados() {
     const inp = document.getElementById('inputConsulta');
     if (inp) inp.value = '';
     ocultarResultados();
     document.getElementById('estadoVacio').style.display = 'flex';
-    document.getElementById('estadoVacio').querySelector('p').textContent =
-      'Escribe en lenguaje natural o selecciona una problemática de la lista';
   }
 
-  /* ── Toast ── */
   function toast(msg, tipo = 'success') {
     const c = document.querySelector('.toast-container') || (() => {
       const d = document.createElement('div');
