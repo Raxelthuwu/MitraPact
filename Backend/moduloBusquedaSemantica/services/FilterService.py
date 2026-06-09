@@ -466,6 +466,28 @@ class FilterService(IFilterService):
             logger.error(f"[FilterService] Error en listarProblematicas: {e}")
             raise
 
+    async def listarOpinionesPorBarrio(self, nombreBarrio: str) -> dict:
+        """
+        Lista todas las opiniones individuales de un barrio con texto completo.
+        Usado por el selector del modal crear/editar argumento.
+
+        Args:
+            nombreBarrio: Nombre parcial o completo del barrio.
+
+        Returns:
+            dict con 'opiniones' y 'barrioId', o dict con 'seleccion_requerida'.
+        """
+        logger.info(f"[FilterService] Listando opiniones para barrio: '{nombreBarrio}'")
+        try:
+            resolucion = await self.resolverBarrio(nombreBarrio)
+            if 'seleccion_requerida' in resolucion:
+                return resolucion
+            opiniones = await OpinionClasificada.listarPorBarrio(resolucion['barrioId'])
+            return {'opiniones': opiniones, 'barrioId': resolucion['barrioId']}
+        except Exception as e:
+            logger.error(f"[FilterService] Error en listarOpinionesPorBarrio: {e}")
+            raise
+
     async def obtenerCruceBarrioProblematica(self, barrioId: str, problematicaCod: int) -> list[dict]:
         """
         Consulta SQL para cruzar Barrio y Problematica.
@@ -484,7 +506,7 @@ class FilterService(IFilterService):
         # Debes usar el helper _query que ya tienes en otros archivos
         # Nota: Asegúrate de importar el helper _query o ejecutar la consulta vía FiltroSemantico
         try:
-            from Backend.moduloBusquedaSemantica.models import _query
+            from Backend.moduloBusquedaSemantica.models.filtros import _query
             return await _query(sql, [barrioId, int(problematicaCod)], fetchall=True)
         except Exception as e:
             logger.error(f"[FilterService] Error en el cruce: {e}")

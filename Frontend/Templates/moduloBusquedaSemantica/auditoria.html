@@ -41,7 +41,6 @@
         <div class="kpi-label">Docs sin argumentos</div>
       </div>
     </div>
-
     <div class="kpi-card" id="kpi-argsSinDoc">
       <div class="kpi-icon orange">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -53,7 +52,6 @@
         <div class="kpi-label">Args sin documento</div>
       </div>
     </div>
-
     <div class="kpi-card">
       <div class="kpi-icon blue">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -65,7 +63,6 @@
         <div class="kpi-label">Total fragmentos</div>
       </div>
     </div>
-
     <div class="kpi-card">
       <div class="kpi-icon purple">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -81,8 +78,6 @@
 
   <!-- Grid principal: 2 columnas -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
-
-    <!-- Documentos sin argumentos -->
     <div class="card">
       <div class="card-header">
         <span class="card-title">Documentos sin argumentos</span>
@@ -92,8 +87,6 @@
         <div class="skeleton skeleton-card"></div>
       </div>
     </div>
-
-    <!-- Argumentos sin documento -->
     <div class="card">
       <div class="card-header">
         <span class="card-title">Argumentos sin documento</span>
@@ -103,7 +96,6 @@
         <div class="skeleton skeleton-card"></div>
       </div>
     </div>
-
   </div>
 
   <!-- Fragmentos por documento -->
@@ -114,6 +106,27 @@
     </div>
     <div class="card-body" id="tabla-frags">
       <div class="skeleton skeleton-card"></div>
+    </div>
+  </div>
+
+  <!-- Argumentos por barrio -->
+  <div class="card">
+    <div class="card-header" style="align-items:center;">
+      <span class="card-title">Argumentos por barrio</span>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:320px;margin-left:auto;position:relative;">
+        <input type="text" id="args-barrio-input" class="field-input" placeholder="Buscar barrio…"
+          oninput="filtrarBarriosArgs()" autocomplete="off"
+          style="width:100%;">
+        <div id="args-barrio-results"
+          style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);z-index:50;max-height:220px;overflow-y:auto;box-shadow:var(--shadow-md);">
+        </div>
+      </div>
+      <span class="text-muted text-xs" id="badge-args-barrio" style="white-space:nowrap;"></span>
+    </div>
+    <div class="card-body" id="lista-args-barrio">
+      <div class="empty-state" style="padding:24px;">
+        <p style="color:var(--text-muted);font-size:var(--font-size-sm);">Escribe un barrio para ver sus argumentos</p>
+      </div>
     </div>
   </div>
 
@@ -137,26 +150,50 @@
 
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL — EDITAR ARGUMENTO
-══════════════════════════════════════════════════════════ -->
+<!-- MODAL — EDITAR ARGUMENTO -->
 <div id="modal-editar" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
   <div class="modal-box">
     <h3 class="modal-title">Editar argumento</h3>
-    <p class="modal-sub">Modifica el texto o la frecuencia del argumento seleccionado.</p>
-
+    <p class="modal-sub">Modifica el texto, frecuencia u opinión asociada del argumento.</p>
     <input type="hidden" id="modal-edit-id">
-
     <div class="field-group">
       <label class="field-label">Texto</label>
       <textarea id="modal-edit-texto" rows="4" class="field-input" style="resize:vertical;"></textarea>
     </div>
-
     <div class="field-group">
       <label class="field-label">Frecuencia</label>
       <input type="number" id="modal-edit-frecuencia" min="0" class="field-input">
     </div>
-
+    <div class="field-group">
+      <label class="field-label">Barrio (para filtrar opiniones)</label>
+      <div style="position:relative;">
+        <input type="text" id="edit-buscar-barrio" class="field-input"
+          placeholder="Escribe el nombre del barrio…"
+          autocomplete="off"
+          oninput="filtrarDropdownBarrioEdit()"
+          onfocus="abrirDropdownBarrioEdit()">
+        <div id="edit-resultados-barrio"
+          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;background:var(--bg-card);z-index:11;">
+        </div>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Opinión asociada</label>
+      <div style="position:relative;">
+        <input type="text" id="edit-buscar-opinion" class="field-input"
+          placeholder="Selecciona un barrio primero…"
+          autocomplete="off"
+          disabled
+          oninput="filtrarOpinionesEdit()"
+          onfocus="mostrarOpinionesEdit()">
+        <div id="edit-resultados-opinion"
+          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;background:var(--bg-card);z-index:10;">
+        </div>
+      </div>
+      <div id="edit-opinion-seleccionada" style="margin-top:6px;">
+        <span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin opinión seleccionada</span>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modal-editar')">Cancelar</button>
       <button class="btn btn-sm btn-primary" onclick="guardarArgumento()">Guardar cambios</button>
@@ -164,33 +201,40 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     MODAL — CREAR ARGUMENTO
-     CAMBIO 1: se agregó el campo "Opinión asociada"
-══════════════════════════════════════════════════════════ -->
+<!-- MODAL — CREAR ARGUMENTO -->
 <div id="modal-crear" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
   <div class="modal-box" style="max-width:580px;">
     <h3 class="modal-title">Nuevo argumento</h3>
     <p class="modal-sub">Crea un argumento manualmente y asócialo a uno o más documentos.</p>
-
-    <!-- Texto -->
     <div class="field-group">
       <label class="field-label">Texto <span style="color:var(--danger,#e74c3c)">*</span></label>
-      <textarea id="crear-texto" rows="3" class="field-input" placeholder="Describe el argumento…" style="resize:vertical;"></textarea>
+      <textarea id="crear-texto" rows="3" class="field-input" placeholder="Describe el argumento…" style="resize:vertical;" oninput="sugerirDocumentosDebounce()"></textarea>
     </div>
-
-    <!-- Tema -->
     <div class="field-group">
       <label class="field-label">Tema</label>
       <input type="text" id="crear-tema" class="field-input" placeholder="Ej: Movilidad, Educación… (opcional)">
     </div>
-
-    <!-- Problemática + Frecuencia en fila -->
+    <div class="field-group">
+      <label class="field-label">Barrio <span style="color:var(--danger,#e74c3c)">*</span></label>
+      <div style="position:relative;">
+        <input type="text" id="crear-buscar-barrio" class="field-input"
+          placeholder="Escribe el nombre del barrio…"
+          autocomplete="off"
+          oninput="filtrarDropdownBarrio()"
+          onfocus="abrirDropdownBarrio()">
+        <div id="crear-resultados-barrio"
+          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;background:var(--bg-card);z-index:11;">
+        </div>
+      </div>
+      <div id="crear-barrio-seleccionado" style="margin-top:6px;">
+        <span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin barrio seleccionado</span>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 120px;gap:12px;">
       <div class="field-group">
         <label class="field-label">Problemática <span style="color:var(--danger,#e74c3c)">*</span></label>
-        <select id="crear-problematica" class="field-input form-select">
-          <option value="">Cargando…</option>
+        <select id="crear-problematica" class="field-input form-select" disabled>
+          <option value="">Selecciona un barrio primero…</option>
         </select>
       </div>
       <div class="field-group">
@@ -198,41 +242,54 @@
         <input type="number" id="crear-frecuencia" class="field-input" value="1" min="1">
       </div>
     </div>
-
-    <!-- NUEVO: Opinión asociada -->
     <div class="field-group">
-      <label class="field-label">Opinión asociada</label>
+      <label class="field-label">Opinión asociada <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
       <div style="position:relative;">
         <input type="text" id="crear-buscar-opinion" class="field-input"
-          placeholder="Buscar por texto de opinión o tema…"
-          oninput="buscarOpinionesParaCrear()">
+          placeholder="Selecciona un barrio primero…"
+          autocomplete="off"
+          disabled
+          oninput="filtrarOpinionesBarrio()"
+          onfocus="mostrarOpinionesBarrio()">
         <div id="crear-resultados-opinion"
-          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;background:var(--bg-card);z-index:10;">
+          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;background:var(--bg-card);z-index:10;">
         </div>
       </div>
       <div id="crear-opinion-seleccionada" style="margin-top:6px;">
         <span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin opinión seleccionada (opcional)</span>
       </div>
     </div>
-
-    <!-- Buscador de documentos -->
     <div class="field-group">
-      <label class="field-label">Asociar documentos</label>
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <input type="text" id="crear-buscar-doc" class="field-input" placeholder="Buscar documento por nombre…"
-          oninput="buscarDocumentosParaCrear()"
-          style="flex:1;">
+      <label class="field-label">Documentos relacionados <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
+      <div style="position:relative;">
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="crear-buscar-doc" class="field-input"
+            placeholder="Buscar documento por nombre…"
+            oninput="buscarDocumentosParaCrear()"
+            style="flex:1;">
+          <button class="btn btn-ghost btn-sm" id="btn-sugerir-similitud" onclick="sugerirPorSimilitud()"
+            title="Sugerir documentos según el texto del argumento"
+            style="flex-shrink:0;white-space:nowrap;gap:6px;">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m3.343-5.657-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            Sugerir similares
+          </button>
+        </div>
+        <div id="crear-resultados-doc"
+          style="display:none;position:absolute;left:0;right:0;top:100%;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;background:var(--bg-card);z-index:10;">
+        </div>
       </div>
-      <div id="crear-resultados-doc" style="display:none;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;margin-bottom:8px;background:var(--bg-card);">
-      </div>
-      <div id="crear-docs-seleccionados" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;">
+      <div id="crear-docs-seleccionados" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px;margin-top:8px;">
         <span style="font-size:var(--font-size-xs);color:var(--text-muted);align-self:center;">Sin documentos seleccionados</span>
       </div>
     </div>
 
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="cerrarModal('modal-crear')">Cancelar</button>
-      <button class="btn btn-sm btn-primary" onclick="crearArgumento()">Crear argumento</button>
+      <button class="btn btn-sm btn-primary" id="btn-crear-argumento" onclick="crearArgumento()">
+        Crear argumento
+      </button>
     </div>
   </div>
 </div>
@@ -241,7 +298,6 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <style>
-  /* ── Botones icono ── */
   .arg-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
   .btn-icon {
     display:inline-flex; align-items:center; justify-content:center;
@@ -254,116 +310,43 @@
   .btn-icon.danger { color:#dc2626; border-color:#fca5a5; background:#fff0f0; }
   .btn-icon.danger:hover { background:#fee2e2; }
   .btn-icon.edit { color:var(--accent); }
-
-  /* ── Modales ── */
   .modal-box {
-    background:var(--bg-card);
-    border:1px solid var(--border);
-    border-radius:var(--radius-md);
-    padding:28px;
-    width:100%;
-    max-width:520px;
-    box-shadow:0 8px 32px rgba(0,0,0,.18);
-    max-height:90vh;
-    overflow-y:auto;
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:28px; width:100%; max-width:520px;
+    box-shadow:0 8px 32px rgba(0,0,0,.18); max-height:90vh; overflow-y:auto;
   }
-  .modal-title {
-    font-family:var(--font-display);
-    font-size:var(--font-size-md);
-    font-weight:700;
-    color:var(--text-primary);
-    margin-bottom:4px;
-  }
-  .modal-sub {
-    font-size:var(--font-size-xs);
-    color:var(--text-muted);
-    margin-bottom:18px;
-  }
-  .modal-actions {
-    display:flex; gap:10px; justify-content:flex-end; margin-top:20px;
-  }
+  .modal-title { font-family:var(--font-display); font-size:var(--font-size-md); font-weight:700; color:var(--text-primary); margin-bottom:4px; }
+  .modal-sub { font-size:var(--font-size-xs); color:var(--text-muted); margin-bottom:18px; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
   .field-group { margin-bottom:14px; }
-  .field-label {
-    display:block;
-    font-size:var(--font-size-xs);
-    font-weight:600;
-    color:var(--text-secondary);
-    margin-bottom:6px;
-  }
-  .field-input {
-    width:100%;
-    padding:8px 12px;
-    border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    font-size:var(--font-size-sm);
-    color:var(--text-primary);
-    background:var(--bg-input,var(--bg-card));
-    font-family:inherit;
-    box-sizing:border-box;
-  }
+  .field-label { display:block; font-size:var(--font-size-xs); font-weight:600; color:var(--text-secondary); margin-bottom:6px; }
+  .field-input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:var(--font-size-sm); color:var(--text-primary); background:var(--bg-input,var(--bg-card)); font-family:inherit; box-sizing:border-box; }
   .field-input:focus { outline:none; border-color:var(--accent); }
-  .btn-primary {
-    background:var(--accent);
-    color:#fff;
-    border:none;
-  }
+  .btn-primary { background:var(--accent); color:#fff; border:none; }
   .btn-primary:hover { opacity:.9; }
-
-  /* ── Chips de documentos / opinión seleccionados ── */
-  .doc-chip {
-    display:inline-flex; align-items:center; gap:5px;
-    padding:3px 10px 3px 8px;
-    background:var(--kpi-purple-bg,#ede9fe);
-    color:var(--accent);
-    border-radius:999px;
-    font-size:var(--font-size-xs);
-    font-weight:500;
-  }
-  .doc-chip button {
-    background:none; border:none; cursor:pointer;
-    color:var(--accent); padding:0; line-height:1;
-    font-size:14px;
-  }
-  .opinion-chip {
-    display:inline-flex; align-items:center; gap:5px;
-    padding:3px 10px 3px 8px;
-    background:var(--kpi-green-bg,#d1fae5);
-    color:#065f46;
-    border-radius:999px;
-    font-size:var(--font-size-xs);
-    font-weight:500;
-  }
-  .opinion-chip button {
-    background:none; border:none; cursor:pointer;
-    color:#065f46; padding:0; line-height:1;
-    font-size:14px;
-  }
-
-  /* ── Resultado búsqueda doc / opinión ── */
-  .doc-result-item {
-    padding:8px 12px;
-    font-size:var(--font-size-sm);
-    cursor:pointer;
-    border-bottom:1px solid var(--border);
-    color:var(--text-primary);
-  }
+  .doc-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; background:var(--kpi-purple-bg,#ede9fe); color:var(--accent); border-radius:999px; font-size:var(--font-size-xs); font-weight:500; }
+  .doc-chip button { background:none; border:none; cursor:pointer; color:var(--accent); padding:0; line-height:1; font-size:14px; }
+  .opinion-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 10px 3px 8px; background:var(--kpi-green-bg,#d1fae5); color:#065f46; border-radius:999px; font-size:var(--font-size-xs); font-weight:500; }
+  .opinion-chip button { background:none; border:none; cursor:pointer; color:#065f46; padding:0; line-height:1; font-size:14px; }
+  .doc-result-item { padding:8px 12px; font-size:var(--font-size-sm); cursor:pointer; border-bottom:1px solid var(--border); color:var(--text-primary); }
   .doc-result-item:last-child { border-bottom:none; }
   .doc-result-item:hover { background:var(--bg-hover,#f5f5f5); }
-
-  #modal-editar.open,
-  #modal-crear.open { display:flex !important; }
+  #modal-editar.open, #modal-crear.open { display:flex !important; }
 </style>
 
 <script>
 const BASE = '/semantica';
 
-// Estado de documentos seleccionados para el modal de crear
-let docsSeleccionados = {}; // { id: nombre }
-let _buscarDocTimer   = null;
+// ── STORE: guarda datos de argumentos para edición segura ──────────────────
+// Clave: id del argumento → { texto, frecuencia }
+// Esto evita pasar texto con caracteres especiales como atributo onclick inline
+let _argStore = {};
 
-// CAMBIO 2: nuevas variables de estado para opinión
-let opinionSeleccionada = null; // { id, tema, barrio_nombre }
+let docsSeleccionados   = {};
+let opinionSeleccionada = null;
+let barrioSeleccionado  = null;
 let _buscarOpinionTimer = null;
+let _opinionesDelBarrio = [];
 
 // ── Toast ───────────────────────────────────────────────────────────────────
 function toast(msg, tipo = 'error') {
@@ -376,27 +359,31 @@ function toast(msg, tipo = 'error') {
 }
 
 // ── Modales ──────────────────────────────────────────────────────────────────
-function abrirModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-function cerrarModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
+function abrirModal(id)  { document.getElementById(id).classList.add('open'); }
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// Cerrar al hacer clic fuera
 ['modal-editar','modal-crear'].forEach(id => {
   document.getElementById(id).addEventListener('click', function(e) {
     if (e.target === this) cerrarModal(id);
   });
 });
 
-// Cerrar dropdowns al hacer clic fuera de ellos
 document.addEventListener('click', function(e) {
-  const dropdowns = ['crear-resultados-doc', 'crear-resultados-opinion'];
-  dropdowns.forEach(id => {
-    const drop  = document.getElementById(id);
-    const input = document.getElementById(id === 'crear-resultados-doc' ? 'crear-buscar-doc' : 'crear-buscar-opinion');
-    if (drop && input && !drop.contains(e.target) && e.target !== input) {
+  ['crear-resultados-doc','crear-resultados-opinion','crear-resultados-barrio',
+   'edit-resultados-barrio','edit-resultados-opinion','args-barrio-results'].forEach(id => {
+    const drop    = document.getElementById(id);
+    const inputMap = {
+      'crear-resultados-doc':     'crear-buscar-doc',
+      'crear-resultados-opinion': 'crear-buscar-opinion',
+      'crear-resultados-barrio':  'crear-buscar-barrio',
+      'edit-resultados-barrio':   'edit-buscar-barrio',
+      'edit-resultados-opinion':  'edit-buscar-opinion',
+      'args-barrio-results':       'args-barrio-input',
+    };
+    const input = document.getElementById(inputMap[id]);
+    const btnId = id === 'crear-resultados-doc' ? 'btn-sugerir-similitud' : null;
+    const btn   = btnId ? document.getElementById(btnId) : null;
+    if (drop && input && !drop.contains(e.target) && e.target !== input && e.target !== btn && !btn?.contains(e.target)) {
       drop.style.display = 'none';
     }
   });
@@ -418,23 +405,20 @@ async function cargarDocsSinArgs() {
     if (!items.length) {
       el.innerHTML = `<div class="empty-state" style="padding:24px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <p>Sin problemas detectados</p>
-      </div>`;
+        <p>Sin problemas detectados</p></div>`;
       return;
     }
-
     el.innerHTML = `<div class="doc-list">${items.map(doc => `
       <div class="doc-item">
         <span class="doc-name">${doc.nombre ?? doc.id ?? '—'}</span>
         <span class="doc-type">${doc.registrado_en ? new Date(doc.registrado_en).toLocaleDateString('es-CO') : ''}</span>
-      </div>`).join('')}
-    </div>`;
-  } catch {
-    toast('Error al cargar documentos sin argumentos');
-  }
+      </div>`).join('')}</div>`;
+  } catch { toast('Error al cargar documentos sin argumentos'); }
 }
 
 // ── Argumentos sin documento ──────────────────────────────────────────────
+// CAMBIO CLAVE: guarda cada argumento en _argStore antes de renderizar el HTML.
+// Los botones editar usan data-arg-id y leen del store, nunca pasan texto inline.
 async function cargarArgsSinDoc() {
   try {
     const r     = await fetch(`${BASE}/filter/auditoria/?tipo=argumentosSinDocumento`);
@@ -446,15 +430,21 @@ async function cargarArgsSinDoc() {
     badge.textContent = `${items.length} registros`;
     badge.className   = `status-badge ${items.length > 0 ? 'warning' : 'success'}`;
 
+    // Guardar en store antes de renderizar
+    _argStore = {};
+    items.forEach(a => {
+      _argStore[a.id] = { texto: a.texto ?? '', frecuencia: a.frecuencia ?? 0 };
+    });
+
     const el = document.getElementById('lista-argsSinDoc');
     if (!items.length) {
       el.innerHTML = `<div class="empty-state" style="padding:24px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <p>Sin problemas detectados</p>
-      </div>`;
+        <p>Sin problemas detectados</p></div>`;
       return;
     }
 
+    // Botón editar: usa data-arg-id, NO pasa texto inline
     el.innerHTML = `<div class="doc-list">${items.map(arg => `
       <div class="doc-item" id="arg-row-${arg.id}">
         <span class="doc-name" id="arg-texto-${arg.id}"
@@ -463,15 +453,13 @@ async function cargarArgsSinDoc() {
         >${arg.texto ?? arg.id ?? '—'}</span>
         <div class="arg-actions">
           <span class="doc-type">${arg.problematica_descripcion ?? (arg.problematica_cod ? `P-${arg.problematica_cod}` : '')}</span>
-          <button class="btn-icon edit" title="Editar"
-            onclick="abrirModalEditar('${arg.id}', ${JSON.stringify((arg.texto ?? '').replace(/\\/g,'\\\\').replace(/"/g,'\\"'))}, ${arg.frecuencia ?? 0})">
+          <button class="btn-icon edit" title="Editar" data-arg-id="${arg.id}" onclick="abrirModalEditar(this.dataset.argId)">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <button class="btn-icon danger" title="Eliminar"
-            onclick="eliminarArgumento('${arg.id}')">
+          <button class="btn-icon danger" title="Eliminar" data-arg-id="${arg.id}" onclick="eliminarArgumento(this.dataset.argId)">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
@@ -480,11 +468,8 @@ async function cargarArgsSinDoc() {
             </svg>
           </button>
         </div>
-      </div>`).join('')}
-    </div>`;
-  } catch {
-    toast('Error al cargar argumentos sin documento');
-  }
+      </div>`).join('')}</div>`;
+  } catch { toast('Error al cargar argumentos sin documento'); }
 }
 
 // ── Fragmentos por documento ──────────────────────────────────────────────
@@ -499,10 +484,7 @@ async function cargarFrags() {
     document.getElementById('badge-frags').textContent = `${items.length} documentos`;
 
     const el = document.getElementById('tabla-frags');
-    if (!items.length) {
-      el.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Sin datos</p></div>`;
-      return;
-    }
+    if (!items.length) { el.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Sin datos</p></div>`; return; }
 
     const max = Math.max(...items.map(i => i.total_fragmentos ?? 0));
     el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">
@@ -513,15 +495,10 @@ async function cargarFrags() {
             <span class="text-sm">${i.nombre ?? i.documento_id ?? '—'}</span>
             <span class="text-xs text-muted fw-600">${i.total_fragmentos} frags</span>
           </div>
-          <div class="cobertura-bar-bg">
-            <div class="cobertura-bar-fill" style="width:${pct}%"></div>
-          </div>
+          <div class="cobertura-bar-bg"><div class="cobertura-bar-fill" style="width:${pct}%"></div></div>
         </div>`;
-      }).join('')}
-    </div>`;
-  } catch {
-    toast('Error al cargar fragmentos');
-  }
+      }).join('')}</div>`;
+  } catch { toast('Error al cargar fragmentos'); }
 }
 
 // ── Top docs con más argumentos ───────────────────────────────────────────
@@ -536,10 +513,7 @@ async function cargarTopDocs() {
       items.length ? (items[0].nombre ?? items[0].id ?? '—') : 'N/A';
 
     const el = document.getElementById('lista-topDocs');
-    if (!items.length) {
-      el.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Sin datos</p></div>`;
-      return;
-    }
+    if (!items.length) { el.innerHTML = `<div class="empty-state" style="padding:24px;"><p>Sin datos</p></div>`; return; }
 
     const max = Math.max(...items.map(i => i.total_argumentos ?? 0));
     el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">
@@ -553,44 +527,141 @@ async function cargarTopDocs() {
               <span class="text-sm">${i.nombre ?? i.id ?? '—'}</span>
               <span class="text-xs text-muted fw-600">${i.total_argumentos} args</span>
             </div>
-            <div class="cobertura-bar-bg">
-              <div class="cobertura-bar-fill" style="width:${pct}%;background:${medal};"></div>
-            </div>
+            <div class="cobertura-bar-bg"><div class="cobertura-bar-fill" style="width:${pct}%;background:${medal};"></div></div>
           </div>
         </div>`;
-      }).join('')}
-    </div>`;
-  } catch {
-    toast('Error al cargar top documentos');
-  }
+      }).join('')}</div>`;
+  } catch { toast('Error al cargar top documentos'); }
 }
+
+
+// ── Argumentos por barrio ─────────────────────────────────────────────────
+let _barriosArgsList = [];
+
+async function filtrarBarriosArgs() {
+  const input  = document.getElementById('args-barrio-input');
+  const resEl  = document.getElementById('args-barrio-results');
+  const q      = input.value.trim().toLowerCase();
+
+  if (!q) { resEl.style.display = 'none'; return; }
+
+  if (!_barriosArgsList.length) {
+    try {
+      const r = await fetch(`${BASE}/filter/distribucion/?tipo=opinionesPorBarrio`);
+      const d = await r.json();
+      _barriosArgsList = [...new Set((d.distribucion || []).map(b => b.barrio_nombre).filter(Boolean))].sort();
+    } catch { return; }
+  }
+
+  const filtrados = _barriosArgsList.filter(n => n.toLowerCase().includes(q));
+  if (!filtrados.length) { resEl.style.display = 'none'; return; }
+
+  resEl.innerHTML = filtrados.map(n =>
+    '<div class="search-result-item" style="padding:8px 12px;cursor:pointer;font-size:var(--font-size-sm);" onmousedown="cargarArgumentosPorBarrio(\'' + n.replace(/'/g, "\\'") + '\')">' + n + '</div>'
+  ).join('');
+  resEl.style.display = 'block';
+}
+
+async function cargarArgumentosPorBarrio(nombre) {
+  document.getElementById('args-barrio-input').value = nombre;
+  document.getElementById('args-barrio-results').style.display = 'none';
+
+  const el    = document.getElementById('lista-args-barrio');
+  const badge = document.getElementById('badge-args-barrio');
+  el.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  badge.textContent = 'cargando…';
+
+  try {
+    const r = await fetch(`${BASE}/filter/barrio/?barrio=${encodeURIComponent(nombre)}&tipo=argumentos&limite=50`);
+    const d = await r.json();
+
+    if (d.seleccion_requerida) {
+      badge.textContent = '';
+      el.innerHTML = '<div class="empty-state" style="padding:24px;"><p>Barrio ambüiguo — sé más específico.</p></div>';
+      return;
+    }
+
+    const items = d.argumentos || [];
+    badge.textContent = `${items.length} argumentos`;
+
+    if (!items.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:24px;"><p>Sin argumentos para este barrio.</p></div>';
+      return;
+    }
+
+    const maxFreq = Math.max(...items.map(i => i.frecuencia ?? 0));
+
+    el.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">' +
+      items.map(i => {
+        const pct  = maxFreq > 0 ? Math.round((i.frecuencia / maxFreq) * 100) : 0;
+        const prob = i.problematica_descripcion ?? (i.problematica_cod ? 'P-' + i.problematica_cod : '');
+        return '<div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:8px;">' +
+            '<span class="text-sm" style="flex:1;">' + (i.texto ?? '—') + '</span>' +
+            '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
+              (prob ? '<span class="doc-type" style="font-size:10px;">' + prob + '</span>' : '') +
+              '<span class="text-xs text-muted fw-600" style="min-width:60px;text-align:right;">' + (i.frecuencia ?? 0) + ' veces</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="cobertura-bar-bg"><div class="cobertura-bar-fill" style="width:' + pct + '%;"></div></div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+
+  } catch { toast('Error al cargar argumentos del barrio'); badge.textContent = ''; }
+}
+
+document.getElementById('args-barrio-input').addEventListener('blur', () => {
+  setTimeout(() => { document.getElementById('args-barrio-results').style.display = 'none'; }, 150);
+});
+
 
 // ══════════════════════════════════════════════════════════════════
 // CRUD — EDITAR
+// CAMBIO CLAVE: abrirModalEditar solo recibe el id.
+// Lee texto y frecuencia desde _argStore, no desde parámetros inline.
 // ══════════════════════════════════════════════════════════════════
-
-function abrirModalEditar(id, texto, frecuencia) {
+function abrirModalEditar(id) {
+  const arg = _argStore[id];
+  if (!arg) { toast('No se encontraron datos del argumento.'); return; }
   document.getElementById('modal-edit-id').value         = id;
-  document.getElementById('modal-edit-texto').value      = texto;
-  document.getElementById('modal-edit-frecuencia').value = frecuencia;
+  document.getElementById('modal-edit-texto').value      = arg.texto;
+  document.getElementById('modal-edit-frecuencia').value = arg.frecuencia;
+  // Reset opinion fields
+  _editOpinionSeleccionada  = null;
+  _editOpinionesDelBarrio   = [];
+  document.getElementById('edit-buscar-barrio').value              = '';
+  document.getElementById('edit-resultados-barrio').style.display  = 'none';
+  document.getElementById('edit-buscar-opinion').value             = '';
+  document.getElementById('edit-buscar-opinion').disabled          = true;
+  document.getElementById('edit-buscar-opinion').placeholder       = 'Selecciona un barrio primero…';
+  document.getElementById('edit-resultados-opinion').style.display = 'none';
+  document.getElementById('edit-opinion-seleccionada').innerHTML   =
+    '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin opinión seleccionada</span>';
   abrirModal('modal-editar');
 }
 
 async function guardarArgumento() {
-  const id        = document.getElementById('modal-edit-id').value;
-  const texto     = document.getElementById('modal-edit-texto').value.trim();
+  const id         = document.getElementById('modal-edit-id').value;
+  const texto      = document.getElementById('modal-edit-texto').value.trim();
   const frecuencia = parseInt(document.getElementById('modal-edit-frecuencia').value);
+  const opinionId  = _editOpinionSeleccionada?.id ?? undefined;
 
   if (!texto) { toast('El texto no puede estar vacío.'); return; }
+
+  const body = { texto, frecuencia: isNaN(frecuencia) ? undefined : frecuencia };
+  if (opinionId) body.opinionId = opinionId;
 
   try {
     const r = await fetch(`${BASE}/argumentos/${id}/`, {
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ texto, frecuencia: isNaN(frecuencia) ? undefined : frecuencia }),
+      body:    JSON.stringify(body),
     });
 
     if (r.ok) {
+      // Actualizar el store y el DOM sin recargar todo
+      if (_argStore[id]) { _argStore[id].texto = texto; _argStore[id].frecuencia = frecuencia; }
       const nameEl = document.getElementById(`arg-texto-${id}`);
       if (nameEl) { nameEl.textContent = texto; nameEl.title = texto; }
       cerrarModal('modal-editar');
@@ -599,9 +670,7 @@ async function guardarArgumento() {
       const d = await r.json();
       toast(d.error || 'Error al actualizar.');
     }
-  } catch {
-    toast('Error de conexión al guardar.');
-  }
+  } catch { toast('Error de conexión al guardar.'); }
 }
 
 async function eliminarArgumento(id) {
@@ -610,6 +679,7 @@ async function eliminarArgumento(id) {
     const r = await fetch(`${BASE}/argumentos/${id}/`, { method: 'DELETE' });
     if (r.ok) {
       document.getElementById(`arg-row-${id}`)?.remove();
+      delete _argStore[id];
       const valEl   = document.getElementById('val-argsSinDoc');
       const badgeEl = document.getElementById('badge-argsSinDoc');
       const nuevo   = Math.max(0, parseInt(valEl.textContent || '0') - 1);
@@ -621,82 +691,248 @@ async function eliminarArgumento(id) {
       const d = await r.json();
       toast(d.error || 'Error al eliminar.');
     }
-  } catch {
-    toast('Error de conexión al eliminar.');
-  }
+  } catch { toast('Error de conexión al eliminar.'); }
 }
 
 // ══════════════════════════════════════════════════════════════════
 // CRUD — CREAR
 // ══════════════════════════════════════════════════════════════════
-
-// CAMBIO 2: abrirModalCrear ahora siempre recarga problemáticas,
-// limpia el estado de opinión y llama renderOpinionChip
 async function abrirModalCrear() {
-  // Limpiar estado
   docsSeleccionados   = {};
   opinionSeleccionada = null;
-  document.getElementById('crear-texto').value      = '';
-  document.getElementById('crear-tema').value       = '';
-  document.getElementById('crear-frecuencia').value = '1';
-  document.getElementById('crear-buscar-doc').value = '';
-  document.getElementById('crear-buscar-opinion').value = '';
-  document.getElementById('crear-resultados-doc').style.display     = 'none';
-  document.getElementById('crear-resultados-doc').innerHTML         = '';
+  barrioSeleccionado  = null;
+
+  document.getElementById('crear-texto').value                      = '';
+  document.getElementById('crear-tema').value                       = '';
+  document.getElementById('crear-frecuencia').value                 = '1';
+  document.getElementById('crear-buscar-opinion').value             = '';
+  document.getElementById('crear-buscar-barrio').value              = '';
   document.getElementById('crear-resultados-opinion').style.display = 'none';
   document.getElementById('crear-resultados-opinion').innerHTML     = '';
+  const inputOp2 = document.getElementById('crear-buscar-opinion');
+  inputOp2.disabled    = true;
+  inputOp2.placeholder = 'Selecciona un barrio primero…';
+  inputOp2.value       = '';
+  document.getElementById('crear-resultados-barrio').style.display  = 'none';
+  document.getElementById('crear-barrio-seleccionado').innerHTML    =
+    '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin barrio seleccionado</span>';
+  document.getElementById('crear-buscar-doc').value                 = '';
+  document.getElementById('crear-resultados-doc').style.display     = 'none';
+  document.getElementById('crear-resultados-doc').innerHTML         = '';
+
+  const sel = document.getElementById('crear-problematica');
+  sel.innerHTML = '<option value="">Selecciona un barrio primero…</option>';
+  sel.disabled  = true;
+
   renderChips();
   renderOpinionChip();
+  abrirModal('modal-crear');
+}
 
-  // CAMBIO 1: siempre recarga problemáticas al abrir (no cachea estado roto)
+// ── Barrio dropdown ───────────────────────────────────────────────────────
+let _todosLosBarrios  = null;   // cache
+
+async function abrirDropdownBarrio() {
+  if (!_todosLosBarrios) {
+    try {
+      const r = await fetch(`${BASE}/filter/distribucion/?tipo=opinionesPorBarrio`);
+      const d = await r.json();
+      const unicos = [...new Set((d.distribucion || []).map(b => b.barrio_nombre).filter(Boolean))].sort();
+      _todosLosBarrios = unicos;
+    } catch { _todosLosBarrios = []; }
+  }
+  renderDropdownBarrio(_todosLosBarrios);
+}
+
+function filtrarDropdownBarrio() {
+  const q = document.getElementById('crear-buscar-barrio').value.toLowerCase();
+  if (!_todosLosBarrios) { abrirDropdownBarrio(); return; }
+  renderDropdownBarrio(_todosLosBarrios.filter(b => b.toLowerCase().includes(q)));
+}
+
+function renderDropdownBarrio(lista) {
+  const resEl = document.getElementById('crear-resultados-barrio');
+  if (!lista.length) { resEl.style.display = 'none'; return; }
+  resEl.innerHTML = lista.map(b => `
+    <div class="doc-result-item" data-nombre="${b.replace(/"/g,'&quot;')}">
+      ${b}
+    </div>`).join('');
+  resEl.querySelectorAll('.doc-result-item').forEach(el => {
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      seleccionarBarrioCrear(el.dataset.nombre);
+    });
+  });
+  resEl.style.display = 'block';
+}
+
+async function seleccionarBarrioCrear(nombre) {
+  barrioSeleccionado = { nombre };
+  document.getElementById('crear-buscar-barrio').value             = nombre;
+  document.getElementById('crear-resultados-barrio').style.display = 'none';
+  document.getElementById('crear-barrio-seleccionado').innerHTML   =
+    `<span class="opinion-chip" style="background:var(--kpi-blue-bg,#dbeafe);color:#1e40af;">${nombre}<button onclick="deseleccionarBarrioCrear()" title="Quitar">×</button></span>`;
+
+  // Cargar problemáticas
   const sel = document.getElementById('crear-problematica');
-  sel.innerHTML = '<option value="">Cargando…</option>';
+  sel.innerHTML = '<option value="">Cargando problemáticas…</option>';
+  sel.disabled  = true;
   try {
     const r = await fetch(`${BASE}/filter/distribucion/?tipo=problematicas`);
     const d = await r.json();
     const probs = d.problematicas || [];
-    if (probs.length) {
-      sel.innerHTML = '<option value="">Selecciona una problemática…</option>' +
-        probs.map(p => `<option value="${p.codigo}">${p.codigo} — ${p.descripcion}</option>`).join('');
-    } else {
-      sel.innerHTML = '<option value="">Sin problemáticas disponibles</option>';
-    }
+    sel.innerHTML = probs.length
+      ? '<option value="">Selecciona una problemática…</option>' + probs.map(p => `<option value="${p.codigo}">${p.codigo} — ${p.descripcion}</option>`).join('')
+      : '<option value="">Sin problemáticas disponibles</option>';
+    sel.disabled = false;
   } catch {
     sel.innerHTML = '<option value="">Error al cargar</option>';
   }
 
-  abrirModal('modal-crear');
+  // Habilitar y cargar opiniones del barrio
+  const inputOp = document.getElementById('crear-buscar-opinion');
+  inputOp.disabled    = true;
+  inputOp.placeholder = 'Cargando opiniones…';
+  _opinionesDelBarrio = [];
+  try {
+    const r2 = await fetch(`/semantica/filter/barrio/?barrio=${encodeURIComponent(nombre)}&tipo=opiniones`);
+    const d2 = await r2.json();
+    _opinionesDelBarrio = d2.opiniones || [];
+    inputOp.disabled    = false;
+    inputOp.placeholder = _opinionesDelBarrio.length
+      ? `Buscar entre ${_opinionesDelBarrio.length} opiniones…`
+      : 'Sin opiniones para este barrio';
+  } catch {
+    inputOp.placeholder = 'Error al cargar opiniones';
+  }
+}
+
+function deseleccionarBarrioCrear() {
+  barrioSeleccionado  = null;
+  _opinionesDelBarrio = [];
+  document.getElementById('crear-buscar-barrio').value           = '';
+  document.getElementById('crear-barrio-seleccionado').innerHTML =
+    '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin barrio seleccionado</span>';
+  const sel = document.getElementById('crear-problematica');
+  sel.innerHTML = '<option value="">Selecciona un barrio primero…</option>';
+  sel.disabled  = true;
+  const inputOp = document.getElementById('crear-buscar-opinion');
+  inputOp.disabled    = true;
+  inputOp.placeholder = 'Selecciona un barrio primero…';
+  inputOp.value       = '';
+  document.getElementById('crear-resultados-opinion').style.display = 'none';
+  opinionSeleccionada = null;
+  renderOpinionChip();
 }
 
 function renderChips() {
-  const el = document.getElementById('crear-docs-seleccionados');
+  const el  = document.getElementById('crear-docs-seleccionados');
   const ids = Object.keys(docsSeleccionados);
   if (!ids.length) {
-    el.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--text-muted);align-self:center;">Sin documentos seleccionados</span>';
+    el.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--text-muted);align-self:center;">Sin documentos confirmados</span>';
     return;
   }
   el.innerHTML = ids.map(id => `
-    <span class="doc-chip">
-      ${docsSeleccionados[id]}
-      <button onclick="deseleccionarDoc('${id}')" title="Quitar">×</button>
+    <span class="doc-chip">${docsSeleccionados[id]}
+      <button data-id="${id}" onclick="deseleccionarDoc(this.dataset.id)" title="Quitar">×</button>
     </span>`).join('');
-}
-
-// ── Control de dropdowns — blur con delay para permitir el click ──────────
-let _ocultarTimer = {};
-function ocultarDropdown(id) {
-  _ocultarTimer[id] = setTimeout(() => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  }, 200);
-}
-function cancelarOcultar(id) {
-  clearTimeout(_ocultarTimer[id]);
 }
 
 function deseleccionarDoc(id) {
   delete docsSeleccionados[id];
   renderChips();
+}
+
+// ── Búsqueda manual de documentos (dropdown) ─────────────────────────────
+let _buscarDocTimer = null;
+
+function buscarDocumentosParaCrear() {
+  clearTimeout(_buscarDocTimer);
+  const q     = document.getElementById('crear-buscar-doc').value.trim();
+  const resEl = document.getElementById('crear-resultados-doc');
+  if (q.length < 2) { resEl.style.display = 'none'; resEl.innerHTML = ''; return; }
+
+  _buscarDocTimer = setTimeout(async () => {
+    resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Buscando…</div>';
+    resEl.style.display = 'block';
+    try {
+      const r  = await fetch(`${BASE}/documentos/?buscar=${encodeURIComponent(q)}`);
+      const d  = await r.json();
+      const docs = d.documentos || [];
+      renderDropdownDocs(docs, resEl);
+    } catch {
+      resEl.innerHTML = '<div class="doc-result-item" style="color:var(--danger,#e74c3c);">Error al buscar</div>';
+    }
+  }, 300);
+}
+
+async function sugerirPorSimilitud() {
+  const texto = document.getElementById('crear-texto').value.trim();
+  if (!texto || texto.length < 10) {
+    toast('Escribe el texto del argumento primero (mínimo 10 caracteres).');
+    return;
+  }
+  const btn      = document.getElementById('btn-sugerir-similitud');
+  const resEl    = document.getElementById('crear-resultados-doc');
+  const btnCrear = document.getElementById('btn-crear-argumento');
+  btn.disabled          = true;
+  btn.textContent       = 'Buscando…';
+  btnCrear.disabled     = true;
+  btnCrear.style.opacity = '0.45';
+  btnCrear.style.cursor  = 'not-allowed';
+  resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Buscando documentos similares…</div>';
+  resEl.style.display = 'block';
+  try {
+    const r = await fetch(`${BASE}/busqueda/documentos/?consulta=${encodeURIComponent(texto)}&nResultados=8`);
+    const d = await r.json();
+    const fragmentos = d.fragmentos || [];
+    // Agrupar por documento_id, quedarse con el score más alto
+    const docsMap = {};
+    for (const f of fragmentos) {
+      if (!docsMap[f.documento_id] || f.similitud > docsMap[f.documento_id].similitud) {
+        docsMap[f.documento_id] = { id: f.documento_id, nombre: f.documento_nombre, similitud: f.similitud };
+      }
+    }
+    const docs = Object.values(docsMap).sort((a, b) => b.similitud - a.similitud);
+    renderDropdownDocs(docs, resEl, true);
+  } catch {
+    resEl.innerHTML = '<div class="doc-result-item" style="color:var(--danger,#e74c3c);">Error al buscar similares</div>';
+  } finally {
+    btn.disabled          = false;
+    btnCrear.disabled     = false;
+    btnCrear.style.opacity = '1';
+    btnCrear.style.cursor  = 'pointer';
+    btn.innerHTML = `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m3.343-5.657-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> Sugerir similares`;
+  }
+}
+
+function renderDropdownDocs(docs, resEl, conSimilitud = false) {
+  if (!docs.length) {
+    resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
+    return;
+  }
+  resEl.innerHTML = docs.map(doc => {
+    const yaEsta = !!docsSeleccionados[doc.id];
+    const pct    = doc.similitud != null ? Math.round(doc.similitud * 100) : null;
+    const badge  = pct != null
+      ? `<span style="margin-left:auto;font-size:var(--font-size-xs);color:${pct>=70?'var(--accent)':pct>=45?'#F59E0B':'#9CA3AF'};font-weight:600;flex-shrink:0;">${pct}%</span>`
+      : '';
+    return `<div class="doc-result-item${yaEsta?' doc-result-selected':''}"
+      style="display:flex;align-items:center;gap:8px;${yaEsta?'background:var(--bg-hover,#f5f5f5);':''}"
+      data-id="${doc.id}"
+      data-nombre="${(doc.nombre ?? '').replace(/"/g,'&quot;')}">
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${doc.nombre ?? doc.id}</span>
+      ${badge}
+      ${yaEsta ? '<span style="font-size:var(--font-size-xs);color:var(--text-muted);flex-shrink:0;">✓</span>' : ''}
+    </div>`;
+  }).join('');
+  resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      seleccionarDoc(el.dataset.id, el.dataset.nombre);
+    });
+  });
+  resEl.style.display = 'block';
 }
 
 function seleccionarDoc(id, nombre) {
@@ -706,48 +942,6 @@ function seleccionarDoc(id, nombre) {
   document.getElementById('crear-buscar-doc').value = '';
 }
 
-function buscarDocumentosParaCrear() {
-  clearTimeout(_buscarDocTimer);
-  const q = document.getElementById('crear-buscar-doc').value.trim();
-  const resEl = document.getElementById('crear-resultados-doc');
-
-  if (q.length < 2) {
-    resEl.style.display = 'none';
-    resEl.innerHTML = '';
-    return;
-  }
-
-  _buscarDocTimer = setTimeout(async () => {
-    try {
-      const r = await fetch(`${BASE}/busqueda/documentos/?nombre=${encodeURIComponent(q)}`);
-      const d = await r.json();
-      const docs = d.documentos || [];
-
-      if (!docs.length) {
-        resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
-      } else {
-        resEl.innerHTML = docs.map(doc => `
-          <div class="doc-result-item"
-            data-id="${doc.id}"
-            data-nombre="${(doc.nombre ?? doc.id).replace(/"/g,'&quot;')}">
-            ${doc.nombre ?? doc.id}
-          </div>`).join('');
-        resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
-          el.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            seleccionarDoc(el.dataset.id, el.dataset.nombre);
-          });
-        });
-      }
-      resEl.style.display = 'block';
-    } catch {
-      resEl.innerHTML = '<div class="doc-result-item" style="color:var(--danger,#e74c3c);">Error al buscar</div>';
-      resEl.style.display = 'block';
-    }
-  }, 300);
-}
-
-// CAMBIO 2: funciones nuevas para opinión
 function renderOpinionChip() {
   const el = document.getElementById('crear-opinion-seleccionada');
   if (!opinionSeleccionada) {
@@ -757,17 +951,10 @@ function renderOpinionChip() {
   const label = opinionSeleccionada.barrio_nombre
     ? `${opinionSeleccionada.tema} · ${opinionSeleccionada.barrio_nombre}`
     : opinionSeleccionada.tema;
-  el.innerHTML = `
-    <span class="opinion-chip">
-      ${label}
-      <button onclick="deseleccionarOpinion()" title="Quitar">×</button>
-    </span>`;
+  el.innerHTML = `<span class="opinion-chip">${label}<button onclick="deseleccionarOpinion()" title="Quitar">×</button></span>`;
 }
 
-function deseleccionarOpinion() {
-  opinionSeleccionada = null;
-  renderOpinionChip();
-}
+function deseleccionarOpinion() { opinionSeleccionada = null; renderOpinionChip(); }
 
 function seleccionarOpinion(id, tema, barrio_nombre) {
   opinionSeleccionada = { id, tema, barrio_nombre };
@@ -776,46 +963,42 @@ function seleccionarOpinion(id, tema, barrio_nombre) {
   document.getElementById('crear-buscar-opinion').value = '';
 }
 
-function buscarOpinionesParaCrear() {
-  clearTimeout(_buscarOpinionTimer);
-  const q     = document.getElementById('crear-buscar-opinion').value.trim();
-  const resEl = document.getElementById('crear-resultados-opinion');
-
-  if (q.length < 2) { resEl.style.display = 'none'; resEl.innerHTML = ''; return; }
-
-  _buscarOpinionTimer = setTimeout(async () => {
-    try {
-      const r = await fetch(`${BASE}/filter/opiniones/?buscar=${encodeURIComponent(q)}`);
-      const d = await r.json();
-      const opiniones = d.opiniones || [];
-
-      if (!opiniones.length) {
-        resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
-      } else {
-        resEl.innerHTML = opiniones.map(o => `
-          <div class="doc-result-item"
-            data-id="${o.id}"
-            data-tema="${(o.opinion_texto ?? o.tema ?? '').replace(/"/g,'&quot;')}"
-            data-barrio="${(o.barrio_nombre ?? '').replace(/"/g,'&quot;')}">
-            <span style="font-weight:500;">${o.opinion_texto ?? o.tema}</span>
-            ${o.barrio_nombre ? `<span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:6px;">${o.barrio_nombre}</span>` : ''}
-          </div>`).join('');
-        resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
-          el.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            seleccionarOpinion(el.dataset.id, el.dataset.tema, el.dataset.barrio);
-          });
-        });
-      }
-      resEl.style.display = 'block';
-    } catch {
-      resEl.innerHTML = '<div class="doc-result-item" style="color:var(--danger,#e74c3c);">Error al buscar</div>';
-      resEl.style.display = 'block';
-    }
-  }, 300);
+function mostrarOpinionesBarrio() {
+  filtrarOpinionesBarrio();
 }
 
-// CAMBIO 2: crearArgumento ahora envía opinionId
+function filtrarOpinionesBarrio() {
+  const q     = document.getElementById('crear-buscar-opinion').value.trim().toLowerCase();
+  const resEl = document.getElementById('crear-resultados-opinion');
+  if (!_opinionesDelBarrio.length) { resEl.style.display = 'none'; return; }
+
+  const filtradas = q.length < 1
+    ? _opinionesDelBarrio
+    : _opinionesDelBarrio.filter(o =>
+        (o.opinion_texto ?? o.tema ?? '').toLowerCase().includes(q)
+      );
+
+  if (!filtradas.length) {
+    resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
+  } else {
+    resEl.innerHTML = filtradas.map(o => `
+      <div class="doc-result-item"
+        data-id="${o.id}"
+        data-tema="${(o.opinion_texto ?? o.tema ?? '').replace(/"/g,'&quot;')}"
+        data-barrio="${(o.barrio_nombre ?? '').replace(/"/g,'&quot;')}">
+        <span style="font-weight:500;">${o.opinion_texto ?? o.tema ?? '—'}</span>
+        ${o.tema ? `<span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:6px;">${o.tema}</span>` : ''}
+      </div>`).join('');
+    resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        seleccionarOpinion(el.dataset.id, el.dataset.tema, el.dataset.barrio);
+      });
+    });
+  }
+  resEl.style.display = 'block';
+}
+
 async function crearArgumento() {
   const texto           = document.getElementById('crear-texto').value.trim();
   const tema            = document.getElementById('crear-tema').value.trim() || 'sin_clasificar';
@@ -825,40 +1008,111 @@ async function crearArgumento() {
   const opinionId       = opinionSeleccionada?.id ?? null;
 
   if (!texto)           { toast('El texto es obligatorio.');     return; }
+  if (!barrioSeleccionado) { toast('Selecciona un barrio.');    return; }
   if (!problematicaCod) { toast('Selecciona una problemática.'); return; }
 
   try {
     const r = await fetch(`${BASE}/argumentos/`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        texto,
-        tema,
-        problematicaCod: parseInt(problematicaCod),
-        frecuencia,
-        documentoIds,
-        opinionId,
-      }),
+      body:    JSON.stringify({ texto, tema, problematicaCod: parseInt(problematicaCod), frecuencia, documentoIds, opinionId }),
     });
-
     if (r.ok) {
       cerrarModal('modal-crear');
       toast('Argumento creado correctamente.', 'success');
-      if (documentoIds.length === 0) {
-        cargarArgsSinDoc();
-      } else {
-        cargarTopDocs();
-      }
+      documentoIds.length === 0 ? cargarArgsSinDoc() : cargarTopDocs();
     } else {
       const d = await r.json();
       toast(d.error || 'Error al crear el argumento.');
     }
-  } catch {
-    toast('Error de conexión al crear.');
-  }
+  } catch { toast('Error de conexión al crear.'); }
 }
 
 // ── Carga inicial ─────────────────────────────────────────────────────────
+
+// Variables estado modal editar — opinión
+let _editOpinionSeleccionada = null;
+let _editOpinionesDelBarrio  = [];
+
+async function abrirDropdownBarrioEdit() {
+  if (!_todosLosBarrios) {
+    try {
+      const r = await fetch(`${BASE}/filter/distribucion/?tipo=opinionesPorBarrio`);
+      const d = await r.json();
+      _todosLosBarrios = [...new Set((d.distribucion || []).map(b => b.barrio_nombre).filter(Boolean))].sort();
+    } catch { _todosLosBarrios = []; }
+  }
+  renderDropdownBarrioEdit(_todosLosBarrios);
+}
+
+function filtrarDropdownBarrioEdit() {
+  const q = document.getElementById('edit-buscar-barrio').value.toLowerCase();
+  if (!_todosLosBarrios) { abrirDropdownBarrioEdit(); return; }
+  renderDropdownBarrioEdit(_todosLosBarrios.filter(b => b.toLowerCase().includes(q)));
+}
+
+function renderDropdownBarrioEdit(lista) {
+  const resEl = document.getElementById('edit-resultados-barrio');
+  if (!lista.length) { resEl.style.display = 'none'; return; }
+  resEl.innerHTML = lista.map(b => `
+    <div class="doc-result-item" data-nombre="${b.replace(/"/g,'&quot;')}">${b}</div>`).join('');
+  resEl.querySelectorAll('.doc-result-item').forEach(el => {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); seleccionarBarrioEdit(el.dataset.nombre); });
+  });
+  resEl.style.display = 'block';
+}
+
+async function seleccionarBarrioEdit(nombre) {
+  document.getElementById('edit-buscar-barrio').value             = nombre;
+  document.getElementById('edit-resultados-barrio').style.display = 'none';
+  const inputOp = document.getElementById('edit-buscar-opinion');
+  inputOp.disabled    = true;
+  inputOp.placeholder = 'Cargando opiniones…';
+  _editOpinionesDelBarrio = [];
+  try {
+    const r = await fetch(`/semantica/filter/barrio/?barrio=${encodeURIComponent(nombre)}&tipo=opiniones`);
+    const d = await r.json();
+    _editOpinionesDelBarrio = d.opiniones || [];
+    inputOp.disabled    = false;
+    inputOp.placeholder = _editOpinionesDelBarrio.length
+      ? `Buscar entre ${_editOpinionesDelBarrio.length} opiniones…`
+      : 'Sin opiniones para este barrio';
+  } catch { inputOp.placeholder = 'Error al cargar opiniones'; }
+}
+
+function mostrarOpinionesEdit() { filtrarOpinionesEdit(); }
+
+function filtrarOpinionesEdit() {
+  const q     = document.getElementById('edit-buscar-opinion').value.trim().toLowerCase();
+  const resEl = document.getElementById('edit-resultados-opinion');
+  if (!_editOpinionesDelBarrio.length) { resEl.style.display = 'none'; return; }
+  const filtradas = q.length < 1
+    ? _editOpinionesDelBarrio
+    : _editOpinionesDelBarrio.filter(o => (o.opinion_texto ?? o.tema ?? '').toLowerCase().includes(q));
+  if (!filtradas.length) {
+    resEl.innerHTML = '<div class="doc-result-item" style="color:var(--text-muted);">Sin resultados</div>';
+  } else {
+    resEl.innerHTML = filtradas.map(o => `
+      <div class="doc-result-item"
+        data-id="${o.id}"
+        data-texto="${(o.opinion_texto ?? o.tema ?? '').replace(/"/g,'&quot;')}">
+        <span style="font-weight:500;">${o.opinion_texto ?? o.tema ?? '—'}</span>
+        ${o.tema ? `<span style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:6px;">${o.tema}</span>` : ''}
+      </div>`).join('');
+    resEl.querySelectorAll('.doc-result-item[data-id]').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        _editOpinionSeleccionada = { id: el.dataset.id, texto: el.dataset.texto };
+        document.getElementById('edit-resultados-opinion').style.display = 'none';
+        document.getElementById('edit-buscar-opinion').value             = '';
+        document.getElementById('edit-opinion-seleccionada').innerHTML   =
+          `<span class="opinion-chip">${el.dataset.texto}<button onclick="_editOpinionSeleccionada=null;document.getElementById('edit-opinion-seleccionada').innerHTML='<span style=\\'font-size:var(--font-size-xs);color:var(--text-muted);\\'>Sin opinión seleccionada</span>'" title="Quitar">×</button></span>`;
+      });
+    });
+  }
+  resEl.style.display = 'block';
+}
+
 function cargarTodo() {
   cargarDocsSinArgs();
   cargarArgsSinDoc();

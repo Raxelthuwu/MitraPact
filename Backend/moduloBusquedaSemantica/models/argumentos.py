@@ -29,9 +29,7 @@ _query = sync_to_async(_ejecutar, thread_sensitive=True)
 
 class Argumento:
 
-
     # INSERT
-
 
     @staticmethod
     async def insertar(opinionId: str, texto: str, tema: str, problematicaCod: int, frecuencia: int) -> dict | None:
@@ -49,10 +47,6 @@ class Argumento:
 
     @staticmethod
     async def insertarBatch(argumentos: list[dict]) -> list[dict]:
-        """
-        Inserción en lote. Cada dict debe tener:
-        opinionId, texto, tema, problematicaCod, frecuencia
-        """
         logger.info(f"[Argumento] Insertando lote de {len(argumentos)} argumentos.")
         sql = f"""
             INSERT INTO {db.argumento} (opinion_id, texto, tema, problematica_cod, frecuencia, identificado_en)
@@ -83,9 +77,7 @@ class Argumento:
             logger.error(f"[Argumento] Error en insertarBatch: {e}")
             raise
 
-
     # UPDATE
-
 
     @staticmethod
     async def actualizar(
@@ -130,8 +122,23 @@ class Argumento:
             logger.error(f"[Argumento] Error al actualizar: {e}")
             raise
 
+    # DELETE
 
-    # GET — lógica interna (por ID)
+    @staticmethod
+    async def eliminar(argumentoId: str) -> bool:
+        logger.info(f"[Argumento] Eliminando argumento id: '{argumentoId}'")
+        sql = f"""
+            DELETE FROM {db.argumento}
+            WHERE id = %s
+        """
+        try:
+            filas = await _query(sql, [argumentoId], rowcount=True)
+            return (filas or 0) > 0
+        except Exception as e:
+            logger.error(f"[Argumento] Error al eliminar: {e}")
+            raise
+
+    # GET — lógica interna
 
     @staticmethod
     async def obtenerPorId(argumentoId: str) -> dict | None:
@@ -149,7 +156,6 @@ class Argumento:
 
     @staticmethod
     async def obtenerPorOpinion(opinionId: str) -> list[dict]:
-        """Todos los argumentos de una opinión clasificada. Uso interno."""
         logger.info(f"[Argumento] Obteniendo argumentos de opinion_id: '{opinionId}'")
         sql = f"""
             SELECT id, opinion_id, texto, tema, problematica_cod, frecuencia, identificado_en
@@ -165,7 +171,6 @@ class Argumento:
 
     @staticmethod
     async def obtenerPorProblematica(problematicaCod: int) -> list[dict]:
-        """Todos los argumentos de una problemática. Uso interno para lógica semántica."""
         logger.info(f"[Argumento] Obteniendo argumentos de problematica_cod: {problematicaCod}")
         sql = f"""
             SELECT id, opinion_id, texto, tema, problematica_cod, frecuencia, identificado_en
@@ -179,16 +184,10 @@ class Argumento:
             logger.error(f"[Argumento] Error en obtenerPorProblematica: {e}")
             raise
 
-    # -------------------------------------------------------------------------
     # GET — orientado a usuario
-    # -------------------------------------------------------------------------
 
     @staticmethod
     async def buscarPorTema(tema: str) -> list[dict]:
-        """
-        El usuario filtra argumentos por tema.
-        Join con CATALOGO_PROBLEMATICA para mostrar descripción legible.
-        """
         logger.info(f"[Argumento] Buscando argumentos por tema: '{tema}'")
         sql = f"""
             SELECT
@@ -211,10 +210,6 @@ class Argumento:
 
     @staticmethod
     async def buscarPorProblematicaConDescripcion(problematicaCod: int) -> list[dict]:
-        """
-        El usuario consulta argumentos de una problemática con su descripción legible.
-        Join con CATALOGO_PROBLEMATICA.
-        """
         logger.info(f"[Argumento] Buscando argumentos por problematica_cod: {problematicaCod} con descripción.")
         sql = f"""
             SELECT
@@ -237,11 +232,6 @@ class Argumento:
 
     @staticmethod
     async def listarMasFrecuentesPorTema(tema: str, limite: int = 10) -> list[dict]:
-        """
-        Top N argumentos más frecuentes de un tema.
-        Vista resumen para el usuario coordinador.
-        Join con CATALOGO_PROBLEMATICA para descripción legible.
-        """
         logger.info(f"[Argumento] Top {limite} argumentos más frecuentes para tema: '{tema}'")
         sql = f"""
             SELECT
@@ -277,4 +267,3 @@ class Argumento:
         except Exception as e:
             logger.error(f"[Argumento] Error en incrementarFrecuencia: {e}")
             raise
-

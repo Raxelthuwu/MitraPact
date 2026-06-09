@@ -159,9 +159,11 @@ class OpinionClasificada:
                 o.id,
                 o.tema,
                 o.clasificado_en,
-                b.nombre    AS barrio_nombre
+                b.nombre                     AS barrio_nombre,
+                LEFT(e.opinion_politica, 150) AS opinion_texto
             FROM {db.opinion_clasificada} o
-            JOIN {db.barrio} b ON b.id = o.barrio_id
+            JOIN {db.barrio}   b ON b.id = o.barrio_id
+            JOIN {db.encuesta} e ON e.id = o.encuesta_id
             WHERE o.barrio_id = %s AND o.tema ILIKE %s
             ORDER BY o.clasificado_en DESC
         """
@@ -189,6 +191,32 @@ class OpinionClasificada:
             return await _query(sql, [barrioId], fetchall=True)
         except Exception as e:
             logger.error(f"[OpinionClasificada] Error en resumenPorBarrio: {e}")
+            raise
+
+    @staticmethod
+    async def listarPorBarrio(barrioId: str) -> list[dict]:
+        """
+        Retorna todas las opiniones de un barrio con texto completo.
+        Usado por el selector del modal crear/editar argumento.
+        """
+        logger.info(f"[OpinionClasificada] Listando opiniones de barrio_id: '{barrioId}'")
+        sql = f"""
+            SELECT
+                o.id,
+                o.tema,
+                o.clasificado_en,
+                b.nombre                     AS barrio_nombre,
+                LEFT(e.opinion_politica, 150) AS opinion_texto
+            FROM {db.opinion_clasificada} o
+            JOIN {db.barrio}   b ON b.id = o.barrio_id
+            JOIN {db.encuesta} e ON e.id = o.encuesta_id
+            WHERE o.barrio_id = %s
+            ORDER BY o.clasificado_en DESC
+        """
+        try:
+            return await _query(sql, [barrioId], fetchall=True)
+        except Exception as e:
+            logger.error(f"[OpinionClasificada] Error en listarPorBarrio: {e}")
             raise
 
     @staticmethod

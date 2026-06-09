@@ -257,41 +257,28 @@ class ClasificacionService(IClasificacionService):
                 where            = {'problematica_cod': problematicaCod}
             )
 
-            argumento = None
+            # Siempre insertar argumento nuevo — frecuencia se gestiona manualmente desde auditoría
+            argumento = await Argumento.insertar(
+                opinionId       = opinionId,
+                texto           = textoOpinion,
+                tema            = 'sin_clasificar',
+                problematicaCod = problematicaCod,
+                frecuencia      = 1
+            )
 
-            if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
-                distancia    = resultados['distances'][0][0]
-                metadataItem = resultados['metadatas'][0][0]
-
-                if distancia >= settings.SEMANTIC_MATCH_THRESHOLD:
-                    # Mismo argumento — incrementar frecuencia
-                    argumentoId = metadataItem.get('argumento_id')
-                    argumento   = await Argumento.incrementarFrecuencia(argumentoId)
-                    logger.info(f"[ClasificacionService] Frecuencia incrementada para argumento_id: '{argumentoId}'")
-
-            if not argumento:
-                # Argumento nuevo — insertar con frecuencia inicial 1
-                argumento = await Argumento.insertar(
-                    opinionId      = opinionId,
-                    texto          = textoOpinion,
-                    tema           = 'sin_clasificar',
-                    problematicaCod = problematicaCod,
-                    frecuencia     = 1
-                )
-
-                # Upsert en argumentos_vec
-                vectorId = f"argumento_{argumento['id']}"
-                await asyncio.to_thread(
-                    coleccion.upsert,
-                    ids        = [vectorId],
-                    embeddings = [vector],
-                    documents  = [textoOpinion],
-                    metadatas  = [{
-                        'argumento_id':    argumento['id'],
-                        'problematica_cod': problematicaCod
-                    }]
-                )
-                logger.info(f"[ClasificacionService] Nuevo argumento insertado id: '{argumento['id']}'")
+            # Upsert en argumentos_vec
+            vectorId = f"argumento_{argumento['id']}"
+            await asyncio.to_thread(
+                coleccion.upsert,
+                ids        = [vectorId],
+                embeddings = [vector],
+                documents  = [textoOpinion],
+                metadatas  = [{
+                    'argumento_id':    argumento['id'],
+                    'problematica_cod': problematicaCod
+                }]
+            )
+            logger.info(f"[ClasificacionService] Nuevo argumento insertado id: '{argumento['id']}'")
 
             argumentosProcesados.append(argumento)
 

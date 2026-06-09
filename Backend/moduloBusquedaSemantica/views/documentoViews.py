@@ -17,9 +17,21 @@ _busqueda_svc  = BusquedaService()
 @method_decorator(csrf_exempt, name='dispatch')
 class DocumentoView(View):
     """
-    POST /documentos/
-    Carga un nuevo documento PDF al sistema.
+    GET  /documentos/?buscar=  — busca documentos por nombre (mín. 2 chars)
+    POST /documentos/          — carga un nuevo documento PDF al sistema.
     """
+
+    async def get(self, request):
+        try:
+            buscar = request.GET.get('buscar', '').strip()
+            if len(buscar) < 2:
+                return JsonResponse({'documentos': []}, status=200)
+            from Backend.moduloBusquedaSemantica.models import Documento
+            resultado = await Documento.buscarPorNombre(buscar)
+            return JsonResponse({'documentos': resultado}, status=200)
+        except Exception as e:
+            logger.error(f"[DocumentoView] Error en get: {e}")
+            return JsonResponse({'error': 'Error interno al buscar documentos.'}, status=500)
 
     async def post(self, request):
         try:

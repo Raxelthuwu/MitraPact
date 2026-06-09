@@ -207,7 +207,7 @@ class BarrioFilterView(View):
                 return JsonResponse(resultado, status=200)
 
             if tipo == 'opiniones':
-                resultado = await _filter_svc.resumenOpinionesPorBarrio(barrio)
+                resultado = await _filter_svc.listarOpinionesPorBarrio(barrio)
                 return JsonResponse(resultado, status=200)
 
             resultado = await _filter_svc.resumenGeneralPorBarrio(barrio)
