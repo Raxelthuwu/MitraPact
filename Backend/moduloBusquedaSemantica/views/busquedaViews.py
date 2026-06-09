@@ -11,47 +11,41 @@ _busqueda_svc = BusquedaService()
 @method_decorator(csrf_exempt, name='dispatch')
 class DocumentoBusquedaView(View):
     """
-    GET /busqueda/documentos/
-    Busca y lista documentos según los parámetros recibidos.
-
-    Query params:
-        ?nombre=                    → busca por nombre aproximado
-        ?nombre=&conTemas=true      → busca por nombre con temas agrupados
-        ?fechaInicio=&fechaFin=     → busca por rango de fechas (YYYY-MM-DD)
-        ?tema=                      → busca por tema aproximado
-        sin params                  → lista todos los documentos con temas
+    GET /semantica/busqueda/documentos/ o /semantica/consulta/
+    Adaptado exactamente a los parámetros reales del Frontend ('consulta' y 'nResultados')
     """
 
     async def get(self, request):
         try:
-            nombre      = request.GET.get('nombre', '').strip()
-            conTemas    = request.GET.get('conTemas', '').strip().lower()
-            fechaInicio = request.GET.get('fechaInicio', '').strip()
-            fechaFin    = request.GET.get('fechaFin', '').strip()
-            tema        = request.GET.get('tema', '').strip()
+            # 1. Capturamos los nombres reales que arrojan tus logs de consola
+            consulta     = request.GET.get('consulta', '').strip()  # Antes 'query'
+            documento    = request.GET.get('documento', '').strip()
+            tema         = request.GET.get('tema', '').strip()
+            
+            # Capturamos el límite de resultados (por defecto 5 si no viene)
+            n_resultados = request.GET.get('nResultados', '5').strip()
+            limit        = int(n_resultados) if n_resultados.isdigit() else 5
 
-            if nombre and conTemas == 'true':
-                resultado = await _busqueda_svc.buscarDocumentosPorNombreConTemas(nombre)
-                return JsonResponse({'documentos': resultado}, status=200)
+            # 2. Si hay criterios semánticos activos, procesamos de forma vectorial
+            if consulta or documento or tema:
+                logger.info(f"[DocumentoBusquedaView] Búsqueda Activa -> Consulta: '{consulta}', Doc: '{documento}', Límite: {limit}")
+                
+                resultado_fragmentos = await _busqueda_svc.buscarSemanticaVectorialAvanzada(
+                    query=consulta,          # Le pasamos el texto limpio
+                    documento_nombre=documento, 
+                    tema=tema,
+                    limit=limit              # Pasamos el límite a la base de datos vectorial
+                )
+                return JsonResponse({'fragmentos': resultado_fragmentos}, status=200)
 
-            if nombre:
-                resultado = await _busqueda_svc.buscarDocumentosPorNombre(nombre)
-                return JsonResponse({'documentos': resultado}, status=200)
-
-            if fechaInicio and fechaFin:
-                resultado = await _busqueda_svc.buscarDocumentosPorFecha(fechaInicio, fechaFin)
-                return JsonResponse({'documentos': resultado}, status=200)
-
-            if tema:
-                resultado = await _busqueda_svc.buscarDocumentosPorTema(tema)
-                return JsonResponse({'documentos': resultado}, status=200)
-
-            resultado = await _busqueda_svc.listarDocumentosConTemas()
-            return JsonResponse({'documentos': resultado}, status=200)
+            # 3. Si no hay parámetros, es la carga inicial de documentos para el selector
+            logger.info("[DocumentoBusquedaView] Carga limpia. Listando catálogo de documentos.")
+            catálogo_documentos = await _busqueda_svc.listarDocumentosConTemas()
+            return JsonResponse({'documentos': catálogo_documentos}, status=200)
 
         except Exception as e:
-            logger.error(f"[DocumentoBusquedaView] Error en get: {e}")
-            return JsonResponse({'error': 'Error interno al buscar documentos.'}, status=500)
+            logger.error(f"[DocumentoBusquedaView] Error en buscador adaptado: {e}", exc_info=True)
+            return JsonResponse({'error': 'Error interno al procesar los filtros semánticos.'}, status=500)
 
 
 @method_decorator(csrf_exempt, name='dispatch')

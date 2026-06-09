@@ -134,11 +134,12 @@
         btn.querySelector('.btn-text').textContent = 'Guardando...';
 
         try {
-            const res = await fetch(`/semantica/documentos/${id}/`, {
+            const res = await fetch(`/semantica/busqueda/documentos/${id}/`, { // <- Añade /busqueda si tus URLs de Django lo requieren
                 method: 'PUT',
                 headers: { 'X-CSRFToken': getCookie('csrftoken') },
                 body: formData
             });
+
 
             if (!res.ok) {
                 const err = await res.json();
@@ -161,7 +162,7 @@
         btn.disabled = true;
         btn.querySelector('.btn-text').textContent = 'Eliminando...';
         try {
-            const res = await fetch(`/semantica/documentos/${id}/`, {
+            const res = await fetch(`/semantica/busqueda/documentos/${id}/`, {
                 method: 'DELETE',
                 headers: { 'X-CSRFToken': getCookie('csrftoken') }
             });
@@ -180,4 +181,4 @@
 
     cargarDocumentos();
 </script>
-{% endblock %}
+{% endblock %}a

@@ -1,222 +1,420 @@
-{% extends "base.HTML" %}
+{% extends "base.html" %}
 {% load static %}
 
-{% block title %}Buscar Documentos · Búsqueda Semántica{% endblock %}
+{% block title %}Buscador Semántico{% endblock %}
 {% block nav_busqueda %}active{% endblock %}
-{% block page_title %}Buscar Documentos{% endblock %}
-{% block page_subtitle %}Filtra por nombre, fecha o tema{% endblock %}
+{% block page_title %}Búsqueda Semántica{% endblock %}
+{% block page_subtitle %}Consulta en lenguaje natural, opcionalmente dentro de un documento{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'eventos.css' %}">
+<style>
+  .search-wrapper {
+    max-width: 860px;
+    margin: 36px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Selector de documento */
+  .doc-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .doc-selector-row label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    white-space: nowrap;
+  }
+  .doc-selector-row select {
+    flex: 1;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    background: var(--bg-main, #f8fafc);
+    color: var(--text-main);
+    outline: none;
+    cursor: pointer;
+  }
+  .doc-selector-row select:focus {
+    border-color: var(--accent, #4f46e5);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+  }
+  .btn-clear-doc {
+    background: none;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .btn-clear-doc:hover {
+    border-color: var(--accent, #4f46e5);
+    color: var(--accent, #4f46e5);
+  }
+
+  /* Caja de búsqueda */
+  .search-box {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card, #ffffff);
+    border: 2px solid var(--border-color, #e2e8f0);
+    border-radius: 30px;
+    padding: 6px 8px 6px 18px;
+    box-shadow: var(--shadow-md);
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .search-box:focus-within {
+    border-color: var(--accent, #4f46e5);
+    box-shadow: 0 0 0 4px rgba(79,70,229,0.14);
+  }
+  .search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 10px 12px;
+    font-size: 1rem;
+    background: transparent;
+    color: var(--text-main);
+  }
+  .btn-search {
+    background: var(--accent, #4f46e5);
+    color: #fff;
+    border: none;
+    padding: 10px 26px;
+    border-radius: 22px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.2s;
+  }
+  .btn-search:hover { opacity: 0.88; }
+  .btn-search:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Controles inferiores */
+  .search-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding: 0 4px;
+  }
+  .search-controls select {
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 0.85rem;
+    background: var(--bg-card);
+    color: var(--text-main);
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Indicador de ámbito activo */
+  .scope-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ede9fe;
+    color: #5b21b6;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .scope-badge button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #7c3aed;
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 0 0 0 2px;
+  }
+
+  /* Resultados */
+  .result-card {
+    background: var(--bg-card, #ffffff);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent, #4f46e5);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s, box-shadow 0.18s;
+  }
+  .result-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .result-doc-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-main);
+  }
+  .result-score {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+  .result-text {
+    font-size: 0.93rem;
+    line-height: 1.65;
+    color: var(--text-main);
+    font-style: italic;
+    background: rgba(0,0,0,0.02);
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .result-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+  }
+  .page-badge {
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-muted);
+  }
+  .link-context {
+    color: var(--accent, #4f46e5);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .link-context:hover { text-decoration: underline; }
+
+  .skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s infinite;
+    border-radius: 12px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
+<div class="search-wrapper">
 
-<!-- Filtros -->
-<div class="card">
-  <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+  <!-- Selector de documento (opcional) -->
+  <div class="doc-selector-row">
+    <label for="selectDocumento">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+           stroke="currentColor" width="16" height="16" style="vertical-align:middle; margin-right:4px;">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
+                 a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625
+                 c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75
+                 c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+      </svg>
+      Documento
+    </label>
+    <select id="selectDocumento" onchange="onDocumentoChange()">
+      <option value="">— Todos los documentos —</option>
+    </select>
+    <button class="btn-clear-doc" onclick="limpiarDocumento()" title="Quitar filtro de documento">
+      ✕ Todos
+    </button>
+  </div>
 
-    <!-- Por nombre -->
-    <div style="flex:1;min-width:200px;">
-      <label class="form-label">Nombre del documento</label>
-      <div class="search-box">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="16" height="16">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
-        </svg>
-        <input type="text" id="inputNombre" placeholder="Buscar por nombre…"
-          onkeydown="if(event.key==='Enter') buscarPorNombre()">
-      </div>
-    </div>
+  <!-- Barra de búsqueda -->
+  <div class="search-box">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+         stroke="currentColor" width="20" height="20" style="color:var(--text-muted); flex-shrink:0;">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+    </svg>
+    <input type="text" id="inputConsulta"
+           placeholder="Escribe tu consulta en lenguaje natural..."
+           onkeydown="if(event.key==='Enter') buscar()">
+    <button class="btn-search" id="btnBuscar" onclick="buscar()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
+           stroke="currentColor" width="16" height="16">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
+      </svg>
+      Buscar
+    </button>
+  </div>
 
-    <!-- Por tema -->
-    <div style="min-width:180px;">
-      <label class="form-label">Tema</label>
-      <select class="filter-select" id="selectTema" onchange="buscarPorTema()">
-        <option value="">Todos los temas</option>
+  <!-- Controles y estado -->
+  <div class="search-controls">
+    <div id="scopeIndicator"></div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label for="selectLimit" style="color:var(--text-muted);">Resultados:</label>
+      <select id="selectLimit">
+        <option value="5" selected>Top 5</option>
+        <option value="10">Top 10</option>
+        <option value="20">Top 20</option>
       </select>
     </div>
-
-    <!-- Por fecha -->
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-      <div>
-        <label class="form-label">Desde</label>
-        <input type="date" class="form-control" id="inputDesde" style="width:auto;">
-      </div>
-      <div>
-        <label class="form-label">Hasta</label>
-        <input type="date" class="form-control" id="inputHasta" style="width:auto;">
-      </div>
-      <button class="btn btn-outline" onclick="buscarPorFecha()">Buscar</button>
-    </div>
-
-    <button class="btn btn-ghost" onclick="cargarTodos()">Ver todos</button>
   </div>
+
+  <!-- Área de resultados -->
+  <div id="statusMsg" style="font-size:0.88rem; font-weight:500; color:var(--text-muted);"></div>
+  <div id="resultados">
+    <div class="empty-state">
+      <h3>Buscador listo</h3>
+      <p>Selecciona un documento para acotar la búsqueda, o consulta sobre todos a la vez.</p>
+    </div>
+  </div>
+
 </div>
-
-<!-- Badge de búsqueda activa -->
-<div id="badgeBusqueda" style="display:none;align-items:center;gap:8px;">
-  <span class="tipo-pill" id="txtBadge"></span>
-  <button class="btn btn-ghost btn-sm" onclick="cargarTodos()">✕ Limpiar</button>
-  <span id="conteoResultados" style="color:var(--text-muted);font-size:var(--font-size-xs);margin-left:4px;"></span>
-</div>
-
-<!-- Lista de resultados -->
-<div id="listaDocumentos"></div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  /* ── Capa front automática: carga temas y documentos al entrar ── */
-  document.addEventListener('DOMContentLoaded', () => {
-    cargarTemas();
-    cargarTodos();
-  });
+  document.addEventListener('DOMContentLoaded', cargarDocumentos);
 
-  /* ── Carga temas en el select ── */
-  async function cargarTemas() {
+  async function cargarDocumentos() {
     try {
-      const res  = await fetch('/semantica/busqueda/temas/');
+      const res  = await fetch('/semantica/busqueda/documentos/');
       const data = await res.json();
-      const sel  = document.getElementById('selectTema');
-      (data.temas || []).forEach(t => {
-        const op = document.createElement('option');
-        op.value = t; op.textContent = t;
+      const sel  = document.getElementById('selectDocumento');
+
+      (data.documentos || []).forEach(d => {
+        const op      = document.createElement('option');
+        op.value      = d.nombre;
+        op.textContent = d.nombre.length > 48 ? d.nombre.slice(0, 48) + '…' : d.nombre;
         sel.appendChild(op);
       });
-    } catch { /* silencioso */ }
-  }
-
-  /* ── Carga todos los documentos ── */
-  async function cargarTodos() {
-    limpiarFiltros();
-    await buscar('/semantica/busqueda/documentos/');
-  }
-
-  /* ── Acciones del usuario ── */
-  async function buscarPorNombre() {
-    const nombre = document.getElementById('inputNombre').value.trim();
-    if (!nombre) return cargarTodos();
-    mostrarBadge(`Nombre: "${nombre}"`);
-    await buscar(`/semantica/busqueda/documentos/?nombre=${encodeURIComponent(nombre)}`);
-  }
-
-  async function buscarPorTema() {
-    const tema = document.getElementById('selectTema').value;
-    if (!tema) return cargarTodos();
-    mostrarBadge(`Tema: "${tema}"`);
-    await buscar(`/semantica/busqueda/documentos/?tema=${encodeURIComponent(tema)}`);
-  }
-
-  async function buscarPorFecha() {
-    const desde = document.getElementById('inputDesde').value;
-    const hasta = document.getElementById('inputHasta').value;
-    if (!desde || !hasta) { toast('Selecciona ambas fechas.', 'error'); return; }
-    mostrarBadge(`Fecha: ${desde} → ${hasta}`);
-    await buscar(`/semantica/busqueda/documentos/?fechaInicio=${desde}&fechaFin=${hasta}`);
-  }
-
-  /* ── Fetch genérico ── */
-  async function buscar(url) {
-    renderSkeleton();
-    try {
-      const res  = await fetch(url);
-      const data = await res.json();
-      const docs = (data.documentos || []).map(d => ({
-        ...d,
-        temas: Array.isArray(d.temas)
-          ? d.temas
-          : (d.temas ? String(d.temas).replace(/^{|}$/g,'').split(',').filter(Boolean) : [])
-      }));
-      renderDocs(docs);
-    } catch {
-      toast('Error al cargar documentos.', 'error');
-      renderDocs([]);
+    } catch (e) {
+      console.error('[cargarDocumentos]', e);
     }
   }
 
-  /* ── Render ── */
-  function renderDocs(docs) {
-    const conteo = document.getElementById('conteoResultados');
-    if (conteo) conteo.textContent = `${docs.length} resultado${docs.length !== 1 ? 's' : ''}`;
+  function onDocumentoChange() {
+    const nombre = document.getElementById('selectDocumento').value;
+    const badge  = document.getElementById('scopeIndicator');
 
-    if (!docs.length) {
-      document.getElementById('listaDocumentos').innerHTML = `
-        <div class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
-                 a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504
-                 -1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-          </svg>
-          <h3>Sin documentos</h3>
-          <p>No hay resultados para esta búsqueda.</p>
-        </div>`;
+    if (nombre) {
+      const corto = nombre.length > 40 ? nombre.slice(0, 40) + '…' : nombre;
+      badge.innerHTML = `
+        <span class="scope-badge">
+          📄 ${corto}
+          <button onclick="limpiarDocumento()" title="Quitar filtro">✕</button>
+        </span>`;
+    } else {
+      badge.innerHTML = '';
+    }
+  }
+
+  function limpiarDocumento() {
+    document.getElementById('selectDocumento').value = '';
+    onDocumentoChange();
+  }
+
+  async function buscar() {
+    const consulta  = document.getElementById('inputConsulta').value.trim();
+    const documento = document.getElementById('selectDocumento').value;
+    const limit     = document.getElementById('selectLimit').value;
+    const btn       = document.getElementById('btnBuscar');
+    const status    = document.getElementById('statusMsg');
+    const contenedor = document.getElementById('resultados');
+
+    if (!consulta) {
+      document.getElementById('inputConsulta').focus();
       return;
     }
 
-    document.getElementById('listaDocumentos').innerHTML = docs.map(d => {
-      const temas = (d.temas || []).map(t => `<span class="tipo-pill">${t}</span>`).join('');
-      const fecha = d.registrado_en ? new Date(d.registrado_en).toLocaleDateString('es-CO') : '—';
-      return `
-        <div class="evento-card" onclick="irFragmentos('${d.nombre}')">
-          <div class="evento-card-date">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;color:var(--accent);">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5
-                   a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25
-                   c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
-            </svg>
-          </div>
-          <div class="evento-card-body">
-            <div class="evento-card-title">${d.nombre}</div>
-            <div class="evento-card-meta">
-              <span>${fecha}</span>
-              ${d.total_fragmentos != null ? `<span>${d.total_fragmentos} fragmentos</span>` : ''}
-              ${d.total_argumentos != null ? `<span>${d.total_argumentos} argumentos</span>` : ''}
+    btn.disabled = true;
+    status.textContent = 'Analizando vectores semánticos…';
+    contenedor.innerHTML = [1,2,3].map(() =>
+      `<div class="skeleton" style="height:120px; margin-bottom:14px;"></div>`
+    ).join('');
+
+    try {
+      let url = `/semantica/busqueda/documentos/?consulta=${encodeURIComponent(consulta)}&nResultados=${limit}`;
+      if (documento) url += `&documento=${encodeURIComponent(documento)}`;
+
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      const fragmentos = data.fragmentos || [];
+      const contexto   = documento ? `en "${documento.length > 30 ? documento.slice(0,30)+'…' : documento}"` : 'en todos los documentos';
+      status.textContent = `${fragmentos.length} fragmento${fragmentos.length !== 1 ? 's' : ''} encontrado${fragmentos.length !== 1 ? 's' : ''} ${contexto}.`;
+
+      if (!fragmentos.length) {
+        contenedor.innerHTML = `
+          <div class="empty-state">
+            <h3>Sin resultados</h3>
+            <p>No se encontraron fragmentos con suficiente cercanía semántica. Intenta reformular la consulta.</p>
+          </div>`;
+        return;
+      }
+
+      contenedor.innerHTML = fragmentos.map(f => {
+        const pct     = f.similitud ? `${(f.similitud * 100).toFixed(1)}%` : '—';
+        const docNombre = f.documento_nombre || 'Documento';
+        const pagina  = f.pagina || '—';
+        return `
+          <div class="result-card">
+            <div class="result-header">
+              <div class="result-doc-name">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                     stroke="currentColor" width="15" height="15" style="color:var(--accent);">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1
+                           13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12
+                           M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125
+                           1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+                </svg>
+                ${docNombre}
+              </div>
+              <span class="result-score">Coincidencia: ${pct}</span>
             </div>
-            <div class="evento-card-tipos">${temas || '<span style="font-size:var(--font-size-xs);color:var(--text-muted);">Sin temas</span>'}</div>
-          </div>
-          <div class="evento-card-right">
-            <span class="btn btn-ghost btn-sm">Ver fragmentos →</span>
-          </div>
+            <div class="result-text">"${f.contenido}"</div>
+            <div class="result-footer">
+              <span class="page-badge">Página ${pagina}</span>
+              <a class="link-context"
+                 href="/semantica/fragmentos/?nombre=${encodeURIComponent(docNombre)}&pagina=${pagina}">
+                Ver en contexto original →
+              </a>
+            </div>
+          </div>`;
+      }).join('');
+
+    } catch (err) {
+      console.error('[buscar]', err);
+      status.textContent = 'Error al procesar la solicitud.';
+      contenedor.innerHTML = `
+        <div class="empty-state">
+          <h3>Error de comunicación</h3>
+          <p>No se pudo conectar con el backend. Revisa la consola para más detalles.</p>
         </div>`;
-    }).join('');
-  }
-
-  function renderSkeleton() {
-    document.getElementById('listaDocumentos').innerHTML =
-      [1,2,3].map(() => `<div class="skeleton" style="height:80px;border-radius:var(--radius-md);margin-bottom:10px;"></div>`).join('');
-  }
-
-  /* ── Helpers ── */
-  function irFragmentos(nombre) {
-    window.location.href = `/semantica/fragmentos/?nombre=${encodeURIComponent(nombre)}`;
-  }
-
-  function mostrarBadge(texto) {
-    const badge = document.getElementById('badgeBusqueda');
-    badge.style.display = 'flex';
-    document.getElementById('txtBadge').textContent = texto;
-  }
-
-  function limpiarFiltros() {
-    document.getElementById('inputNombre').value  = '';
-    document.getElementById('selectTema').value   = '';
-    document.getElementById('inputDesde').value   = '';
-    document.getElementById('inputHasta').value   = '';
-    document.getElementById('badgeBusqueda').style.display = 'none';
-  }
-
-  function toast(msg, tipo = 'success') {
-    const c = document.querySelector('.toast-container') || (() => {
-      const d = document.createElement('div'); d.className = 'toast-container';
-      document.body.appendChild(d); return d;
-    })();
-    const t = document.createElement('div');
-    t.className = `toast ${tipo}`; t.textContent = msg;
-    c.appendChild(t);
-    setTimeout(() => t.remove(), 3500);
+    } finally {
+      btn.disabled = false;
+    }
   }
 </script>
 {% endblock %}

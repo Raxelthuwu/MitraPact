@@ -284,6 +284,59 @@ class Fragmento:
             logger.error(f"[Fragmento] Error en obtenerPorVectorId: {e}")
             raise
 
+
+    @staticmethod
+    async def obtenerPorVectorIdConNombre(vectorId: str) -> dict | None:
+        """
+        Como obtenerPorVectorId pero con JOIN a Documento para incluir nombre.
+        """
+        logger.info(f"[Fragmento] Buscando fragmento+nombre por vector_id: '{vectorId}'")
+        sql = f"""
+            SELECT
+                f.id,
+                f.documento_id,
+                f.pagina,
+                f.contenido,
+                f.vector_id,
+                d.nombre AS documento_nombre
+            FROM {db.fragmento} f
+            JOIN {db.documento} d ON d.id = f.documento_id
+            WHERE f.vector_id = %s
+        """
+        try:
+            return await _query(sql, [vectorId], fetchone=True)
+        except Exception as e:
+            logger.error(f"[Fragmento] Error en obtenerPorVectorIdConNombre: {e}")
+            raise
+
+    @staticmethod
+    async def obtenerParrafosPorVectorId(vectorId: str) -> list[dict]:
+        """
+        Retorna el fragmento dividido en párrafos individuales,
+        cada uno con su índice y contenido limpio.
+        """
+        import re
+        fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
+        if not fragmento:
+            return []
+
+        contenido = fragmento.get('contenido', '') or ''
+        parrafos_raw = re.split(r'\n{2,}|(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ])', contenido.strip())
+
+        parrafos = []
+        for i, p in enumerate(parrafos_raw):
+            p = p.strip()
+            if len(p) < 30:
+                continue
+            parrafos.append({
+                **fragmento,
+                'contenido':      p,         # sobreescribe con el párrafo específico
+                'parrafo_indice': i,
+                'contenido_full': contenido, # conserva el original por si se necesita
+            })
+
+        return parrafos if parrafos else [fragmento]  # fallback al fragmento completo
+
     @staticmethod
     async def buscarPorPagina(documentoId: str, pagina: int) -> dict | None:
         logger.info(f"[Fragmento] Buscando fragmento pág {pagina} del documento_id: '{documentoId}'")

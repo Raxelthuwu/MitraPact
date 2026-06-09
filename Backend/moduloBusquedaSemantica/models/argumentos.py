@@ -34,7 +34,7 @@ class Argumento:
 
 
     @staticmethod
-    async def insertar(opinionId: str | None, texto: str, tema: str, problematicaCod: int, frecuencia: int) -> dict | None:
+    async def insertar(opinionId: str, texto: str, tema: str, problematicaCod: int, frecuencia: int) -> dict | None:
         logger.info(f"[Argumento] Insertando argumento | opinion_id: '{opinionId}' | tema: '{tema}'")
         sql = f"""
             INSERT INTO {db.argumento} (opinion_id, texto, tema, problematica_cod, frecuencia, identificado_en)
@@ -88,10 +88,16 @@ class Argumento:
 
 
     @staticmethod
-    async def actualizar(argumentoId: str, texto: str = None, frecuencia: int = None) -> dict | None:
+    async def actualizar(
+        argumentoId: str,
+        texto: str = None,
+        frecuencia: int = None,
+        tema: str = None,
+        problematicaCod: int = None
+    ) -> dict | None:
         logger.info(f"[Argumento] Actualizando argumento id: '{argumentoId}'")
 
-        campos = []
+        campos  = []
         valores = []
 
         if texto is not None:
@@ -100,13 +106,18 @@ class Argumento:
         if frecuencia is not None:
             campos.append("frecuencia = %s")
             valores.append(frecuencia)
+        if tema is not None:
+            campos.append("tema = %s")
+            valores.append(tema)
+        if problematicaCod is not None:
+            campos.append("problematica_cod = %s")
+            valores.append(problematicaCod)
 
         if not campos:
             logger.warning("[Argumento] No se proporcionaron campos para actualizar.")
             return None
 
         valores.append(argumentoId)
-
         sql = f"""
             UPDATE {db.argumento}
             SET {', '.join(campos)}
@@ -267,12 +278,3 @@ class Argumento:
             logger.error(f"[Argumento] Error en incrementarFrecuencia: {e}")
             raise
 
-    @staticmethod
-    async def eliminar(argumentoId: str) -> None:
-        logger.info(f"[Argumento] Eliminando argumento id: '{argumentoId}'")
-        sql = f"DELETE FROM {db.argumento} WHERE id = %s"
-        try:
-            await _query(sql, [argumentoId])
-        except Exception as e:
-            logger.error(f"[Argumento] Error al eliminar: {e}")
-            raise

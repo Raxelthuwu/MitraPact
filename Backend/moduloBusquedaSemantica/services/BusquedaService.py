@@ -10,6 +10,17 @@ from Backend.moduloBusquedaSemantica.models import (
 from Backend.moduloBusquedaSemantica.interfaces import IBusquedaService
 
 
+import asyncio
+from django.conf import settings
+from app.config.semanticManager import SemanticManager
+
+
+
+
+
+
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -329,4 +340,122 @@ class BusquedaService(IBusquedaService):
 
         except Exception as e:
             logger.error(f"[BusquedaService] Error en listarArgumentosDeDocumento: {e}")
+            raise
+
+    async def buscarSemanticaVectorialAvanzada(
+        self,
+        query: str,
+        documento_nombre: str = "",
+        tema: str = "",
+        limit: int = 5
+    ) -> list[dict]:
+        logger.info(
+            f"[BusquedaService] Búsqueda vectorial — query: '{query}' | "
+            f"doc: '{documento_nombre}' | tema: '{tema}' | limit: {limit}"
+        )
+        try:
+            embedding = SemanticManager.getEmbeddingService()
+            chroma    = SemanticManager.getChromaService()
+            coleccion = chroma.getOrCreateCollection('fragmentos_vec')
+
+            vector    = await embedding.embed(query)
+            nBusqueda = max(limit * 4, 30)
+
+            resultados = await asyncio.to_thread(
+                coleccion.query,
+                query_embeddings = [vector],
+                n_results        = nBusqueda,
+                include          = ['distances', 'metadatas']
+            )
+
+            if not resultados or not resultados.get('ids') or not resultados['ids'][0]:
+                logger.warning("[BusquedaService] ChromaDB no retornó resultados.")
+                return []
+
+            parejas = sorted(
+                zip(resultados['ids'][0], resultados['distances'][0]),
+                key=lambda x: x[1]
+            )
+
+            # Caché de documentos para no consultar PG repetidamente
+            _cacheDocumentos = {}
+
+            async def enriquecerFragmento(vectorId, distancia):
+                """Recupera fragmento + nombre del documento en una sola función."""
+                fragmento = await Fragmento.obtenerPorVectorId(vectorId)
+                if not fragmento:
+                    return None
+
+                documentoId = fragmento.get('documento_id')
+
+                # Consultar documento solo si no está en caché
+                if documentoId not in _cacheDocumentos:
+                    _cacheDocumentos[documentoId] = await Documento.obtenerPorId(documentoId)
+
+                doc = _cacheDocumentos.get(documentoId) or {}
+                nombre_doc = doc.get('nombre', '')
+
+                score = round(max(0.0, 1 / (1 + distancia)), 3)
+
+                return {
+                    **fragmento,
+                    'similitud':        score,
+                    'documento_nombre': nombre_doc,
+                }
+
+            fragmentos = []
+            for vectorId, distancia in parejas:
+                if len(fragmentos) >= limit:
+                    break
+
+                # Filtro threshold
+                if distancia > settings.SEMANTIC_RELATED_THRESHOLD:
+                    continue
+
+                enriquecido = await enriquecerFragmento(vectorId, distancia)
+                if not enriquecido:
+                    continue
+
+                # Filtro por nombre de documento (parcial, case-insensitive)
+                if documento_nombre:
+                    if documento_nombre.lower() not in enriquecido['documento_nombre'].lower():
+                        continue
+
+                # Filtro por tema
+                if tema:
+                    temas_doc = enriquecido.get('temas', [])
+                    if isinstance(temas_doc, list):
+                        coincide = any(tema.lower() in t.lower() for t in temas_doc)
+                    else:
+                        coincide = tema.lower() in str(temas_doc).lower()
+                    if not coincide:
+                        continue
+
+                fragmentos.append(enriquecido)
+
+            # Fallback sin threshold si no hay resultados con filtro de documento
+            if not fragmentos:
+                logger.warning(
+                    "[BusquedaService] Sin resultados con filtros, "
+                    "retornando top más cercanos sin threshold."
+                )
+                for vectorId, distancia in parejas:
+                    enriquecido = await enriquecerFragmento(vectorId, distancia)
+                    if not enriquecido:
+                        continue
+
+                    # Si hay filtro de documento, igual lo aplicamos en el fallback
+                    if documento_nombre:
+                        if documento_nombre.lower() not in enriquecido['documento_nombre'].lower():
+                            continue
+
+                    fragmentos.append(enriquecido)
+                    if len(fragmentos) >= limit:
+                        break
+
+            logger.info(f"[BusquedaService] {len(fragmentos)} fragmentos retornados.")
+            return fragmentos
+
+        except Exception as e:
+            logger.error(f"[BusquedaService] Error en buscarSemanticaVectorialAvanzada: {e}")
             raise

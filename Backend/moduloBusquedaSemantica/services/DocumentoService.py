@@ -244,56 +244,66 @@ class DocumentoService(IDocumentoService):
         self,
         documentoId: str,
         paginas: list[str],
-        chunkSize: int
+        chunkSize: int          # se mantiene en firma para no romper llamadas existentes
     ) -> int:
         """
-        Fragmenta cada página, persiste los fragmentos en PG via Fragmento.insertarBatch
-        y realiza el upsert vectorial en la colección 'fragmentos_vec' de ChromaDB.
-
-        Args:
-            documentoId: UUID del documento padre.
-            paginas:     Lista de textos extraídos por página.
-            chunkSize:   Tamaño de chunk a usar en la fragmentación.
-
-        Returns:
-            Total de fragmentos indexados.
+        Por cada página extrae párrafos individuales, vectoriza cada uno
+        y los persiste en PG + ChromaDB.
+        Cada párrafo = 1 fragmento = 1 vector. El campo 'pagina' indica
+        de qué página del PDF proviene el párrafo.
         """
-        logger.info(f"[DocumentoService] Persistiendo fragmentos para documento_id: '{documentoId}'")
+        logger.info(
+            f"[DocumentoService] Persistiendo fragmentos por párrafo "
+            f"para documento_id: '{documentoId}'"
+        )
 
-        embedding   = SemanticManager.getEmbeddingService()
-        chroma      = SemanticManager.getChromaService()
-        coleccion   = chroma.getOrCreateCollection('fragmentos_vec')
+        embedding = SemanticManager.getEmbeddingService()
+        chroma    = SemanticManager.getChromaService()
+        coleccion = chroma.getOrCreateCollection(
+                'fragmentos_vec',
+                metadata={"hnsw:space": "cosine"}
+)
 
         fragmentosParaBatch = []
         totalFragmentos     = 0
 
         for numeroPagina, textoPagina in enumerate(paginas, start=1):
-            chunks = await self._fragmentar(textoPagina, chunkSize)
+            parrafos = await self._extraerParrafos(textoPagina)
 
-            for chunk in chunks:
-                vector   = await embedding.embed(chunk)
-                vectorId = f"{documentoId}_p{numeroPagina}_{totalFragmentos}"
+            if not parrafos:
+                logger.warning(
+                    f"[DocumentoService] Página {numeroPagina} sin párrafos válidos — omitida."
+                )
+                continue
 
-                # Upsert en Chroma
+            for idxParrafo, parrafo in enumerate(parrafos):
+                vector   = await embedding.embed(parrafo)
+                vectorId = f"{documentoId}_p{numeroPagina}_pr{idxParrafo}"
+
                 await asyncio.to_thread(
                     coleccion.upsert,
                     ids        = [vectorId],
                     embeddings = [vector],
-                    documents  = [chunk],
-                    metadatas=[{'documento_id': str(documentoId), 'pagina': numeroPagina}]
+                    documents  = [parrafo],
+                    metadatas  = [{
+                        'documento_id': str(documentoId),
+                        'pagina':       numeroPagina,
+                        'parrafo_idx':  idxParrafo,
+                    }]
                 )
 
                 fragmentosParaBatch.append({
                     'documentoId': documentoId,
                     'pagina':      numeroPagina,
-                    'contenido':   chunk,
-                    'vectorId':    vectorId
+                    'contenido':   parrafo,
+                    'vectorId':    vectorId,
                 })
                 totalFragmentos += 1
 
-        # Persistir todos los fragmentos en PG de una sola vez
         await Fragmento.insertarBatch(fragmentosParaBatch)
-        logger.info(f"[DocumentoService] {totalFragmentos} fragmentos persistidos y vectorizados.")
+        logger.info(
+            f"[DocumentoService] {totalFragmentos} párrafos persistidos y vectorizados."
+        )
         return totalFragmentos
 
     async def _clasificarTemas(
@@ -384,3 +394,38 @@ class DocumentoService(IDocumentoService):
         await TemaDocumento.eliminarPorDocumento(documentoId)
 
         logger.info(f"[DocumentoService] Limpieza completada para documento_id: '{documentoId}'")
+
+
+    async def _extraerParrafos(self, textoPagina: str) -> list[str]:
+        """
+        Divide el texto de una página en párrafos limpios.
+        Estrategia:
+        1. Separar por doble salto de línea (párrafos explícitos).
+        2. Separar por punto seguido de mayúscula (oraciones largas sin salto).
+        3. Descartar párrafos menores a PARAGRAPH_MIN_LENGTH caracteres.
+        """
+        import re
+
+        minLen = getattr(settings, 'PARAGRAPH_MIN_LENGTH', 80)
+
+        # Paso 1 — split por doble salto de línea
+        bloques = re.split(r'\n{2,}', textoPagina.strip())
+
+        parrafos = []
+        for bloque in bloques:
+            bloque = bloque.strip()
+            if not bloque:
+                continue
+
+            # Paso 2 — si el bloque es muy largo, subdividir por punto + mayúscula
+            if len(bloque) > 800:
+                sub = re.split(r'(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ])', bloque)
+                for s in sub:
+                    s = s.strip()
+                    if len(s) >= minLen:
+                        parrafos.append(s)
+            else:
+                if len(bloque) >= minLen:
+                    parrafos.append(bloque)
+
+        return parrafos

@@ -214,3 +214,29 @@ class ChromaService:
         resultados = await asyncio.to_thread(col.query, **params)
         logging.info(f"[Query Genérico] Ejecución asíncrona completada para colección: '{collectionName}'")
         return resultados
+    
+    # Agregar dentro de la clase ChromaService en tu archivo de vectores
+
+    async def updateArgumentoMetadata(self, argumentoId: str, tema: str = None, problematicaCod: int = None, barrioId: str = None):
+        """
+        Actualiza los metadatos de un argumento existente en ChromaDB 
+        para evitar desincronización con PostgreSQL.
+        """
+        logging.info(f"[Argumentos] Actualizando metadatos en Chroma para argumento_id: '{argumentoId}'")
+        col = self.getOrCreateCollection("argumentos_vec")
+        
+        # Construimos el diccionario de metadatos dinámicamente con lo que se haya enviado
+        metadata_actualizada = {"argumento_id": str(argumentoId)}
+        if tema is not None:
+            metadata_actualizada["tema"] = tema
+        if problematicaCod is not None:
+            metadata_actualizada["problematica_cod"] = problematicaCod
+        if barrioId is not None:
+            metadata_actualizada["barrio_id"] = str(barrioId)
+
+        await asyncio.to_thread(
+            col.update,
+            ids=[str(argumentoId)],
+            metadatas=[metadata_actualizada]
+        )
+        logging.info(f"[Argumentos] Metadatos de Chroma actualizados para argumento_id: '{argumentoId}'")

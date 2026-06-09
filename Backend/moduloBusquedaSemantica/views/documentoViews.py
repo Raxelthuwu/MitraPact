@@ -4,6 +4,8 @@ from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.http.multipartparser import MultiPartParser
+
 from Backend.moduloBusquedaSemantica.services import DocumentoService, BusquedaService
 
 logger = logging.getLogger(__name__)
@@ -52,21 +54,34 @@ class DocumentoView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class DocumentoDetalleView(View):
     """
-    PUT    /documentos/<pk>/   — actualiza por UUID
-    DELETE /documentos/<pk>/   — elimina por UUID
+    PUT    /busqueda/documentos/<pk>/  — actualiza por UUID
+    DELETE /busqueda/documentos/<pk>/  — elimina por UUID
     """
 
     async def put(self, request, pk):
         try:
-            archivo   = request.FILES.get('archivo')
-            nombre    = request.POST.get('nombre', '').strip() or None
-            temasRaw  = request.POST.get('temas', '')
-            temasEnviado = request.POST.get('temas_enviado')  # ← nuevo
-            chunkSize = request.POST.get('chunkSize')
+            # -----------------------------------------------------------------
+            # SOLUCIÓN ROBUSTA: Parseo manual del flujo Multipart en PUT
+            # -----------------------------------------------------------------
+            # Extraemos de forma explícita los datos del formulario (put_data) 
+            # y los archivos (files) directamente desde el stream de la petición.
+            put_data, files = MultiPartParser(
+                request.META, 
+                request, 
+                request.upload_handlers
+            ).parse()
 
-            temas     = [t.strip() for t in temasRaw.split(',') if t.strip()] if temasEnviado else None  # ← cambiado
+            archivo      = files.get('archivo')
+            nombre       = put_data.get('nombre', '').strip() or None
+            temasRaw     = put_data.get('temas', '')
+            temasEnviado = put_data.get('temas_enviado')
+            chunkSize    = put_data.get('chunkSize')
+
+            # Procesamiento de la lógica de negocio
+            temas     = [t.strip() for t in temasRaw.split(',') if t.strip()] if temasEnviado else None
             chunkSize = int(chunkSize) if chunkSize else None
 
+            # Llamada al servicio con los datos extraídos
             resultado = await _documento_svc.actualizar(
                 documentoId = pk,
                 archivo     = archivo,
@@ -75,6 +90,7 @@ class DocumentoDetalleView(View):
                 chunkSize   = chunkSize,
             )
             return JsonResponse(resultado, status=200)
+
         except ValueError as e:
             return JsonResponse({'error': str(e)}, status=404)
         except Exception as e:

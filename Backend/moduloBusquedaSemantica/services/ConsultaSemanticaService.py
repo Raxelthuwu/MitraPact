@@ -1,7 +1,6 @@
-# Backend/moduloBusquedaSemantica/services/consultaSemanticaService.py
-
 import logging
 import asyncio
+import re
 from django.conf import settings
 from app.config.semanticManager import SemanticManager
 from Backend.moduloBusquedaSemantica.models import (
@@ -16,11 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class ConsultaSemanticaService(IConsultaSemanticaService):
-    """
-    Servicio de consulta semántica sobre documentos y argumentos.
-    Orquesta el flujo de embedding, query en ChromaDB y recuperación
-    de resultados completos desde PostgreSQL para presentar al usuario.
-    """
 
     # -------------------------------------------------------------------------
     # PÚBLICOS
@@ -31,60 +25,109 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
         consulta: str,
         nResultados: int = 5
     ) -> dict:
-        """
-        Recibe una consulta en lenguaje natural, la embeddea y busca
-        los fragmentos documentales más similares en 'fragmentos_vec'.
-        Recupera los fragmentos completos y sus documentos desde PG.
-
-        Args:
-            consulta:    Texto libre de la consulta del usuario.
-            nResultados: Cantidad máxima de fragmentos a retornar. Default 5.
-
-        Returns:
-            dict con 'fragmentos' y 'documentos' relacionados.
-        """
-        logger.info(f"[ConsultaSemanticaService] Búsqueda por lenguaje natural: '{consulta}'")
+        logger.info(f"[ConsultaSemanticaService] Búsqueda natural: '{consulta}'")
 
         embedding = SemanticManager.getEmbeddingService()
         chroma    = SemanticManager.getChromaService()
         coleccion = chroma.getOrCreateCollection('fragmentos_vec')
 
-        vector     = await embedding.embed(consulta)
+        vector    = await embedding.embed(consulta)
+        nBusqueda = max(nResultados * 3, 20)
+
         resultados = await asyncio.to_thread(
             coleccion.query,
             query_embeddings = [vector],
-            n_results        = nResultados
+            n_results        = nBusqueda,
+            include          = ['distances', 'metadatas']
         )
 
-        # Extraer vector_ids de los resultados
-        vectorIds = []
-        if resultados and resultados.get('ids') and resultados['ids'][0]:
-            for vectorId, distancia in zip(
-                resultados['ids'][0],
-                resultados['distances'][0]
-            ):
-                if distancia >= settings.SEMANTIC_RELATED_THRESHOLD:
-                    vectorIds.append(vectorId)
-
-        if not vectorIds:
-            logger.warning("[ConsultaSemanticaService] Sin resultados para la consulta.")
+        if not resultados or not resultados.get('ids') or not resultados['ids'][0]:
+            logger.warning("[ConsultaSemanticaService] Sin resultados en ChromaDB.")
             return {'fragmentos': [], 'documentos': []}
 
-        # Recuperar fragmentos completos desde PG
-        fragmentos = await self._recuperarFragmentos(vectorIds)
-
-        # Recuperar documentos únicos desde PG
-        documentos = await self._recuperarDocumentosDeFragmentos(fragmentos)
-
-        logger.info(
-            f"[ConsultaSemanticaService] Resultados: "
-            f"{len(fragmentos)} fragmentos | {len(documentos)} documentos"
+        # Ordenar por distancia ascendente (más similar primero)
+        parejas = sorted(
+            zip(resultados['ids'][0], resultados['distances'][0]),
+            key=lambda x: x[1]
         )
 
-        return {
-            'fragmentos': fragmentos,
-            'documentos': documentos
-        }
+        # Recolectar párrafos de los fragmentos más cercanos
+        parrafosFinales = []
+        consultaTokens  = set(re.sub(r'[^\w\s]', '', consulta.lower()).split())
+        _cacheDoc       = {}
+
+        for vectorId, distancia in parejas:
+            if len(parrafosFinales) >= nResultados:
+                break
+            if distancia > settings.SEMANTIC_RELATED_THRESHOLD:
+                continue
+
+            # Obtener fragmento con nombre de documento en un solo query
+            fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
+            if not fragmento:
+                continue
+
+            # Cachear documento para el bloque de documentos únicos
+            docId = fragmento.get('documento_id')
+            if docId not in _cacheDoc:
+                _cacheDoc[docId] = await Documento.obtenerPorId(docId)
+
+            scoreVectorial = round(max(0.0, 1 - (distancia / 2)), 3)
+            # Dividir en párrafos y quedar con el más relevante léxicamente
+            parrafos = self._partirEnParrafos(
+                fragmento.get('contenido', ''),
+                consultaTokens
+            )
+
+            if parrafos:
+                mejorParrafo = parrafos[0]  # ya vienen ordenados por scoreLexico desc
+                parrafosFinales.append({
+                    **fragmento,
+                    'contenido':      mejorParrafo['texto'],
+                    'contenido_full': fragmento.get('contenido'),
+                    'score':          scoreVectorial,
+                    'score_lexico':   mejorParrafo['scoreLexico'],
+                })
+            else:
+                parrafosFinales.append({
+                    **fragmento,
+                    'score': scoreVectorial,
+                })
+
+        # Fallback: si threshold fue muy estricto, retornar top sin filtro
+        if not parrafosFinales:
+            logger.warning("[ConsultaSemanticaService] Threshold estricto — fallback sin filtro.")
+            for vectorId, distancia in parejas[:nResultados]:
+                fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
+                if fragmento:
+                    docId = fragmento.get('documento_id')
+                    if docId not in _cacheDoc:
+                        _cacheDoc[docId] = await Documento.obtenerPorId(docId)
+                    score = round(max(0.0, 1 / (1 + distancia)), 3)
+                    parrafos = self._partirEnParrafos(
+                        fragmento.get('contenido', ''), consultaTokens
+                    )
+                    mejor = parrafos[0] if parrafos else None
+                    parrafosFinales.append({
+                        **fragmento,
+                        'contenido':      mejor['texto'] if mejor else fragmento.get('contenido'),
+                        'contenido_full': fragmento.get('contenido'),
+                        'score':          score,
+                        'documento_nombre': fragmento.get('documento_nombre', ''),
+                    })
+
+        documentos = list({
+            f['documento_id']: _cacheDoc.get(f['documento_id'])
+            for f in parrafosFinales
+            if f.get('documento_id') and _cacheDoc.get(f['documento_id'])
+        }.values())
+
+        logger.info(
+            f"[ConsultaSemanticaService] {len(parrafosFinales)} párrafos | "
+            f"{len(documentos)} documentos"
+        )
+
+        return {'fragmentos': parrafosFinales, 'documentos': documentos}
 
     async def buscarArgumentosPorProblematica(
         self,
@@ -92,117 +135,165 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
         nResultados: int = 5
     ) -> list[dict]:
         """
-        Busca en 'argumentos_vec' los argumentos más relevantes
-        para una problemática específica y recupera sus documentos
-        vinculados via ArgumentoDocumento.
-
-        Args:
-            problematicaCod: Código de la problemática a consultar.
-            nResultados:     Cantidad máxima de argumentos a retornar. Default 5.
-
-        Returns:
-            list[dict] con argumentos y sus documentos vinculados.
+        Va directo a PostgreSQL con JOIN a catalogo_problematica.
+        No depende de ChromaDB para este flujo.
         """
         logger.info(
-            f"[ConsultaSemanticaService] Buscando argumentos para "
-            f"problematica_cod: {problematicaCod}"
+            f"[ConsultaSemanticaService] Argumentos para problematica_cod: {problematicaCod}"
         )
 
-        chroma    = SemanticManager.getChromaService()
-        coleccion = chroma.getOrCreateCollection('argumentos_vec')
+        # Usar el método que ya tiene el JOIN correcto
+        argumentos = await Argumento.buscarPorProblematicaConDescripcion(problematicaCod)
 
-        # Obtener argumentos filtrando por problematica_cod en metadata
-        resultados = await asyncio.to_thread(
-            coleccion.get,
-            where      = {'problematica_cod': problematicaCod},
-            limit      = nResultados
-        )
-
-        argumentoIds = []
-        if resultados and resultados.get('metadatas'):
-            for metadata in resultados['metadatas']:
-                argumentoId = metadata.get('argumento_id')
-                if argumentoId and argumentoId not in argumentoIds:
-                    argumentoIds.append(argumentoId)
-
-        if not argumentoIds:
+        if not argumentos:
             logger.warning(
                 f"[ConsultaSemanticaService] Sin argumentos para "
                 f"problematica_cod: {problematicaCod}"
             )
             return []
 
-        # Recuperar argumentos completos desde PG y vincular documentos
+        # Limitar y enriquecer con documentos vinculados
         resultado = []
-        for argumentoId in argumentoIds:
-            argumento  = await Argumento.obtenerPorId(argumentoId)
-            if not argumento:
-                continue
-
-            documentos = await ArgumentoDocumento.listarDocumentosDeArgumento(argumentoId)
+        for argumento in argumentos[:nResultados]:
+            argumentoId = argumento.get('id')
+            documentos  = await ArgumentoDocumento.listarDocumentosDeArgumento(argumentoId)
             resultado.append({
                 **argumento,
-                'documentos': documentos
+                'documentos': documentos,
             })
 
         logger.info(
-            f"[ConsultaSemanticaService] {len(resultado)} argumentos "
-            f"recuperados para problematica_cod: {problematicaCod}"
+            f"[ConsultaSemanticaService] {len(resultado)} argumentos retornados."
+        )
+        return resultado
+
+    async def actualizar_argumento(
+        self,
+        argumento_id: str,
+        tema: str,
+        problematica_cod: int
+    ) -> dict:
+        logger.info(
+            f"[ConsultaSemanticaService] Actualizando argumento_id: {argumento_id}"
         )
 
-        return resultado
+        # Ahora sí pasa tema y problematicaCod — el modelo los acepta
+        resultado = await Argumento.actualizar(
+            argumentoId     = argumento_id,
+            tema            = tema,
+            problematicaCod = problematica_cod
+        )
+
+        if not resultado:
+            raise ValueError(
+                "No se encontró el argumento o no sufrió variaciones."
+            )
+
+        # Sincronizar ChromaDB
+        try:
+            chroma    = SemanticManager.getChromaService()
+            coleccion = chroma.getOrCreateCollection('argumentos_vec')
+
+            registro = await asyncio.to_thread(
+                coleccion.get,
+                where   = {'argumento_id': str(argumento_id)},
+                include = ['embeddings', 'metadatas']
+            )
+
+            if registro and registro.get('ids'):
+                vector_id        = registro['ids'][0]
+                embedding_base   = registro['embeddings'][0]
+                metadata_antigua = registro['metadatas'][0] if registro.get('metadatas') else {}
+
+                nueva_metadata = {
+                    'argumento_id':    str(argumento_id),
+                    'tema':            str(tema),
+                    'problematica_cod': int(problematica_cod) if problematica_cod is not None else 0,
+                    'barrio_id':       str(metadata_antigua.get('barrio_id', ''))
+                }
+
+                await asyncio.to_thread(
+                    coleccion.upsert,
+                    ids        = [vector_id],
+                    embeddings = [embedding_base],
+                    metadatas  = [nueva_metadata]
+                )
+                logger.info(f"[ConsultaSemanticaService] ChromaDB sincronizado: {vector_id}")
+            else:
+                logger.warning(
+                    f"[ConsultaSemanticaService] Argumento {argumento_id} "
+                    "sin vector en argumentos_vec."
+                )
+
+        except Exception as e:
+            logger.error(
+                f"[ConsultaSemanticaService] Error ChromaDB: {e}", exc_info=True
+            )
+
+        return {
+            'status':    'success',
+            'mensaje':   'Argumento actualizado correctamente.',
+            'argumento': resultado
+        }
 
     # -------------------------------------------------------------------------
     # PRIVADOS
     # -------------------------------------------------------------------------
 
-    async def _recuperarFragmentos(self, vectorIds: list[str]) -> list[dict]:
-        """
-        Recupera los fragmentos completos desde PG dado una lista
-        de vector_id retornados por ChromaDB.
-
-        Args:
-            vectorIds: Lista de vector_id de ChromaDB.
-
-        Returns:
-            list[dict] con los fragmentos completos desde PG.
-        """
-        logger.info(f"[ConsultaSemanticaService] Recuperando {len(vectorIds)} fragmentos desde PG.")
-
-        fragmentos = []
-        for vectorId in vectorIds:
-            fragmento = await Fragmento.obtenerPorVectorId(vectorId)
-            if fragmento:
-                fragmentos.append(fragmento)
-
-        return fragmentos
-
-    async def _recuperarDocumentosDeFragmentos(
+    def _partirEnParrafos(
         self,
-        fragmentos: list[dict]
+        contenido: str,
+        consultaTokens: set
     ) -> list[dict]:
         """
-        Extrae los documento_id únicos de los fragmentos recuperados
-        y obtiene los documentos completos desde PG.
-
-        Args:
-            fragmentos: Lista de fragmentos con su documento_id.
-
-        Returns:
-            list[dict] con los documentos únicos recuperados desde PG.
+        Divide el contenido en párrafos y los ordena por relevancia léxica
+        respecto a la consulta. Retorna lista ordenada de mayor a menor score.
         """
-        logger.info("[ConsultaSemanticaService] Recuperando documentos únicos desde PG.")
+        if not contenido:
+            return []
 
-        documentoIds = []
-        for fragmento in fragmentos:
-            documentoId = fragmento.get('documento_id')
-            if documentoId and documentoId not in documentoIds:
-                documentoIds.append(documentoId)
+        parrafos_raw = re.split(
+            r'\n{2,}|(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ])',
+            contenido.strip()
+        )
 
-        documentos = []
-        for documentoId in documentoIds:
-            documento = await Documento.obtenerPorId(documentoId)
-            if documento:
-                documentos.append(documento)
+        parrafos = []
+        for p in parrafos_raw:
+            p = p.strip()
+            if len(p) < 30:
+                continue
 
-        return documentos
+            pTokens      = set(re.sub(r'[^\w\s]', '', p.lower()).split())
+            coincidencias = len(consultaTokens & pTokens)
+            scoreLexico   = round(coincidencias / max(len(consultaTokens), 1), 3)
+
+            parrafos.append({
+                'texto':      p,
+                'scoreLexico': scoreLexico,
+            })
+
+        return sorted(parrafos, key=lambda x: x['scoreLexico'], reverse=True)
+    
+    async def _recuperarFragmentos(self, vectorIds: list[str]) -> list[dict]:
+            """Implementación requerida por la interfaz."""
+            fragmentos = []
+            for vectorId in vectorIds:
+                fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
+                if fragmento:
+                    fragmentos.append(fragmento)
+            return fragmentos
+
+    async def _recuperarDocumentosDeFragmentos(self, fragmentos: list[dict]) -> list[dict]:
+            """Implementación requerida por la interfaz."""
+            documentoIds = []
+            for fragmento in fragmentos:
+                docId = fragmento.get('documento_id')
+                if docId and docId not in documentoIds:
+                    documentoIds.append(docId)
+
+            documentos = []
+            for docId in documentoIds:
+                doc = await Documento.obtenerPorId(docId)
+                if doc:
+                    documentos.append(doc)
+            return documentos
