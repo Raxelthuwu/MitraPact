@@ -148,62 +148,108 @@ class ClasificacionService(IClasificacionService):
         )
 
     async def _clasificarOpinion(
-        self,
-        encuestaId: str,
-        barrioId: str,
-        textoOpinion: str
-    ) -> dict:
-        """
-        Embeddea el texto de la opinión y consulta 'opiniones_vec' en ChromaDB
-        para determinar el tema más cercano semánticamente.
-        Persiste el resultado en OpinionClasificada y hace upsert en 'opiniones_vec'.
+            self,
+            encuestaId: str,
+            barrioId: str,
+            textoOpinion: str
+        ) -> dict:
+            logger.info(f"[ClasificacionService] Clasificando opinión de encuesta_id: '{encuestaId}'")
 
-        Args:
-            encuestaId:   UUID de la encuesta origen.
-            barrioId:     UUID del barrio de la encuesta.
-            textoOpinion: Texto libre de la opinión política.
+            embedding  = SemanticManager.getEmbeddingService()
+            chroma     = SemanticManager.getChromaService()
+            coleccion  = chroma.getOrCreateCollection('opiniones_vec')
 
-        Returns:
-            dict con la OpinionClasificada persistida incluyendo el tema asignado.
-        """
-        logger.info(f"[ClasificacionService] Clasificando opinión de encuesta_id: '{encuestaId}'")
+            # Generar vector del texto entrante
+            vector = await embedding.embed(textoOpinion)
 
-        embedding  = SemanticManager.getEmbeddingService()
-        chroma     = SemanticManager.getChromaService()
-        coleccion  = chroma.getOrCreateCollection('opiniones_vec')
+            # 1. Intentar buscar un vecino cercano en ChromaDB
+            resultados = await asyncio.to_thread(
+                coleccion.query,
+                query_embeddings = [vector],
+                n_results        = 1
+            )
 
-        vector     = await embedding.embed(textoOpinion)
+            tema = 'sin_clasificar'
+            if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
+                distancia = resultados['distances'][0][0]
+                logger.info(f"[ClasificacionService] Distancia al vecino más cercano: {distancia}")
+                
+                # Si el vector está lo suficientemente cerca, heredamos el tema directamente
+                if distancia <= settings.SEMANTIC_MATCH_THRESHOLD:
+                    tema = resultados['metadatas'][0].get('tema', 'sin_clasificar')
+                    logger.info(f"[ClasificacionService] Match semántico encontrado. Heredando tema: '{tema}'")
 
-        # Consultar tema más cercano en opiniones ya clasificadas
-        resultados = await asyncio.to_thread(
-            coleccion.query,
-            query_embeddings = [vector],
-            n_results        = 1
-        )
+            # 2. FALLBACK HEURÍSTICO AVANZADO (DICCIONARIO ENRIQUECIDO DE ALTA COBERTURA)
+            if tema == 'sin_clasificar' or tema is None:
+                logger.info("[ClasificacionService] Sin coincidencia en vector DB. Aplicando diccionario semántico robusto...")
+                texto_minuscula = textoOpinion.lower()
+                
+                # Diccionario expandido con terminología urbana, sinónimos y variaciones de quejas comunes
+                diccionario_temas = {
+                    'Seguridad': [
+                        'robo', 'hurto', 'asalto', 'policía', 'patrulla', 'inseguridad', 'delincuencia', 'atrac', 
+                        'miedo', 'alarma', 'droga', 'microtráfico', 'banda', 'vandalismo', 'violencia', 'cámaras', 
+                        'caí', 'seguro', 'extorsión', 'sicariato', 'amenaza', 'pelea', 'pandilla', 'sospechoso'
+                    ],
+                    'Infraestructura': [
+                        'calle', 'bache', 'hueco', 'pavimento', 'vía', 'carretera', 'andén', 'construcción', 
+                        'puente', 'asfalto', 'obra', 'andenes', 'grieta', 'hundimiento', 'alcantarilla sin tapa', 
+                        'semáforo', 'señalización', 'alumbrado', 'luminaria', 'oscuridad', 'poste', 'parque', 'plaza'
+                    ],
+                    'Servicios Públicos': [
+                        'agua', 'luz', 'energía', 'acueducto', 'alcantarillado', 'corte', 'cotes', 'apagón', 
+                        'presión', 'tubería', 'potable', 'gas', 'conectividad', 'internet', 'fibra', 'recibo', 
+                        'factura', 'tarifa', 'sobrenivel', 'drenaje', 'inundación'
+                    ],
+                    'Salud': [
+                        'hospital', 'clínica', 'médico', 'cita', 'eps', 'salud', 'medicina', 'ambulancia', 
+                        'atención', 'enfermo', 'urgencias', 'puesto de salud', 'doctor', 'enfermera', 'farmacia', 
+                        'medicamento', 'tratamiento', 'vacuna', 'pediatra', 'camilla'
+                    ],
+                    'Educación': [
+                        'colegio', 'escuela', 'universidad', 'clase', 'estudio', 'profesor', 'beca', 'educación', 
+                        'jardín', 'niños', 'estudiante', 'docente', 'aula', 'pupitre', 'matrícula', 'útiles', 
+                        'refrigerio', 'pae', 'deserción', 'institución educativa', 'academia'
+                    ],
+                    'Medio Ambiente': [
+                        'basura', 'limpieza', 'recolección', 'escombro', 'contaminación', 'humo', 'ruido', 'plaga', 
+                        'rata', 'roedor', 'mosquito', 'dengue', 'río', 'quebrada', 'reciclaje', 'árbol', 'tala', 
+                        'poda', 'mal olor', 'vertedero', 'botadero', 'canino', 'callejero'
+                    ],
+                    'Movilidad y Transporte': [
+                        'tráfico', 'trancón', 'bus', 'transporte', 'colectivo', 'ruta', 'paradero', 'ciclovía', 
+                        'ciclorruta', 'taxis', 'terminal', 'congestión', 'pasaje', 'frecuencia', 'vía colapsada', 
+                        'accidente', 'choque', 'moto', 'conductor'
+                    ]
+                }
+                
+                # Evaluar cuál categoría acumula el mayor número de impactos semánticos
+                conteos = {k: sum(texto_minuscula.count(palabra) for palabra in v) for k, v in diccionario_temas.items()}
+                ganador = max(conteos, key=conteos.get)
+                
+                if conteos[ganador] > 0:
+                    tema = ganador
+                    logger.info(f"[ClasificacionService] Tema inferido por diccionario: '{tema}' (Impactos: {conteos[ganador]})")
+                else:
+                    tema = 'Otros'  # Categoría neutral para textos que no tengan ninguna palabra clave
+                    logger.info("[ClasificacionService] No se detectaron palabras clave en el diccionario. Asignando categoría: 'Otros'")
 
-        # Determinar tema — si hay similitud suficiente toma el tema existente
-        # de lo contrario marca como 'sin_clasificar'
-        tema = 'sin_clasificar'
-        if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
-            distancia = resultados['distances'][0][0]
-            if distancia >= settings.SEMANTIC_MATCH_THRESHOLD:
-                tema = resultados['metadatas'][0][0].get('tema', 'sin_clasificar')
+            # 3. Persistir en la base de datos PostgreSQL
+            opinion = await OpinionClasificada.insertar(encuestaId, barrioId, tema)
 
-        # Persistir OpinionClasificada en PG
-        opinion = await OpinionClasificada.insertar(encuestaId, barrioId, tema)
+            # 4. Registrar en ChromaDB para alimentar la memoria del sistema
+            # De esta forma, las próximas encuestas con redacción similar harán Match en el Bloque 1
+            vectorId = f"opinion_{opinion['id']}"
+            await asyncio.to_thread(
+                coleccion.upsert,
+                ids        = [vectorId],
+                embeddings = [vector],
+                documents  = [textoOpinion],
+                metadatas  = [{'tema': tema, 'barrio_id': barrioId}]
+            )
 
-        # Upsert en opiniones_vec con el tema como metadata
-        vectorId = f"opinion_{opinion['id']}"
-        await asyncio.to_thread(
-            coleccion.upsert,
-            ids        = [vectorId],
-            embeddings = [vector],
-            documents  = [textoOpinion],
-            metadatas  = [{'tema': tema, 'barrio_id': barrioId}]
-        )
-
-        logger.info(f"[ClasificacionService] Opinión clasificada con tema: '{tema}'")
-        return opinion
+            logger.info(f"[ClasificacionService] Opinión indexada exitosamente con tema definitivo: '{tema}'")
+            return opinion
 
     async def _extraerArgumentos(
         self,
@@ -311,8 +357,8 @@ class ClasificacionService(IClasificacionService):
 
         if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
             distancia = resultados['distances'][0][0]
-            if distancia >= settings.SEMANTIC_RELATED_THRESHOLD:
-                codInferido = resultados['metadatas'][0][0].get('problematica_cod')
+            if distancia <= settings.SEMANTIC_RELATED_THRESHOLD:
+                codInferido = resultados['metadatas'][0].get('problematica_cod')
                 logger.info(f"[ClasificacionService] Problemática inferida: {codInferido}")
                 return codInferido
 
@@ -356,7 +402,7 @@ class ClasificacionService(IClasificacionService):
                 resultados['metadatas'][0],
                 resultados['distances'][0]
             ):
-                if distancia >= settings.SEMANTIC_FRAGMENT_MATCH_THRESHOLD:
+                if distancia <= settings.SEMANTIC_FRAGMENT_MATCH_THRESHOLD:
                     documentoId = metadata.get('documento_id')
                     if documentoId and documentoId not in documentoIds:
                         documentoIds.append(documentoId)

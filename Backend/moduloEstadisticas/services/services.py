@@ -4,6 +4,7 @@ import json
 import logging
 import datetime
 from typing import Any, Dict, List, Optional
+import uuid
 
 from asgiref.sync import sync_to_async
 from django.db import transaction
@@ -181,35 +182,18 @@ def _construir_texto_resumen(barrio_id: str, periodo_id: str) -> str:
 # HELPERS DE VALIDACIÓN CSV
 # =============================================================================
 
-# Columnas mínimas requeridas en el formato nuevo (EncuestaFormato.csv)
-_COLUMNAS_REQUERIDAS_NUEVO = {
+_COLUMNAS_REQUERIDAS = {
     "fecha", "edad", "barrio_id", "ocupacion_cod",
     "inclinacion_voto_cod", "intencion_participacion_cod", "prob_1_cod",
-}
-
-# Columnas mínimas requeridas en el formato viejo (encuestas_prueba_api_csv.xls)
-_COLUMNAS_REQUERIDAS_VIEJO = {
-    "periodo_id", "edad", "barrio_id", "ocupacion_cod",
-    "inclinacion_voto_cod", "intencion_participacion_cod", "problematica_cod",
 }
 
 
 def _parsear_fila_csv(i: int, fila: Dict) -> tuple[Optional[Dict], Optional[str]]:
     """
     Valida y normaliza una fila de CSV.
-    Acepta dos formatos:
-      - Formato nuevo: columnas fecha, prob_1_cod, prob_2_cod, ...
-      - Formato viejo: columnas periodo_id, problematica_cod, ...
     Devuelve (fila_normalizada, None) si es válida o (None, mensaje_error).
     """
-    claves = set(fila.keys())
-    es_formato_viejo = "problematica_cod" in claves or "periodo_id" in claves
-
-    if es_formato_viejo:
-        faltantes = _COLUMNAS_REQUERIDAS_VIEJO - claves
-    else:
-        faltantes = _COLUMNAS_REQUERIDAS_NUEVO - claves
-
+    faltantes = _COLUMNAS_REQUERIDAS - set(fila.keys())
     if faltantes:
         return None, f"Fila {i}: columnas faltantes {faltantes}"
 
@@ -217,30 +201,16 @@ def _parsear_fila_csv(i: int, fila: Dict) -> tuple[Optional[Dict], Optional[str]
         return int(v) if v and str(v).strip() else None
 
     try:
-        # Normalizar fecha: formato viejo usa periodo_id en lugar de fecha
-        if es_formato_viejo:
-            fecha = fila.get("periodo_id", "").strip() or None
-        else:
-            fecha = fila["fecha"].strip()
-
-        # Normalizar problemáticas: formato viejo usa un solo campo problematica_cod
-        if es_formato_viejo:
-            prob_1_cod = _int(fila.get("problematica_cod"))
-            prob_2_cod = None
-        else:
-            prob_1_cod = _int(fila.get("prob_1_cod"))
-            prob_2_cod = _int(fila.get("prob_2_cod"))
-
         return {
-            "fecha":          fecha,
+            "fecha":          fila["fecha"].strip(),
             "edad":           int(fila["edad"]),
             "barrio":         fila.get("barrio", "").strip()    or None,
             "barrio_id":      fila.get("barrio_id", "").strip() or None,
             "ocupacion_cod":               _int(fila.get("ocupacion_cod")),
             "inclinacion_voto_cod":        _int(fila.get("inclinacion_voto_cod")),
             "intencion_participacion_cod": _int(fila.get("intencion_participacion_cod")),
-            "prob_1_cod":  prob_1_cod,
-            "prob_2_cod":  prob_2_cod,
+            "prob_1_cod":  _int(fila.get("prob_1_cod")),
+            "prob_2_cod":  _int(fila.get("prob_2_cod")),
             "prob_otra":   fila.get("prob_otra", "").strip()         or None,
             "opinion_politica": fila.get("opinion_politica", "").strip() or None,
         }, None
@@ -384,67 +354,138 @@ class ImportacionCsvService(IImportacionCsvService):
         """Alias semántico de obtener — expone el estado de procesamiento."""
         return await self.obtener(importacion_id)
 
-    async def importar(self, archivo_csv: Any) -> Dict:
+    async def importar(self, archivo: Any) -> Dict:
         """
-        Orquesta la importación completa:
-          1. Crea el registro de importación en el modelo.
-          2. Parsea y valida cada fila del CSV (lógica de negocio aquí).
-          3. Inserta en bloque las filas válidas mediante Encuesta.insercion_masiva.
-          4. Finaliza el registro con los totales.
+        Versión adaptada para recibir directamente el objeto 'archivo' desde la vista,
+        extrayendo de forma interna el ID de importación y los bytes del contenido.
         """
-        nombre = getattr(archivo_csv, "name", "sin_nombre.csv")
-        logger.info("[ImportacionCsvService.importar] Iniciando importación: '%s'.", nombre)
+        # Intentamos obtener el ID desde los atributos del archivo o generamos uno si no viene
+        importacion_id = getattr(archivo, "importacion_id", None) or getattr(archivo, "id", None)
+        if not importacion_id:
+            importacion_id = str(uuid.uuid4())
+
+        logger.info(
+            "[ImportacionCsvService.importar] Iniciando procesamiento id=%s.", importacion_id
+        )
+
+        # Leer los bytes del archivo cargado
+        try:
+            if hasattr(archivo, "read"):
+                contenido_bytes = archivo.read()
+                if hasattr(archivo, "seek"):
+                    archivo.seek(0)
+            else:
+                contenido_bytes = bytes(archivo)
+        except Exception as e:
+            logger.error("No se pudieron extraer los bytes del archivo: %s", str(e))
+            return {"error": f"Archivo ilegible: {str(e)}"}
 
         def _procesar():
-            # 1 — Registro inicial en BD (delega al modelo)
-            registro = ImportacionCsv.crear(nombre)
-            importacion_id = registro["id"]
-            logger.info(
-                "[ImportacionCsvService.importar] Importación registrada id=%s.", importacion_id
-            )
+            logger.info("[ImportacionCsvService.importar] Leyendo contenido del CSV...")
+            errores = []
+            validos = []
+            invalidos = 0
 
-            # 2 — Parseo y validación del CSV (lógica de negocio pura)
-            contenido = archivo_csv.read()
-            if isinstance(contenido, bytes):
-                contenido = contenido.decode("utf-8", errors="replace")
+            try:
+                content = contenido_bytes.decode("utf-8")
+                delimiter = "\t" if "\t" in content else ","
+                reader = csv.reader(io.StringIO(content), delimiter=delimiter)
+            except Exception as e:
+                logger.error("Error al decodificar archivo CSV: %s", str(e))
+                ImportacionCsv.finalizar(importacion_id, 0, 0, 0, f"Error de lectura: {str(e)}")
+                return
 
-            validos:   List[Dict] = []
-            invalidos: List[Dict] = []
-            errores:   List[str]  = []
+            for i, row in enumerate(reader, start=1):
+                if not row or len(row) < 10:
+                    if row and len(row) > 0:
+                        errores.append(f"Fila {i}: Columnas insuficientes (mínimo 10).")
+                        invalidos += 1
+                    continue
 
-            for i, fila in enumerate(csv.DictReader(io.StringIO(contenido)), start=2):
-                fila_norm, error = _parsear_fila_csv(i, fila)
-                if error:
-                    errores.append(error)
-                    invalidos.append(fila)
-                    logger.debug("[ImportacionCsvService.importar] %s", error)
-                else:
-                    fila_norm["importacion_id"] = importacion_id
-                    validos.append(fila_norm)
+                try:
+                    # ─── LIMPIEZA ABSOLUTA DE ENTRADAS (.strip().lower()) ───
+                    id_encuesta  = row[0].strip().lower()
+                    periodo_id   = row[1].strip().lower()
+                    fecha        = row[2].strip()
+                    edad         = int(row[3].strip())
+                    barrio       = row[4].strip()
+                    barrio_id    = row[5].strip().lower()
+                    ocupacion_id = row[6].strip().lower()
+                    voto_id      = row[7].strip().lower()
+                    part_id      = row[8].strip().lower()
+                    prob_id      = row[9].strip().lower()
 
-            logger.info(
-                "[ImportacionCsvService.importar] Filas: total=%d  válidas=%d  inválidas=%d.",
-                len(validos) + len(invalidos), len(validos), len(invalidos),
-            )
+                    intensidad = None
+                    if len(row) > 10 and row[10].strip().isdigit():
+                        intensidad = int(row[10].strip())
 
-            # 3 — Inserción masiva y finalización (delegan al modelo)
+                    texto_libre = row[-1].strip() if len(row) > 10 else ""
+
+                    encuesta_dict = {
+                        "id": id_encuesta,
+                        "periodo_id": periodo_id,
+                        "fecha": fecha,
+                        "edad": edad,
+                        "barrio_nombre_csv": barrio,
+                        "barrio_id": barrio_id,
+                        "catalogo_ocupacion_id": ocupacion_id,
+                        "catalogo_inclinacion_voto_id": voto_id,
+                        "catalogo_intencion_participacion_id": part_id,
+                        "catalogo_problematica_id": prob_id,
+                        "intensidad_problematica": intensidad,
+                        "texto_libre_problematica": texto_libre
+                    }
+                    validos.append(encuesta_dict)
+
+                except Exception as e:
+                    errores.append(f"Fila {i}: Error en formato de datos -> {str(e)}")
+                    invalidos += 1
+
+            # Inserción y guardado transaccional atómico
             with transaction.atomic():
                 if validos:
                     Encuesta.insercion_masiva(validos)
                 ImportacionCsv.finalizar(
                     importacion_id=importacion_id,
-                    total=len(validos) + len(invalidos),
+                    total=len(validos) + invalidos,
                     validos=len(validos),
-                    invalidos=len(invalidos),
+                    invalidos=invalidos,
                     errores="\n".join(errores) if errores else None,
                 )
 
-            logger.info(
-                "[ImportacionCsvService.importar] Importación id=%s finalizada.", importacion_id
-            )
-            return ImportacionCsv.obtener(importacion_id)
+            # ─── AUTO-CALCULAR TODO EL PERIODO DE FORMA SECUENCIAL SEGURO ───
+            if validos:
+                periodos_afectados = list({f["periodo_id"] for f in validos if f.get("periodo_id")})
+                
+                for p_id in periodos_afectados:
+                    logger.info(f"[Auto-Calculo] Iniciando secuencia completa para periodo: {p_id}")
+                    try:
+                        # 1. Regenerar Snapshots Territoriales
+                        SnapshotTerritorial.generar_todos(p_id)
+                        
+                        # 2. Calcular los rankings globales del periodo (Le pasamos el diccionario de restricciones)
+                        RankingProblematica.calcular_todos(p_id)
+                        
+                        # 3. Generar las Caracterizaciones del territorio
+                        CaracterizacionTerritorial.generar_todos(p_id)
+                        
+                        # 4. Construir y actualizar resúmenes estadísticos textuales por barrio
+                        barrios = Encuesta.barrios_del_periodo(p_id)
+                        for b_id in barrios:
+                            texto_resumen = _construir_texto_resumen(b_id, p_id)
+                            ResumenEstadistico.crear_o_reemplazar(b_id, p_id, texto_resumen)
+                            
+                        logger.info(f"[Auto-Calculo] Procesamiento de reportes exitoso para periodo {p_id}.")
+                    except Exception as calc_err:
+                        logger.error(f"Fallo crítico en auto-calculo automático del periodo {p_id}: {str(calc_err)}")
 
-        return await sync_to_async(_procesar)()
+        # Forzar la ejecución síncrona en el hilo seguro de Django
+        await sync_to_async(_procesar)()
+
+        logger.info(
+            "[ImportacionCsvService.importar] Importación id=%s finalizada exitosamente.", importacion_id
+        )
+        return await sync_to_async(ImportacionCsv.obtener)(importacion_id)
 
 
 # ── Encuesta ──────────────────────────────────────────────────────────────────
