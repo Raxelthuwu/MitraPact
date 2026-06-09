@@ -6,6 +6,7 @@ urlpatterns = [
     path('eventos/', include('Backend.moduloEventos.urls')),
     path('', include('Backend.moduloLogin.urls')),
     path('semantica/', include('Backend.moduloBusquedaSemantica.urls')),
+    path('estadisticas/', include('Backend.moduloEstadisticas.urls')),
 ]
 
 

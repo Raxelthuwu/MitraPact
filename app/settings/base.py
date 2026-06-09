@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'Backend.moduloEventos',
     'Backend.moduloLogin',
     'Backend.moduloBusquedaSemantica',
+    'Backend.moduloEstadisticas',
 ]
 
 MIDDLEWARE = [
