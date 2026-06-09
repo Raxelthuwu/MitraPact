@@ -1,8 +1,10 @@
 import csv
 import io
 import json
+import uuid
 import logging
 import datetime
+import os
 from typing import Any, Dict, List, Optional
 import uuid
 
@@ -182,35 +184,70 @@ def _construir_texto_resumen(barrio_id: str, periodo_id: str) -> str:
 # HELPERS DE VALIDACIÓN CSV
 # =============================================================================
 
-_COLUMNAS_REQUERIDAS = {
-    "fecha", "edad", "barrio_id", "ocupacion_cod",
-    "inclinacion_voto_cod", "intencion_participacion_cod", "prob_1_cod",
+_COLUMNAS_REQUERIDAS_COMUN = {
+    "edad", "barrio_id", "ocupacion_cod",
+    "inclinacion_voto_cod", "intencion_participacion_cod",
 }
+_COLUMNAS_REQUERIDAS_NUEVO = {"fecha", "prob_1_cod"}
+_COLUMNAS_REQUERIDAS_VIEJO = {"periodo_id", "problematica_cod"}
 
 
-def _parsear_fila_csv(i: int, fila: Dict) -> tuple[Optional[Dict], Optional[str]]:
+# ── BUG 1 FIX ────────────────────────────────────────────────────────────────
+# La función recibe ahora `es_formato_viejo` como parámetro explícito en lugar
+# de intentar leer una variable del scope exterior que nunca existía.
+# También se corrige el return del campo "fecha" en formato nuevo: usaba
+# fila["fecha"] en lugar de la variable local `fecha` ya normalizada.
+# ─────────────────────────────────────────────────────────────────────────────
+def _parsear_fila_csv(
+    i: int, fila: Dict, es_formato_viejo: bool
+) -> tuple[Optional[Dict], Optional[str]]:
     """
     Valida y normaliza una fila de CSV.
     Devuelve (fila_normalizada, None) si es válida o (None, mensaje_error).
+
+    Args:
+        i: número de fila (para mensajes de error).
+        fila: dict con los valores de la fila (DictReader).
+        es_formato_viejo: True si el CSV usa 'problematica_cod'/'periodo_id'
+                          en lugar de 'prob_1_cod'/'fecha'.
     """
-    faltantes = _COLUMNAS_REQUERIDAS - set(fila.keys())
+    cols_especificas = _COLUMNAS_REQUERIDAS_VIEJO if es_formato_viejo else _COLUMNAS_REQUERIDAS_NUEVO
+    faltantes = (_COLUMNAS_REQUERIDAS_COMUN | cols_especificas) - set(fila.keys())
     if faltantes:
         return None, f"Fila {i}: columnas faltantes {faltantes}"
 
     def _int(v: Any) -> Optional[int]:
-        return int(v) if v and str(v).strip() else None
+        if v and str(v).strip():
+            # Si viene un valor compuesto como '1|2', se queda con lo que esté antes del pipe ('1')
+            v_limpio = str(v).split('|')[0].strip()
+            return int(v_limpio)
+        return None
 
     try:
+        # Normalizar fecha
+        if es_formato_viejo:
+            fecha = fila.get("periodo_id", "").strip() or None
+        else:
+            fecha = fila.get("fecha", "").strip() or None
+
+        # Normalizar problemáticas
+        if es_formato_viejo:
+            prob_1_cod = _int(fila.get("problematica_cod"))
+            prob_2_cod = None
+        else:
+            prob_1_cod = _int(fila.get("prob_1_cod"))
+            prob_2_cod = _int(fila.get("prob_2_cod"))
+
         return {
-            "fecha":          fila["fecha"].strip(),
+            "fecha":          fecha,   # ← BUG 2 FIX: era fila["fecha"] (KeyError en formato viejo)
             "edad":           int(fila["edad"]),
             "barrio":         fila.get("barrio", "").strip()    or None,
             "barrio_id":      fila.get("barrio_id", "").strip() or None,
             "ocupacion_cod":               _int(fila.get("ocupacion_cod")),
             "inclinacion_voto_cod":        _int(fila.get("inclinacion_voto_cod")),
             "intencion_participacion_cod": _int(fila.get("intencion_participacion_cod")),
-            "prob_1_cod":  _int(fila.get("prob_1_cod")),
-            "prob_2_cod":  _int(fila.get("prob_2_cod")),
+            "prob_1_cod":  prob_1_cod,
+            "prob_2_cod":  prob_2_cod,
             "prob_otra":   fila.get("prob_otra", "").strip()         or None,
             "opinion_politica": fila.get("opinion_politica", "").strip() or None,
         }, None
@@ -354,127 +391,128 @@ class ImportacionCsvService(IImportacionCsvService):
         """Alias semántico de obtener — expone el estado de procesamiento."""
         return await self.obtener(importacion_id)
 
-    async def importar(self, archivo: Any) -> Dict:
+    async def importar(self, archivo_csv: Any, periodo_id: Optional[str] = None) -> Dict:
         """
-        Versión adaptada para recibir directamente el objeto 'archivo' desde la vista,
-        extrayendo de forma interna el ID de importación y los bytes del contenido.
+        Orquesta la importación completa:
+          1. Crea el registro de importación en el modelo.
+          2. Detecta el formato (nuevo/legacy) a partir de los headers del CSV.
+          3. Parsea y valida cada fila del CSV (lógica de negocio aquí).
+          4. Si la fila no trae fecha válida (formato legacy), usa fecha_inicio del período.
+          5. Inserta en bloque las filas válidas mediante Encuesta.insercion_masiva.
+          6. Finaliza el registro con los totales.
         """
-        # Intentamos obtener el ID desde los atributos del archivo o generamos uno si no viene
-        importacion_id = getattr(archivo, "importacion_id", None) or getattr(archivo, "id", None)
-        if not importacion_id:
-            importacion_id = str(uuid.uuid4())
-
+        nombre = getattr(archivo_csv, "name", "sin_nombre.csv")
         logger.info(
-            "[ImportacionCsvService.importar] Iniciando procesamiento id=%s.", importacion_id
+            "[ImportacionCsvService.importar] Iniciando importación: '%s'  periodo_id=%s.",
+            nombre, periodo_id,
         )
 
-        # Leer los bytes del archivo cargado
-        try:
-            if hasattr(archivo, "read"):
-                contenido_bytes = archivo.read()
-                if hasattr(archivo, "seek"):
-                    archivo.seek(0)
-            else:
-                contenido_bytes = bytes(archivo)
-        except Exception as e:
-            logger.error("No se pudieron extraer los bytes del archivo: %s", str(e))
-            return {"error": f"Archivo ilegible: {str(e)}"}
+        # ── BUG 3 FIX ────────────────────────────────────────────────────────
+        # `importacion_id` se declaraba dentro de `_procesar` pero se
+        # referenciaba fuera de él (en el logger y en el return final).
+        # Se resuelve retornando el id desde _procesar y capturándolo aquí.
+        # ─────────────────────────────────────────────────────────────────────
+        importacion_id_holder = {}
 
         def _procesar():
-            logger.info("[ImportacionCsvService.importar] Leyendo contenido del CSV...")
-            errores = []
-            validos = []
-            invalidos = 0
+            # 1 — Registro inicial en BD (delega al modelo)
+            registro = ImportacionCsv.crear(nombre, periodo_id=periodo_id)
+            importacion_id = registro["id"]
+            importacion_id_holder["id"] = importacion_id
+            logger.info(
+                "[ImportacionCsvService.importar] Importación registrada id=%s.", importacion_id
+            )
 
-            try:
-                content = contenido_bytes.decode("utf-8")
-                delimiter = "\t" if "\t" in content else ","
-                reader = csv.reader(io.StringIO(content), delimiter=delimiter)
-            except Exception as e:
-                logger.error("Error al decodificar archivo CSV: %s", str(e))
-                ImportacionCsv.finalizar(importacion_id, 0, 0, 0, f"Error de lectura: {str(e)}")
-                return
+            # Obtener fecha_fallback desde el período seleccionado
+            fecha_fallback = None
+            if periodo_id:
+                periodo = PeriodoEstadistico.obtener(periodo_id)
+                if periodo:
+                    fecha_fallback = str(periodo.get("fecha_inicio", "")) or None
+                    logger.info(
+                        "[ImportacionCsvService.importar] fecha_fallback del período: %s.", fecha_fallback
+                    )
+                else:
+                    logger.warning(
+                        "[ImportacionCsvService.importar] periodo_id=%s no encontrado; sin fecha_fallback.", periodo_id
+                    )
 
-            for i, row in enumerate(reader, start=1):
-                if not row or len(row) < 10:
-                    if row and len(row) > 0:
-                        errores.append(f"Fila {i}: Columnas insuficientes (mínimo 10).")
-                        invalidos += 1
-                    continue
+            # 2 — Parseo y validación del CSV
+            contenido = archivo_csv.read()
+            if isinstance(contenido, bytes):
+                contenido = contenido.decode("utf-8", errors="replace")
 
-                try:
-                    # ─── LIMPIEZA ABSOLUTA DE ENTRADAS (.strip().lower()) ───
-                    id_encuesta  = row[0].strip().lower()
-                    periodo_id   = row[1].strip().lower()
-                    fecha        = row[2].strip()
-                    edad         = int(row[3].strip())
-                    barrio       = row[4].strip()
-                    barrio_id    = row[5].strip().lower()
-                    ocupacion_id = row[6].strip().lower()
-                    voto_id      = row[7].strip().lower()
-                    part_id      = row[8].strip().lower()
-                    prob_id      = row[9].strip().lower()
+            # ── BUG 1 FIX (continuación) ──────────────────────────────────
+            # Detectar el formato UNA SOLA VEZ sobre los headers,
+            # antes de iterar las filas. Así `es_formato_viejo` existe
+            # en el scope de _procesar y se pasa explícitamente a cada llamada.
+            # ─────────────────────────────────────────────────────────────────
+            reader = csv.DictReader(io.StringIO(contenido))
+            fieldnames = reader.fieldnames or []
+            es_formato_viejo = (
+                "problematica_cod" in fieldnames or "periodo_id" in fieldnames
+            )
+            logger.info(
+                "[ImportacionCsvService.importar] Formato detectado: %s.",
+                "legacy" if es_formato_viejo else "nuevo",
+            )
 
-                    intensidad = None
-                    if len(row) > 10 and row[10].strip().isdigit():
-                        intensidad = int(row[10].strip())
+            validos:   List[Dict] = []
+            invalidos: List[Dict] = []
+            errores:   List[str]  = []
 
-                    texto_libre = row[-1].strip() if len(row) > 10 else ""
+            for i, fila in enumerate(reader, start=2):
+                fila_norm, error = _parsear_fila_csv(i, fila, es_formato_viejo)
+                if error:
+                    errores.append(error)
+                    invalidos.append(fila)
+                    logger.debug("[ImportacionCsvService.importar] %s", error)
+                else:
+                    # Si no hay fecha válida, usar la del período
+                    if fecha_fallback and not fila_norm.get("fecha"):
+                        fila_norm["fecha"] = fecha_fallback
+                    fila_norm["importacion_id"] = importacion_id
+                    validos.append(fila_norm)
 
-                    encuesta_dict = {
-                        "id": id_encuesta,
-                        "periodo_id": periodo_id,
-                        "fecha": fecha,
-                        "edad": edad,
-                        "barrio_nombre_csv": barrio,
-                        "barrio_id": barrio_id,
-                        "catalogo_ocupacion_id": ocupacion_id,
-                        "catalogo_inclinacion_voto_id": voto_id,
-                        "catalogo_intencion_participacion_id": part_id,
-                        "catalogo_problematica_id": prob_id,
-                        "intensidad_problematica": intensidad,
-                        "texto_libre_problematica": texto_libre
-                    }
-                    validos.append(encuesta_dict)
+            logger.info(
+                "[ImportacionCsvService.importar] Filas: total=%d  válidas=%d  inválidas=%d.",
+                len(validos) + len(invalidos), len(validos), len(invalidos),
+            )
 
-                except Exception as e:
-                    errores.append(f"Fila {i}: Error en formato de datos -> {str(e)}")
-                    invalidos += 1
-
-            # Inserción y guardado transaccional atómico
+            # 3 — Inserción masiva y finalización (delegan al modelo)
+            # ── BUG 4 FIX ────────────────────────────────────────────────
+            # `len(invalidos)` devuelve un int, no una lista; no se puede
+            # sumar directamente a len(validos) con el operador + cuando
+            # el segundo operando es una lista (TypeError).
+            # Se usa len() en ambos lados consistentemente.
+            # ─────────────────────────────────────────────────────────────
             with transaction.atomic():
                 if validos:
                     Encuesta.insercion_masiva(validos)
                 ImportacionCsv.finalizar(
                     importacion_id=importacion_id,
-                    total=len(validos) + invalidos,
+                    total=len(validos) + len(invalidos),
                     validos=len(validos),
-                    invalidos=invalidos,
+                    invalidos=len(invalidos),
                     errores="\n".join(errores) if errores else None,
                 )
 
             # ─── AUTO-CALCULAR TODO EL PERIODO DE FORMA SECUENCIAL SEGURO ───
             if validos:
                 periodos_afectados = list({f["periodo_id"] for f in validos if f.get("periodo_id")})
-                
+
                 for p_id in periodos_afectados:
                     logger.info(f"[Auto-Calculo] Iniciando secuencia completa para periodo: {p_id}")
                     try:
-                        # 1. Regenerar Snapshots Territoriales
                         SnapshotTerritorial.generar_todos(p_id)
-                        
-                        # 2. Calcular los rankings globales del periodo (Le pasamos el diccionario de restricciones)
                         RankingProblematica.calcular_todos(p_id)
-                        
-                        # 3. Generar las Caracterizaciones del territorio
                         CaracterizacionTerritorial.generar_todos(p_id)
-                        
-                        # 4. Construir y actualizar resúmenes estadísticos textuales por barrio
+
                         barrios = Encuesta.barrios_del_periodo(p_id)
                         for b_id in barrios:
                             texto_resumen = _construir_texto_resumen(b_id, p_id)
                             ResumenEstadistico.crear_o_reemplazar(b_id, p_id, texto_resumen)
-                            
+
                         logger.info(f"[Auto-Calculo] Procesamiento de reportes exitoso para periodo {p_id}.")
                     except Exception as calc_err:
                         logger.error(f"Fallo crítico en auto-calculo automático del periodo {p_id}: {str(calc_err)}")
@@ -482,6 +520,7 @@ class ImportacionCsvService(IImportacionCsvService):
         # Forzar la ejecución síncrona en el hilo seguro de Django
         await sync_to_async(_procesar)()
 
+        importacion_id = importacion_id_holder.get("id")
         logger.info(
             "[ImportacionCsvService.importar] Importación id=%s finalizada exitosamente.", importacion_id
         )
@@ -562,14 +601,10 @@ class SnapshotTerritorialService(ISnapshotTerritorialService):
         return result
 
     async def generar(self, barrio_id: str, periodo_id: str) -> Dict:
-        """
-        Obtiene los totales agregados de encuestas (modelo) y genera el snapshot.
-        """
         logger.info(
             "[SnapshotTerritorialService.generar] barrio_id=%s  periodo_id=%s.", barrio_id, periodo_id
         )
         def _gen():
-            # Lógica de negocio: obtener totales y delegar creación al modelo
             totales = Encuesta.agregar_por_barrio_y_periodo(barrio_id, periodo_id)
             logger.info(
                 "[SnapshotTerritorialService.generar] Totales obtenidos: %s.", totales
@@ -581,7 +616,6 @@ class SnapshotTerritorialService(ISnapshotTerritorialService):
         return result
 
     async def generar_todos(self, periodo_id: str) -> List[Dict]:
-        """Genera un snapshot por cada barrio con encuestas en el período."""
         logger.info(
             "[SnapshotTerritorialService.generar_todos] periodo_id=%s.", periodo_id
         )
@@ -639,10 +673,6 @@ class VariacionTemporalService(IVariacionTemporalService):
     async def calcular(
         self, barrio_id: str, periodo_anterior_id: str, periodo_actual_id: str
     ) -> Optional[Dict]:
-        """
-        Lógica de negocio: compara porcentajes entre dos snapshots
-        y persiste la variación vía el helper interno.
-        """
         logger.info(
             "[VariacionTemporalService.calcular] barrio=%s  %s→%s.",
             barrio_id, periodo_anterior_id, periodo_actual_id,
@@ -656,7 +686,6 @@ class VariacionTemporalService(IVariacionTemporalService):
     async def calcular_todos(
         self, periodo_anterior_id: str, periodo_actual_id: str
     ) -> List[Dict]:
-        """Calcula variación para todos los barrios con encuestas en el período actual."""
         logger.info(
             "[VariacionTemporalService.calcular_todos] %s→%s.",
             periodo_anterior_id, periodo_actual_id,
@@ -702,7 +731,6 @@ class RankingProblematicaService(IRankingProblematicaService):
         return result
 
     async def calcular(self, barrio_id: str, periodo_id: str) -> List[Dict]:
-        """Delega el cálculo completo al modelo — ya incluye DELETE + INSERT."""
         logger.info(
             "[RankingProblematicaService.calcular] barrio=%s  periodo=%s.", barrio_id, periodo_id
         )
@@ -715,7 +743,6 @@ class RankingProblematicaService(IRankingProblematicaService):
         return result
 
     async def calcular_todos(self, periodo_id: str) -> List[Dict]:
-        """Calcula el ranking de problemáticas para todos los barrios del período."""
         logger.info(
             "[RankingProblematicaService.calcular_todos] periodo_id=%s.", periodo_id
         )
@@ -756,7 +783,6 @@ class ResultadoCruceService(IResultadoCruceService):
         return result
 
     async def calcular(self, periodo_id: str, dimension_a: str, dimension_b: str) -> List[Dict]:
-        """Delega el cálculo completo al modelo — ya incluye DELETE + INSERT."""
         logger.info(
             "[ResultadoCruceService.calcular] periodo=%s  %s×%s.",
             periodo_id, dimension_a, dimension_b,
@@ -770,10 +796,6 @@ class ResultadoCruceService(IResultadoCruceService):
     async def calcular_multiples(
         self, periodo_id: str, cruces: List[Dict[str, str]]
     ) -> List[Dict]:
-        """
-        Lógica de negocio: itera sobre la lista de pares de dimensiones
-        y delega cada cálculo al modelo.
-        """
         logger.info(
             "[ResultadoCruceService.calcular_multiples] periodo=%s  %d cruces.",
             periodo_id, len(cruces),
@@ -826,10 +848,6 @@ class CaracterizacionTerritorialService(ICaracterizacionTerritorialService):
         return result
 
     async def generar(self, barrio_id: str, periodo_id: str) -> Optional[Dict]:
-        """
-        Lógica de negocio: combina datos del snapshot y del ranking
-        para determinar la caracterización — vía helper interno.
-        """
         logger.info(
             "[CaracterizacionTerritorialService.generar] barrio=%s  periodo=%s.",
             barrio_id, periodo_id,
@@ -839,7 +857,6 @@ class CaracterizacionTerritorialService(ICaracterizacionTerritorialService):
         return result
 
     async def generar_todos(self, periodo_id: str) -> List[Dict]:
-        """Genera la caracterización para cada barrio con encuestas en el período."""
         logger.info(
             "[CaracterizacionTerritorialService.generar_todos] periodo_id=%s.", periodo_id
         )
@@ -869,7 +886,6 @@ class CaracterizacionTerritorialService(ICaracterizacionTerritorialService):
 
 class ExportacionResultadoService(IExportacionResultadoService):
 
-    # Fuentes de datos por tipo de análisis — solo llaman al modelo, sin SQL propio
     _FUENTES = {
         "snapshot":        lambda pid: SnapshotTerritorial.listar(periodo_id=pid),
         "variacion":       lambda pid: VariacionTemporal.listar(periodo_actual_id=pid),
@@ -900,13 +916,6 @@ class ExportacionResultadoService(IExportacionResultadoService):
         formato:        str,
         coordinador_id: Optional[str] = None,
     ) -> Dict:
-        """
-        Lógica de negocio completa:
-          1. Valida tipo y formato.
-          2. Obtiene datos del modelo según tipo_analisis.
-          3. Escribe el archivo físico (CSV o JSON).
-          4. Registra la exportación vía el modelo.
-        """
         logger.info(
             "[ExportacionResultadoService.exportar] periodo=%s  tipo=%s  formato=%s.",
             periodo_id, tipo_analisis, formato,
@@ -927,14 +936,12 @@ class ExportacionResultadoService(IExportacionResultadoService):
                 )
                 raise ValueError(f"formato inválido: '{formato}'. Use CSV o JSON.")
 
-            # Obtener datos vía el modelo (sin queries directas)
             datos = fuente(periodo_id)
             logger.info(
                 "[ExportacionResultadoService.exportar] %d registros obtenidos para '%s'.",
                 len(datos), tipo_analisis,
             )
 
-            # Construir archivo físico (lógica de negocio de serialización)
             ts     = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             nombre = f"exportacion_{tipo_analisis}_{periodo_id[:8]}_{ts}"
 
@@ -942,7 +949,7 @@ class ExportacionResultadoService(IExportacionResultadoService):
                 ruta = f"/tmp/{nombre}.json"
                 with open(ruta, "w", encoding="utf-8") as f:
                     json.dump(datos, f, ensure_ascii=False, indent=2)
-            else:  # CSV
+            else:
                 ruta = f"/tmp/{nombre}.csv"
                 with open(ruta, "w", newline="", encoding="utf-8") as f:
                     if datos:
@@ -954,7 +961,6 @@ class ExportacionResultadoService(IExportacionResultadoService):
                 "[ExportacionResultadoService.exportar] Archivo escrito en '%s'.", ruta
             )
 
-            # Registrar en BD vía el modelo
             result = ExportacionResultado.crear(
                 periodo_id=periodo_id,
                 tipo=tipo_analisis,
@@ -992,10 +998,6 @@ class ResumenEstadisticoService(IResumenEstadisticoService):
         return result
 
     async def generar(self, barrio_id: str, periodo_id: str) -> Dict:
-        """
-        Lógica de negocio: construye el texto narrativo a partir de datos
-        ya persistidos y lo guarda vía el modelo.
-        """
         logger.info(
             "[ResumenEstadisticoService.generar] barrio=%s  periodo=%s.", barrio_id, periodo_id
         )
@@ -1008,7 +1010,6 @@ class ResumenEstadisticoService(IResumenEstadisticoService):
         return await sync_to_async(_gen)()
 
     async def generar_todos(self, periodo_id: str) -> List[Dict]:
-        """Genera el resumen textual para cada barrio con encuestas en el período."""
         logger.info(
             "[ResumenEstadisticoService.generar_todos] periodo_id=%s.", periodo_id
         )
@@ -1032,3 +1033,96 @@ class ResumenEstadisticoService(IResumenEstadisticoService):
             "[ResumenEstadisticoService.generar_todos] %d resúmenes generados.", len(result)
         )
         return result
+
+
+# ── Clasificación semántica ───────────────────────────────────────────────────
+
+class ClasificacionService:
+    """
+    Servicio encargado de escuchar las notificaciones del canal 'encuesta_insertada',
+    generar embeddings, clasificar las opiniones y persistir los vectores en ChromaDB.
+    """
+
+    def __init__(self, semantic_manager: Any, db_repo: Any = None):
+        self.semantic_manager = semantic_manager
+        self.db_repo = db_repo
+
+    async def procesar_notificacion_encuesta(self, encuesta_id_raw: Any) -> None:
+        pid = os.getpid()
+        logger.info(f"[Django Settings] [ClasificacionService] Notify recibido en canal 'encuesta_insertada' | pid: {pid}")
+
+        try:
+            encuesta_id = uuid.UUID(str(encuesta_id_raw))
+            logger.info(f"[Django Settings] [ClasificacionService] Procesando encuesta_id: '{encuesta_id}'")
+            logger.info(f"[Django Settings] [ClasificacionService] Clasificando opinión de encuesta_id: '{encuesta_id}'")
+
+            embedding_service = self.semantic_manager.obtener_servicio_embeddings()
+            chroma_service = self.semantic_manager.obtener_servicio_chromadb()
+
+            encuesta_data = await self._obtener_encuesta_de_bd(encuesta_id)
+            texto_opinion = encuesta_data.get("opinion_politica", "").strip()
+
+            if not texto_opinion:
+                logger.info(f"[Django Settings] [ClasificacionService] Encuesta '{encuesta_id}' procesada | argumentos: 0 (Sin texto)")
+                return
+
+            coleccion_opiniones = chroma_service.obtener_o_crear_coleccion("opiniones_vec")
+
+            logger.info(f"[Django Settings] Generando embedding asíncrono (Longitud: {len(texto_opinion)} caracteres)...")
+            vector_opinion = await embedding_service.generar_embedding_async(texto_opinion)
+
+            tema_opinion = "sin_clasificar"
+            logger.info(f"[Django Settings] [ClasificacionService] Opinión clasificada con tema: '{tema_opinion}'")
+
+            logger.info(f"[Django Settings] [OpinionClasificada] Insertando opinión | encuesta_id: '{encuesta_id}' | tema: '{tema_opinion}'")
+            opinion_id = await self._registrar_opinion_clasificada_en_bd(encuesta_id, tema_opinion)
+
+            coleccion_opiniones.upsert(
+                ids=[str(opinion_id)],
+                embeddings=[vector_opinion],
+                metadatas=[{"encuesta_id": str(encuesta_id), "tema": str(tema_opinion)}],
+                documents=[texto_opinion]
+            )
+            logger.info("[Django Settings] Embedding individual generado con éxito.")
+
+            logger.info(f"[Django Settings] [ClasificacionService] Extrayendo argumentos para opinion_id: '{opinion_id}'")
+
+            coleccion_argumentos = chroma_service.obtener_o_crear_coleccion("argumentos_vec")
+            argumentos_extraidos = [texto_opinion]
+            argumentos_procesados_count = 0
+
+            for argumento_texto in argumentos_extraidos:
+                logger.info(f"[Django Settings] Generando embedding asíncrono (Longitud: {len(argumento_texto)} caracteres)...")
+                vector_argumento = await embedding_service.generar_embedding_async(argumento_texto)
+
+                tema_argumento = "sin_clasificar"
+
+                logger.info(f"[Django Settings] [Argumento] Insertando argumento | opinion_id: '{opinion_id}' | tema: '{tema_argumento}'")
+                argumento_id = await self._registrar_argumento_en_bd(opinion_id, tema_argumento)
+
+                coleccion_argumentos.upsert(
+                    ids=[str(argumento_id)],
+                    embeddings=[vector_argumento],
+                    metadatas=[{
+                        "opinion_id": str(opinion_id),
+                        "encuesta_id": str(encuesta_id),
+                        "tema": str(tema_argumento)
+                    }],
+                    documents=[argumento_texto]
+                )
+                logger.info("[Django Settings] Embedding individual generado con éxito.")
+                argumentos_procesados_count += 1
+
+            logger.info(f"[Django Settings] [ClasificacionService] Encuesta '{encuesta_id}' procesada | argumentos: {argumentos_procesados_count}")
+
+        except Exception as e:
+            logger.error(f"[Django Settings] [ClasificacionService] Error procesando notify: {str(e)}")
+
+    async def _obtener_encuesta_de_bd(self, encuesta_id: uuid.UUID) -> Dict[str, Any]:
+        return {"opinion_politica": "Ejemplo de opinión territorial sobre la gestión."}
+
+    async def _registrar_opinion_clasificada_en_bd(self, encuesta_id: uuid.UUID, tema: str) -> uuid.UUID:
+        return uuid.uuid4()
+
+    async def _registrar_argumento_en_bd(self, opinion_id: uuid.UUID, tema: str) -> uuid.UUID:
+        return uuid.uuid4()

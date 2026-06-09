@@ -62,14 +62,23 @@ class ClasificacionService(IClasificacionService):
         logger.info(f"[ClasificacionService] Notify recibido en canal '{canal}' | pid: {pid}")
         try:
             datos = json.loads(payload)
+            # Guardia: el trigger siempre envía un dict; si por alguna razón
+            # llegara otra estructura, lo descartamos con un log claro.
+            if not isinstance(datos, dict):
+                logger.error(
+                    f"[ClasificacionService] Payload inesperado (no es dict): {type(datos)} — {datos}"
+                )
+                return
             await self._procesarEncuesta(datos)
+        except json.JSONDecodeError as e:
+            logger.error(f"[ClasificacionService] Payload no es JSON válido: {e} — raw: {payload!r}")
         except Exception as e:
-            logger.error(f"[ClasificacionService] Error procesando notify: {e}")
+            logger.error(f"[ClasificacionService] Error procesando notify: {e}", exc_info=True)
 
     async def _procesarEncuesta(self, payload: dict) -> None:
         encuestaId   = payload.get('id')
         barrioId     = payload.get('barrio_id')
-        textoOpinion = payload.get('opinion_politica', '').strip()
+        textoOpinion = (payload.get('opinion_politica') or '').strip()
         prob1Cod     = payload.get('prob_1_cod')
         prob2Cod     = payload.get('prob_2_cod')
         probOtra     = payload.get('prob_otra')
@@ -110,43 +119,58 @@ class ClasificacionService(IClasificacionService):
         vector = await embedding.embed(textoOpinion)
 
         # 1. Buscar vecino cercano en ChromaDB
-        resultados = await asyncio.to_thread(
-            coleccion.query,
-            query_embeddings = [vector],
-            n_results        = 1
-        )
-
+        # FIX: coleccion.query devuelve [] cuando la colección está vacía,
+        # no un dict — se protege con isinstance + try/except.
         tema = 'sin_clasificar'
-        if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
-            distancia = resultados['distances'][0][0]
-            logger.info(f"[ClasificacionService] Distancia al vecino más cercano: {distancia}")
-            if distancia <= settings.SEMANTIC_MATCH_THRESHOLD:
-                tema = resultados['metadatas'][0].get('tema', 'sin_clasificar')
-                logger.info(f"[ClasificacionService] Match semántico encontrado. Heredando tema: '{tema}'")
+        try:
+            resultados = await asyncio.to_thread(
+                coleccion.query,
+                query_embeddings=[vector],
+                n_results=1,
+            )
+            if (
+                isinstance(resultados, dict)
+                and resultados.get('metadatas')
+                and resultados['metadatas'][0]
+            ):
+                distancia = resultados['distances'][0][0]
+                logger.info(f"[ClasificacionService] Distancia al vecino más cercano: {distancia}")
+                if distancia <= settings.SEMANTIC_MATCH_THRESHOLD:
+                    tema = resultados['metadatas'][0][0].get('tema', 'sin_clasificar')
+                    logger.info(f"[ClasificacionService] Match semántico encontrado. Heredando tema: '{tema}'")
+        except Exception as e:
+            logger.warning(f"[ClasificacionService] Query ChromaDB falló (colección vacía o error): {e}")
 
         # 2. FALLBACK — Zero-Shot
-        if tema == 'sin_clasificar' or tema is None:
+        if not tema or tema == 'sin_clasificar':
             logger.info("[ClasificacionService] Sin match vectorial. Clasificando con Zero-Shot...")
             labels = [
                 'Seguridad', 'Infraestructura', 'Servicios Públicos',
                 'Salud', 'Educación', 'Medio Ambiente', 'Movilidad y Transporte',
                 'Empleo y Economía', 'Vivienda', 'Otros'
             ]
-            tema = await embedding.clasificarTextoInteligente(textoOpinion, labels)
-            logger.info(f"[ClasificacionService] Tema inferido por Zero-Shot: '{tema}'")
+            try:
+                tema = await embedding.clasificarTextoInteligente(textoOpinion, labels)
+                logger.info(f"[ClasificacionService] Tema inferido por Zero-Shot: '{tema}'")
+            except Exception as e:
+                logger.error(f"[ClasificacionService] Zero-Shot falló: {e}")
+                tema = 'sin_clasificar'
 
         # 3. Persistir en PostgreSQL
         opinion = await OpinionClasificada.insertar(encuestaId, barrioId, tema)
 
         # 4. Indexar en ChromaDB
         vectorId = f"opinion_{opinion['id']}"
-        await asyncio.to_thread(
-            coleccion.upsert,
-            ids        = [vectorId],
-            embeddings = [vector],
-            documents  = [textoOpinion],
-            metadatas  = [{'tema': tema, 'barrio_id': barrioId}]
-        )
+        try:
+            await asyncio.to_thread(
+                coleccion.upsert,
+                ids=[vectorId],
+                embeddings=[vector],
+                documents=[textoOpinion],
+                metadatas=[{'tema': tema, 'barrio_id': str(barrioId)}],
+            )
+        except Exception as e:
+            logger.error(f"[ClasificacionService] Error indexando en ChromaDB: {e}")
 
         logger.info(f"[ClasificacionService] Opinión indexada con tema: '{tema}'")
         return opinion
@@ -177,32 +201,43 @@ class ClasificacionService(IClasificacionService):
         for problematicaCod in problematicas:
             vector = await embedding.embed(textoOpinion)
 
-            resultados = await asyncio.to_thread(
-                coleccion.query,
-                query_embeddings = [vector],
-                n_results        = 1,
-                where            = {'problematica_cod': problematicaCod}
-            )
+            # FIX: mismo patrón — proteger query cuando la colección está vacía
+            try:
+                await asyncio.to_thread(
+                    coleccion.query,
+                    query_embeddings=[vector],
+                    n_results=1,
+                    where={'problematica_cod': problematicaCod},
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[ClasificacionService] Query argumentos_vec falló "
+                    f"(prob={problematicaCod}): {e}"
+                )
 
             argumento = await Argumento.insertar(
                 opinionId       = opinionId,
                 texto           = textoOpinion,
                 tema            = 'sin_clasificar',
                 problematicaCod = problematicaCod,
-                frecuencia      = 1
+                frecuencia      = 1,
             )
 
             vectorId = f"argumento_{argumento['id']}"
-            await asyncio.to_thread(
-                coleccion.upsert,
-                ids        = [vectorId],
-                embeddings = [vector],
-                documents  = [textoOpinion],
-                metadatas  = [{
-                    'argumento_id':     argumento['id'],
-                    'problematica_cod': problematicaCod
-                }]
-            )
+            try:
+                await asyncio.to_thread(
+                    coleccion.upsert,
+                    ids=[vectorId],
+                    embeddings=[vector],
+                    documents=[textoOpinion],
+                    metadatas=[{
+                        'argumento_id':     str(argumento['id']),
+                        'problematica_cod': problematicaCod,
+                    }],
+                )
+            except Exception as e:
+                logger.error(f"[ClasificacionService] Error indexando argumento en ChromaDB: {e}")
+
             logger.info(f"[ClasificacionService] Nuevo argumento insertado id: '{argumento['id']}'")
             argumentosProcesados.append(argumento)
 
@@ -215,19 +250,27 @@ class ClasificacionService(IClasificacionService):
         chroma    = SemanticManager.getChromaService()
         coleccion = chroma.getOrCreateCollection('argumentos_vec')
 
-        vector     = await embedding.embed(probOtra)
-        resultados = await asyncio.to_thread(
-            coleccion.query,
-            query_embeddings = [vector],
-            n_results        = 1
-        )
+        vector = await embedding.embed(probOtra)
 
-        if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
-            distancia = resultados['distances'][0][0]
-            if distancia <= settings.SEMANTIC_RELATED_THRESHOLD:
-                codInferido = resultados['metadatas'][0].get('problematica_cod')
-                logger.info(f"[ClasificacionService] Problemática inferida: {codInferido}")
-                return codInferido
+        # FIX: proteger query cuando la colección está vacía
+        try:
+            resultados = await asyncio.to_thread(
+                coleccion.query,
+                query_embeddings=[vector],
+                n_results=1,
+            )
+            if (
+                isinstance(resultados, dict)
+                and resultados.get('metadatas')
+                and resultados['metadatas'][0]
+            ):
+                distancia = resultados['distances'][0][0]
+                if distancia <= settings.SEMANTIC_RELATED_THRESHOLD:
+                    codInferido = resultados['metadatas'][0][0].get('problematica_cod')
+                    logger.info(f"[ClasificacionService] Problemática inferida: {codInferido}")
+                    return codInferido
+        except Exception as e:
+            logger.warning(f"[ClasificacionService] Query _resolverProblematica falló: {e}")
 
         logger.warning(f"[ClasificacionService] No se pudo inferir problemática para: '{probOtra}'")
         return None
@@ -243,24 +286,32 @@ class ClasificacionService(IClasificacionService):
         chroma    = SemanticManager.getChromaService()
         coleccion = chroma.getOrCreateCollection('fragmentos_vec')
 
-        vector     = await embedding.embed(textoArgumento)
-        resultados = await asyncio.to_thread(
-            coleccion.query,
-            query_embeddings = [vector],
-            n_results        = 5
-        )
+        vector = await embedding.embed(textoArgumento)
 
         documentoIds = []
 
-        if resultados and resultados.get('metadatas') and resultados['metadatas'][0]:
-            for metadata, distancia in zip(
-                resultados['metadatas'][0],
-                resultados['distances'][0]
+        # FIX: proteger query cuando la colección está vacía
+        try:
+            resultados = await asyncio.to_thread(
+                coleccion.query,
+                query_embeddings=[vector],
+                n_results=5,
+            )
+            if (
+                isinstance(resultados, dict)
+                and resultados.get('metadatas')
+                and resultados['metadatas'][0]
             ):
-                if distancia <= settings.SEMANTIC_FRAGMENT_MATCH_THRESHOLD:
-                    documentoId = metadata.get('documento_id')
-                    if documentoId and documentoId not in documentoIds:
-                        documentoIds.append(documentoId)
+                for metadata, distancia in zip(
+                    resultados['metadatas'][0],
+                    resultados['distances'][0],
+                ):
+                    if distancia <= settings.SEMANTIC_FRAGMENT_MATCH_THRESHOLD:
+                        documentoId = metadata.get('documento_id')
+                        if documentoId and documentoId not in documentoIds:
+                            documentoIds.append(documentoId)
+        except Exception as e:
+            logger.warning(f"[ClasificacionService] Query fragmentos_vec falló: {e}")
 
         if documentoIds:
             await ArgumentoDocumento.insertarBatch(argumentoId, documentoIds)

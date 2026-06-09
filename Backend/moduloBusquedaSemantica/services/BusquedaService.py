@@ -381,26 +381,14 @@ class BusquedaService(IBusquedaService):
             _cacheDocumentos = {}
 
             async def enriquecerFragmento(vectorId, distancia):
-                """Recupera fragmento + nombre del documento en una sola función."""
-                fragmento = await Fragmento.obtenerPorVectorId(vectorId)
+                fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
                 if not fragmento:
                     return None
-
-                documentoId = fragmento.get('documento_id')
-
-                # Consultar documento solo si no está en caché
-                if documentoId not in _cacheDocumentos:
-                    _cacheDocumentos[documentoId] = await Documento.obtenerPorId(documentoId)
-
-                doc = _cacheDocumentos.get(documentoId) or {}
-                nombre_doc = doc.get('nombre', '')
-
                 score = round(max(0.0, 1 / (1 + distancia)), 3)
-
                 return {
                     **fragmento,
                     'similitud':        score,
-                    'documento_nombre': nombre_doc,
+                    'documento_nombre': fragmento.get('documento_nombre', ''),
                 }
 
             fragmentos = []

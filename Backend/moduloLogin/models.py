@@ -32,14 +32,14 @@ class Coordinador:
 
     @staticmethod
     def get_by_email(email: str) -> Optional[Dict[str, Any]]:
-        """Retorna id, nombre, email y password_hash. Solo para autenticación."""
         with connection.cursor() as cur:
             cur.execute(
                 f"SELECT id, nombre, email, password_hash FROM {db.coordinador} WHERE email = %s",
                 [email],
             )
-            return _fetchone(cur)
-
+            result = _fetchone(cur)
+            logger.warning(f"[Coordinador.get_by_email] query table={db.coordinador} email={email} result={result}")
+            return result
     @staticmethod
     def get_by_id(coordinador_id: str) -> Optional[Dict[str, Any]]:
         """Retorna id, nombre, email (sin password_hash)."""

@@ -318,14 +318,77 @@ class PeriodoEstadistico:
 
     @classmethod
     def eliminar(cls, periodo_id: str) -> bool:
-        logger.info("[PeriodoEstadistico.eliminar] Eliminando id=%s.", periodo_id)
-        with connection.cursor() as cur:
-            cur.execute(f"DELETE FROM {cls.TABLE} WHERE id = %s", [periodo_id])
-            deleted = cur.rowcount > 0
-        if deleted:
-            logger.info("[PeriodoEstadistico.eliminar] Período id=%s eliminado.", periodo_id)
-        else:
+        """
+        Elimina el período y todos los datos asociados a él en cascada:
+        snapshots, rankings, caracterizaciones, resúmenes, variaciones,
+        cruces, exportaciones e importaciones del período.
+        Las encuestas se eliminan por rango de fecha del período.
+        """
+        logger.info("[PeriodoEstadistico.eliminar] Eliminando id=%s con cascada.", periodo_id)
+
+        periodo = cls.obtener(periodo_id)
+        if not periodo:
             logger.warning("[PeriodoEstadistico.eliminar] No se encontró id=%s.", periodo_id)
+            return False
+
+        fecha_inicio = periodo["fecha_inicio"]
+        fecha_fin    = periodo["fecha_fin"]
+
+        with transaction.atomic():
+            with connection.cursor() as cur:
+                # 1. Resúmenes estadísticos
+                cur.execute(f"DELETE FROM {db.resumen_estadistico} WHERE periodo_id = %s", [periodo_id])
+                logger.info("[PeriodoEstadistico.eliminar] Resúmenes eliminados.")
+
+                # 2. Caracterizaciones territoriales
+                cur.execute(f"DELETE FROM {db.caracterizacion_territorial} WHERE periodo_id = %s", [periodo_id])
+                logger.info("[PeriodoEstadistico.eliminar] Caracterizaciones eliminadas.")
+
+                # 3. Rankings de problemáticas
+                cur.execute(f"DELETE FROM {db.ranking_problematica} WHERE periodo_id = %s", [periodo_id])
+                logger.info("[PeriodoEstadistico.eliminar] Rankings eliminados.")
+
+                # 4. Resultados de cruces
+                cur.execute(
+                    f"DELETE FROM {db.resultado_cruce} WHERE periodo_id = %s",
+                    [periodo_id],
+                )
+                logger.info("[PeriodoEstadistico.eliminar] Cruces eliminados.")
+
+                # 5. Variaciones temporales (como período anterior o actual)
+                cur.execute(
+                    f"DELETE FROM {db.variacion_temporal} WHERE periodo_anterior_id = %s OR periodo_actual_id = %s",
+                    [periodo_id, periodo_id],
+                )
+                logger.info("[PeriodoEstadistico.eliminar] Variaciones eliminadas.")
+
+                # 6. Exportaciones del período
+                cur.execute(f"DELETE FROM {db.exportacion_resultado} WHERE periodo_id = %s", [periodo_id])
+                logger.info("[PeriodoEstadistico.eliminar] Exportaciones eliminadas.")
+
+                # 7. Snapshots territoriales
+                cur.execute(f"DELETE FROM {db.snapshot_territorial} WHERE periodo_id = %s", [periodo_id])
+                logger.info("[PeriodoEstadistico.eliminar] Snapshots eliminados.")
+
+                # 8. Encuestas del rango de fechas del período
+                cur.execute(
+                    f"DELETE FROM {db.encuesta} WHERE fecha >= %s AND fecha <= %s",
+                    [fecha_inicio, fecha_fin],
+                )
+                logger.info("[PeriodoEstadistico.eliminar] Encuestas eliminadas.")
+
+                # 9. Importaciones asociadas al período
+                cur.execute(f"DELETE FROM {db.importacion_csv} WHERE periodo_id = %s", [periodo_id])
+                logger.info("[PeriodoEstadistico.eliminar] Importaciones eliminadas.")
+
+                # 10. El período en sí
+                cur.execute(f"DELETE FROM {cls.TABLE} WHERE id = %s", [periodo_id])
+                deleted = cur.rowcount > 0
+
+        if deleted:
+            logger.info("[PeriodoEstadistico.eliminar] Período id=%s eliminado con todos sus datos.", periodo_id)
+        else:
+            logger.warning("[PeriodoEstadistico.eliminar] No se pudo eliminar el período id=%s.", periodo_id)
         return deleted
 
 
@@ -339,7 +402,7 @@ class ImportacionCsv:
     _COLS = (
         "id, nombre_archivo, fecha_importacion, procesado_en, "
         "estado, total_registros, registros_validos, "
-        "registros_invalidos, errores_detalle"
+        "registros_invalidos, errores_detalle, periodo_id"
     )
 
     @classmethod
@@ -370,7 +433,7 @@ class ImportacionCsv:
         return result
 
     @classmethod
-    def crear(cls, nombre_archivo: str) -> Dict:
+    def crear(cls, nombre_archivo: str, periodo_id: Optional[str] = None) -> Dict:
         new_id = str(uuid.uuid4())
         fecha_hoy = datetime.date.today()
         logger.info("[ImportacionCsv.crear] Creando importación '%s'.", nombre_archivo)
@@ -379,13 +442,13 @@ class ImportacionCsv:
                 f"""
                 INSERT INTO {cls.TABLE}
                     (id, nombre_archivo, fecha_importacion, estado,
-                     total_registros, registros_validos, registros_invalidos)
-                VALUES (%s, %s, %s, 'PENDIENTE', 0, 0, 0)
+                     total_registros, registros_validos, registros_invalidos, periodo_id)
+                VALUES (%s, %s, %s, 'PENDIENTE', 0, 0, 0, %s)
                 """,
-                [new_id, nombre_archivo, fecha_hoy],
+                [new_id, nombre_archivo, fecha_hoy, periodo_id],
             )
         logger.info("[ImportacionCsv.crear] Importación creada con id=%s.", new_id)
-        return {"id": new_id, "nombre_archivo": nombre_archivo, "estado": "PENDIENTE"}
+        return {"id": new_id, "nombre_archivo": nombre_archivo, "estado": "PENDIENTE", "periodo_id": periodo_id}
 
     @classmethod
     def finalizar(
@@ -664,21 +727,23 @@ class Encuesta:
             cur.execute(
                 f"""
                 SELECT
-                    COUNT(*)                                         AS total,
+                    COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE inclinacion_voto_cod = 1) AS total_simpatizantes,
-                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 2) AS total_indecisos,
-                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 3) AS total_no_simpatizantes,
-                    COUNT(*) FILTER (WHERE intencion_participacion_cod = 2) AS total_no_votantes,
-                    COUNT(*) FILTER (WHERE intencion_participacion_cod = 1) AS total_intension_votar,
-                    COUNT(*) FILTER (WHERE intencion_participacion_cod = 2) AS total_abstencion
+                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 3) AS total_indecisos,
+                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 2) AS total_no_simpatizantes,
+                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 4) AS total_no_votantes,
+                    COUNT(*) FILTER (WHERE intencion_participacion_cod IN (1,2)) AS total_intension_votar,
+                    COUNT(*) FILTER (WHERE intencion_participacion_cod IN (4,5)) AS total_abstencion
                 FROM {cls.TABLE}
                 WHERE barrio_id = %s
-                  AND fecha >= %s
-                  AND fecha <= %s
+                AND fecha >= %s
+                AND fecha <= %s
                 """,
                 [barrio_id, periodo["fecha_inicio"], periodo["fecha_fin"]],
             )
+
             result = _fetchone(cur)
+
         logger.info("[Encuesta.agregar_por_barrio_y_periodo] Resultado: %s.", result)
         return result or {k: 0 for k in (
             "total", "total_simpatizantes", "total_indecisos",
@@ -832,7 +897,7 @@ class SnapshotTerritorial:
         def pct(part, whole):
             return round(part / whole * 100, 2) if whole else None
 
-        indice = round((ts / total - tns / total) * 100, 4) if total else None
+        indice = round((ts - tns) / total * 100, 4) if total else None
         new_id = str(uuid.uuid4())
 
         with transaction.atomic():
