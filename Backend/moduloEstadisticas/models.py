@@ -554,13 +554,19 @@ class Encuesta:
         if not periodo:
             logger.warning("[Encuesta.listar_por_periodo] Período %s no encontrado.", periodo_id)
             return []
+        
+        # CORRECCIÓN: Filtramos directamente por el UUID del periodo_id 
+        # para garantizar un aislamiento absoluto entre periodos.
         sql = (
             cls._base_select()
-            + " WHERE e.fecha >= %s AND e.fecha <= %s ORDER BY e.fecha DESC"
+            + " WHERE e.periodo_id = %s ORDER BY e.fecha DESC"
         )
+        
         with connection.cursor() as cur:
-            cur.execute(sql, [periodo["fecha_inicio"], periodo["fecha_fin"]])
+            # Pasamos el periodo_id como argumento seguro
+            cur.execute(sql, [periodo_id])
             result = [_str_fields(r) for r in _fetchall(cur)]
+            
         logger.info("[Encuesta.listar_por_periodo] %d encuestas encontradas.", len(result))
         return result
 

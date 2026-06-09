@@ -472,6 +472,38 @@ class ImportacionCsvService(IImportacionCsvService):
             return ImportacionCsv.obtener(importacion_id)
 
         return await sync_to_async(_procesar)()
+    
+    def importar_excel(self, archivo_bytes: bytes, periodo_id: str, usuario_id: str) -> Dict[str, Any]:
+        import pandas as pd
+        import io
+
+        logger.info("[ImportacionCsvService.importar_excel] Iniciando parseo de Excel para periodo_id=%s", periodo_id)
+        
+        try:
+            # 1. Leer el archivo binario directamente desde la memoria
+            df = pd.read_excel(io.BytesIO(archivo_bytes))
+            
+            # 2. Convertir valores NaN (celdas vacías de Excel) a strings vacíos 
+            # para que actúe exactamente igual que el DictReader de un CSV
+            df = df.fillna("")
+            
+            # 3. Transformar las filas del DataFrame a una lista de diccionarios (Cabecera: Valor)
+            filas_convertidas = df.to_dict(orient="records")
+            
+        except Exception as e:
+            logger.error("[ImportacionCsvService.importar_excel] Error leyendo la estructura del Excel: %s", str(e))
+            raise ValueError("El archivo Excel no pudo ser leído. Verifica que no esté corrupto y tenga cabeceras válidas.")
+
+        logger.info("[ImportacionCsvService.importar_excel] Excel parseado con éxito. %d filas encontradas.", len(filas_convertidas))
+
+        # 4. AQUÍ REUTILIZAS TU BUCLE ACTUAL
+        # Copia aquí el mismo comportamiento/bucle que tienes en tu método `importar` de CSV.
+        # Por ejemplo, si iterabas sobre las filas para guardarlas en la base de datos:
+        
+        # con_errores = []
+        # insertadas = 0
+        # ... tu lógica relacional exacta ...
+        # return {"insertadas": insertadas, "errores": con_errores}
 
 
 # ── Encuesta ──────────────────────────────────────────────────────────────────

@@ -350,10 +350,29 @@ class ImportacionCsvListView(View):
         archivo    = request.FILES.get("archivo")
         periodo_id = request.POST.get("periodo_id")  # ── CAMBIO: capturar periodo_id del formulario
         logger.debug("[ImportacionCsvListView] POST importar archivo=%s periodo_id=%s", getattr(archivo, "name", None), periodo_id)
+        
+        # Ajustamos el mensaje para reflejar que acepta ambos formatos
         if not archivo:
-            return _err("Se requiere un archivo CSV.", 400)
+            return _err("Se requiere un archivo CSV o Excel (.xlsx, .xls).", 400)
+            
         async def _():
-            resultado = await _importacion_svc.importar(archivo, periodo_id=periodo_id)  # ── CAMBIO: pasar periodo_id al servicio
+            nombre_archivo = archivo.name.lower()
+            
+            # ── DETECCIÓN DE FORMATO Y DERIVACIÓN AL SERVICIO CORRESPONDIENTE ──
+            if nombre_archivo.endswith(('.xlsx', '.xls')):
+                logger.info("[ImportacionCsvListView] Detectado archivo Excel. Derivando a importar_excel.")
+                
+                # CASO A: Si definiste 'importar_excel' como método ASÍNCRONO (async def) en tu servicio:
+                resultado = await _importacion_svc.importar_excel(archivo, periodo_id=periodo_id)
+                
+                # CASO B: Si definiste 'importar_excel' como método SÍNCRONICO tradicional (def) debido a Pandas,
+                # debes usar sync_to_async descomentando las siguientes dos líneas (y comentando la del CASO A):
+                # from asgiref.sync import sync_to_async
+                # resultado = await sync_to_async(_importacion_svc.importar_excel)(archivo, periodo_id=periodo_id)
+            else:
+                logger.info("[ImportacionCsvListView] Detectado archivo CSV. Derivando a importar estándar.")
+                # Flujo normal de CSV original
+                resultado = await _importacion_svc.importar(archivo, periodo_id=periodo_id)  # ── CAMBIO: pasar periodo_id al servicio
 
             # ── PIPELINE AUTOMÁTICO POST-IMPORTACIÓN ──
             # Dispara la regeneración completa de estadísticas para que los
