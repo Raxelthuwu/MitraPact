@@ -8,7 +8,6 @@ from django.utils.decorators import method_decorator
 from django.shortcuts import render
 from Backend.moduloLogin.views import login_requerido
 
-
 from Backend.moduloEstadisticas.services import (
     CatalogoOcupacionService,
     CatalogoInclinacionVotoService,
@@ -348,12 +347,46 @@ class ImportacionCsvListView(View):
         return await _handle(_)
 
     async def post(self, request):
-        archivo = request.FILES.get("archivo")
-        logger.debug("[ImportacionCsvListView] POST importar archivo=%s", getattr(archivo, "name", None))
+        archivo    = request.FILES.get("archivo")
+        periodo_id = request.POST.get("periodo_id")  # ── CAMBIO: capturar periodo_id del formulario
+        logger.debug("[ImportacionCsvListView] POST importar archivo=%s periodo_id=%s", getattr(archivo, "name", None), periodo_id)
         if not archivo:
             return _err("Se requiere un archivo CSV.", 400)
         async def _():
-            return _ok(await _importacion_svc.importar(archivo), 201)
+            resultado = await _importacion_svc.importar(archivo, periodo_id=periodo_id)  # ── CAMBIO: pasar periodo_id al servicio
+
+            # ── PIPELINE AUTOMÁTICO POST-IMPORTACIÓN ──
+            # Dispara la regeneración completa de estadísticas para que los
+            # tableros muestren datos inmediatamente sin ir al dashboard.
+            if periodo_id:
+                try:
+                    import asyncio
+                    logger.info(
+                        "[ImportacionCsvListView] Iniciando pipeline automático para periodo_id=%s",
+                        periodo_id,
+                    )
+                    # Paso 1: snapshots (los rankings los necesitan)
+                    await _snapshot_svc.generar_todos(periodo_id)
+                    # Paso 2: rankings + caracterizaciones + resúmenes en paralelo
+                    await asyncio.gather(
+                        _ranking_svc.calcular_todos(periodo_id),
+                        _caracterizacion_svc.generar_todos(periodo_id),
+                        _resumen_svc.generar_todos(periodo_id),
+                    )
+                    logger.info(
+                        "[ImportacionCsvListView] Pipeline completado para periodo_id=%s",
+                        periodo_id,
+                    )
+                except Exception as pipeline_err:
+                    # El pipeline falló pero la importación fue exitosa;
+                    # se registra sin interrumpir la respuesta al cliente.
+                    logger.error(
+                        "[ImportacionCsvListView] Error en pipeline post-importación: %s",
+                        str(pipeline_err),
+                        exc_info=True,
+                    )
+
+            return _ok(resultado, 201)
         return await _handle(_)
 
 

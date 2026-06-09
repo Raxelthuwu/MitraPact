@@ -1,8 +1,10 @@
 import csv
 import io
 import json
+import uuid
 import logging
 import datetime
+import os
 from typing import Any, Dict, List, Optional
 
 from asgiref.sync import sync_to_async
@@ -214,7 +216,11 @@ def _parsear_fila_csv(i: int, fila: Dict) -> tuple[Optional[Dict], Optional[str]
         return None, f"Fila {i}: columnas faltantes {faltantes}"
 
     def _int(v: Any) -> Optional[int]:
-        return int(v) if v and str(v).strip() else None
+        if v and str(v).strip():
+            # AJUSTE: Si viene un valor compuesto como '1|2', se queda con lo que esté antes del pipe ('1')
+            v_limpio = str(v).split('|')[0].strip()
+            return int(v_limpio)
+        return None
 
     try:
         # Normalizar fecha: formato viejo usa periodo_id en lugar de fecha
@@ -384,24 +390,42 @@ class ImportacionCsvService(IImportacionCsvService):
         """Alias semántico de obtener — expone el estado de procesamiento."""
         return await self.obtener(importacion_id)
 
-    async def importar(self, archivo_csv: Any) -> Dict:
+    async def importar(self, archivo_csv: Any, periodo_id: Optional[str] = None) -> Dict:
         """
         Orquesta la importación completa:
           1. Crea el registro de importación en el modelo.
           2. Parsea y valida cada fila del CSV (lógica de negocio aquí).
-          3. Inserta en bloque las filas válidas mediante Encuesta.insercion_masiva.
-          4. Finaliza el registro con los totales.
+          3. Si la fila no trae fecha válida (formato legacy), usa fecha_inicio del período.
+          4. Inserta en bloque las filas válidas mediante Encuesta.insercion_masiva.
+          5. Finaliza el registro con los totales.
         """
         nombre = getattr(archivo_csv, "name", "sin_nombre.csv")
-        logger.info("[ImportacionCsvService.importar] Iniciando importación: '%s'.", nombre)
+        logger.info(
+            "[ImportacionCsvService.importar] Iniciando importación: '%s'  periodo_id=%s.",
+            nombre, periodo_id,
+        )
 
         def _procesar():
             # 1 — Registro inicial en BD (delega al modelo)
-            registro = ImportacionCsv.crear(nombre)
+            registro = ImportacionCsv.crear(nombre, periodo_id=periodo_id)
             importacion_id = registro["id"]
             logger.info(
                 "[ImportacionCsvService.importar] Importación registrada id=%s.", importacion_id
             )
+
+            # ── CAMBIO: obtener fecha_fallback desde el período seleccionado ──
+            fecha_fallback = None
+            if periodo_id:
+                periodo = PeriodoEstadistico.obtener(periodo_id)
+                if periodo:
+                    fecha_fallback = str(periodo.get("fecha_inicio", "")) or None
+                    logger.info(
+                        "[ImportacionCsvService.importar] fecha_fallback del período: %s.", fecha_fallback
+                    )
+                else:
+                    logger.warning(
+                        "[ImportacionCsvService.importar] periodo_id=%s no encontrado; sin fecha_fallback.", periodo_id
+                    )
 
             # 2 — Parseo y validación del CSV (lógica de negocio pura)
             contenido = archivo_csv.read()
@@ -419,6 +443,9 @@ class ImportacionCsvService(IImportacionCsvService):
                     invalidos.append(fila)
                     logger.debug("[ImportacionCsvService.importar] %s", error)
                 else:
+                    # ── CAMBIO: si no hay fecha válida, usar la del período ──
+                    if fecha_fallback and not fila_norm.get("fecha"):
+                        fila_norm["fecha"] = fecha_fallback
                     fila_norm["importacion_id"] = importacion_id
                     validos.append(fila_norm)
 
@@ -991,3 +1018,122 @@ class ResumenEstadisticoService(IResumenEstadisticoService):
             "[ResumenEstadisticoService.generar_todos] %d resúmenes generados.", len(result)
         )
         return result
+
+
+# ── Clasificación semántica ───────────────────────────────────────────────────
+
+class ClasificacionService:
+    """
+    Servicio encargado de escuchar las notificaciones del canal 'encuesta_insertada',
+    generar embeddings, clasificar las opiniones y persistir los vectores en ChromaDB.
+    """
+
+    def __init__(self, semantic_manager: Any, db_repo: Any = None):
+        self.semantic_manager = semantic_manager
+        # db_repo representa tu capa de acceso a base de datos relacional (Modelos Django / app.db)
+        self.db_repo = db_repo 
+
+    async def procesar_notificacion_encuesta(self, encuesta_id_raw: Any) -> None:
+        """
+        Procesa el flujo asíncrono de clasificación e indexación vectorial de una encuesta.
+        """
+        pid = os.getpid()
+        logger.info(f"[Django Settings] [ClasificacionService] Notify recibido en canal 'encuesta_insertada' | pid: {pid}")
+
+        try:
+            # 1. Asegurar el formato string/UUID interno para el manejo relacional
+            encuesta_id = uuid.UUID(str(encuesta_id_raw))
+            logger.info(f"[Django Settings] [ClasificacionService] Procesando encuesta_id: '{encuesta_id}'")
+            logger.info(f"[Django Settings] [ClasificacionService] Clasificando opinión de encuesta_id: '{encuesta_id}'")
+
+            # 2. Solicitar instancias mediante tu SemanticManager (Cached)
+            embedding_service = self.semantic_manager.obtener_servicio_embeddings()
+            chroma_service = self.semantic_manager.obtener_servicio_chromadb()
+
+            # 3. Obtener la opinión de la encuesta desde la BD relacional
+            # (Ajusta este método según tu implementación real de persistencia)
+            encuesta_data = await self._obtener_encuesta_de_bd(encuesta_id)
+            texto_opinion = encuesta_data.get("opinion_politica", "").strip()
+
+            if not texto_opinion:
+                logger.info(f"[Django Settings] [ClasificacionService] Encuesta '{encuesta_id}' procesada | argumentos: 0 (Sin texto)")
+                return
+
+            # 4. Obtener o crear colección en ChromaDB para opiniones
+            coleccion_opiniones = chroma_service.obtener_o_crear_coleccion("opiniones_vec")
+            
+            logger.info(f"[Django Settings] Generando embedding asíncrono (Longitud: {len(texto_opinion)} caracteres)...")
+            vector_opinion = await embedding_service.generar_embedding_async(texto_opinion)
+
+            # Clasificación de temática (por defecto 'sin_clasificar')
+            tema_opinion = "sin_clasificar" 
+            logger.info(f"[Django Settings] [ClasificacionService] Opinión clasificada con tema: '{tema_opinion}'")
+
+            # 5. Insertar en la tabla de resultados relacionales (OpinionClasificada)
+            logger.info(f"[Django Settings] [OpinionClasificada] Insertando opinión | encuesta_id: '{encuesta_id}' | tema: '{tema_opinion}'")
+            opinion_id = await self._registrar_opinion_clasificada_en_bd(encuesta_id, tema_opinion)
+
+            # Cast a str() en metadatos para ChromaDB
+            coleccion_opiniones.upsert(
+                ids=[str(opinion_id)],
+                embeddings=[vector_opinion],
+                metadatas=[{
+                    "encuesta_id": str(encuesta_id),
+                    "tema": str(tema_opinion)
+                }],
+                documents=[texto_opinion]
+            )
+            logger.info("[Django Settings] Embedding individual generado con éxito.")
+
+            # 6. Extracción y procesamiento de argumentos derivados
+            logger.info(f"[Django Settings] [ClasificacionService] Extrayendo argumentos para opinion_id: '{opinion_id}'")
+            
+            coleccion_argumentos = chroma_service.obtener_o_crear_coleccion("argumentos_vec")
+            
+            # Simulamos o extraemos fragmentos/argumentos del texto original
+            argumentos_extraidos = [texto_opinion]  # Ajustar según tu segmentador/LLM
+            argumentos_procesados_count = 0
+
+            for argumento_texto in argumentos_extraidos:
+                logger.info(f"[Django Settings] Generando embedding asíncrono (Longitud: {len(argumento_texto)} caracteres)...")
+                vector_argumento = await embedding_service.generar_embedding_async(argumento_texto)
+                
+                tema_argumento = "sin_clasificar"
+                
+                logger.info(f"[Django Settings] [Argumento] Insertando argumento | opinion_id: '{opinion_id}' | tema: '{tema_argumento}'")
+                argumento_id = await self._registrar_argumento_en_bd(opinion_id, tema_argumento)
+
+                # Cast explícito a str() para la colección de argumentos
+                coleccion_argumentos.upsert(
+                    ids=[str(argumento_id)],
+                    embeddings=[vector_argumento],
+                    metadatas=[{
+                        "opinion_id": str(opinion_id),
+                        "encuesta_id": str(encuesta_id),
+                        "tema": str(tema_argumento)
+                    }],
+                    documents=[argumento_texto]
+                )
+                logger.info("[Django Settings] Embedding individual generado con éxito.")
+                argumentos_procesados_count += 1
+
+            logger.info(f"[Django Settings] [ClasificacionService] Encuesta '{encuesta_id}' procesada | argumentos: {argumentos_procesados_count}")
+
+        except Exception as e:
+            # Captura el error exacto y previene que el worker asíncrono se caiga
+            logger.error(f"[Django Settings] [ClasificacionService] Error procesando notify: {str(e)}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Métodos auxiliares de simulación de persistencia relacional
+    # ─────────────────────────────────────────────────────────────────────────
+    async def _obtener_encuesta_de_bd(self, encuesta_id: uuid.UUID) -> Dict[str, Any]:
+        """Consulta los datos de la encuesta recién insertada en PostgreSQL."""
+        return {"opinion_politica": "Ejemplo de opinión territorial sobre la gestión."}
+
+    async def _registrar_opinion_clasificada_en_bd(self, encuesta_id: uuid.UUID, tema: str) -> uuid.UUID:
+        """Registra la entidad relacional OpinionClasificada y retorna su ID."""
+        return uuid.uuid4()
+
+    async def _registrar_argumento_en_bd(self, opinion_id: uuid.UUID, tema: str) -> uuid.UUID:
+        """Registra la entidad relacional Argumento y retorna su ID."""
+        return uuid.uuid4()

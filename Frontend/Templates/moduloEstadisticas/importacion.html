@@ -856,10 +856,10 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     if (res.ok) {
       showToast('Importación iniciada correctamente');
       document.getElementById('importResult').innerHTML =
-        `<span style="color:var(--success);font-weight:600;">✓ ID: ${res.data?.importacion_id ?? '—'}</span>`;
+        `<span style="color:var(--success);font-weight:600;">✓ ID: ${res.data?.importacion_id ?? res.data?.id ?? '—'}</span>`;
       await loadHistory();
       // polling estado
-      if (res.data?.importacion_id) pollEstado(res.data.importacion_id);
+      if (res.data?.importacion_id ?? res.data?.id) pollEstado(res.data.importacion_id ?? res.data.id);
     } else {
       showToast(res.error || 'Error en la importación', 'error');
       document.getElementById('importResult').innerHTML =
@@ -926,11 +926,11 @@ async function loadHistory() {
     };
 
     list.innerHTML = data.map(imp => `
-      <div class="history-item" role="button" onclick="openDetail('${imp.importacion_id}')" style="cursor:pointer;">
+      <div class="history-item" role="button" onclick="openDetail('${imp.importacion_id ?? imp.id}')" style="cursor:pointer;">
         <div class="history-dot ${dotClass(imp.estado)}"></div>
         <div style="flex:1;min-width:0;">
-          <div class="history-item-name" title="${imp.nombre_archivo ?? imp.importacion_id}">
-            ${imp.nombre_archivo ?? imp.importacion_id}
+          <div class="history-item-name" title="${imp.nombre_archivo ?? imp.importacion_id ?? imp.id}">
+            ${imp.nombre_archivo ?? imp.importacion_id ?? imp.id}
           </div>
           <div class="history-item-meta">
             ${fmtDate(imp.fecha_creacion)}
@@ -956,7 +956,7 @@ async function openDetail(id) {
     const res = await API(`/api/importaciones/${id}/`);
     const d   = res.data || {};
     document.getElementById('modalBody').innerHTML = `
-      <div class="detail-row"><span class="detail-label">ID</span><span class="detail-value">${d.importacion_id ?? '—'}</span></div>
+      <div class="detail-row"><span class="detail-label">ID</span><span class="detail-value">${d.importacion_id ?? d.id ?? '—'}</span></div>
       <div class="detail-row"><span class="detail-label">Archivo</span><span class="detail-value">${d.nombre_archivo ?? '—'}</span></div>
       <div class="detail-row"><span class="detail-label">Estado</span><span class="detail-value">${estadoBadge(d.estado)}</span></div>
       <div class="detail-row"><span class="detail-label">Período</span><span class="detail-value">${d.periodo_id ?? '—'}</span></div>
