@@ -566,9 +566,17 @@
               <tr><td><code>ocupacion_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código de ocupación del encuestado</td></tr>
               <tr><td><code>inclinacion_voto_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código de inclinación de voto</td></tr>
               <tr><td><code>intencion_participacion_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código de intención de participación</td></tr>
-              <tr><td><code>problematica_cod</code></td><td><span class="badge badge-info">entero</span></td><td>Código(s) de problemática registrada</td></tr>
               <tr><td><code>edad</code></td><td><span class="badge badge-info">entero</span></td><td>Edad del encuestado (años)</td></tr>
-              <tr><td><code>periodo_id</code></td><td><span class="badge badge-muted">opcional</span></td><td>Se puede especificar en el selector</td></tr>
+              <tr>
+                <td><code>prob_1_cod</code> <span style="font-size:10px;color:var(--text-muted);">/ problematica_cod</span></td>
+                <td><span class="badge badge-info">entero</span></td>
+                <td>Código de problemática (formato nuevo / legacy)</td>
+              </tr>
+              <tr>
+                <td><code>fecha</code> <span style="font-size:10px;color:var(--text-muted);">/ periodo_id</span></td>
+                <td><span class="badge badge-muted">fecha / texto</span></td>
+                <td>Fecha o período (formato nuevo / legacy)</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -624,15 +632,18 @@
 
 {% block extra_js %}
 <script>
-// ── Constantes de columnas requeridas ──────────────────────────────────
-const REQUIRED_COLS = [
+// ── Columnas comunes a ambos formatos ──────────────────────────────────
+const REQUIRED_COLS_COMUN = [
   'barrio_id',
   'ocupacion_cod',
   'inclinacion_voto_cod',
   'intencion_participacion_cod',
-  'problematica_cod',
   'edad',
 ];
+
+// Columnas exclusivas de cada formato
+const REQUIRED_COLS_NUEVO = ['fecha', 'prob_1_cod'];
+const REQUIRED_COLS_VIEJO = ['periodo_id', 'problematica_cod'];
 
 // ── Estado ────────────────────────────────────────────────────────────
 let selectedFile   = null;
@@ -739,23 +750,32 @@ function parseCSVHeaders(file) {
 }
 
 function renderColsCheck(headers) {
-  const check  = document.getElementById('columnsCheck');
-  const list   = document.getElementById('colsList');
+  const check = document.getElementById('columnsCheck');
+  const list  = document.getElementById('colsList');
   check.style.display = '';
 
+  // Detectar formato igual que el backend
+  const esFormatoViejo = headers.includes('problematica_cod') || headers.includes('periodo_id');
+  const colsEspecificas = esFormatoViejo ? REQUIRED_COLS_VIEJO : REQUIRED_COLS_NUEVO;
+  const todasRequeridas = [...REQUIRED_COLS_COMUN, ...colsEspecificas];
+
   let allOk = true;
-  list.innerHTML = REQUIRED_COLS.map(col => {
-    const found = headers.includes(col);
-    if (!found) allOk = false;
-    return `
-      <div class="col-row ${found ? 'ok' : 'err'}">
-        ${found
-          ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>`}
-        <code style="flex:1;">${col}</code>
-        <span style="font-size:11px;">${found ? 'Encontrada' : 'No encontrada'}</span>
-      </div>`;
-  }).join('');
+  list.innerHTML =
+    `<div style="padding:8px 14px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border-light);">
+       Formato detectado: <strong>${esFormatoViejo ? 'Legacy' : 'Nuevo'}</strong>
+     </div>` +
+    todasRequeridas.map(col => {
+      const found = headers.includes(col);
+      if (!found) allOk = false;
+      return `
+        <div class="col-row ${found ? 'ok' : 'err'}">
+          ${found
+            ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>`}
+          <code style="flex:1;">${col}</code>
+          <span style="font-size:11px;">${found ? 'Encontrada' : 'No encontrada'}</span>
+        </div>`;
+    }).join('');
 
   columnsValid = allOk;
   updateImportBtn();

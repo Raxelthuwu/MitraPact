@@ -181,18 +181,35 @@ def _construir_texto_resumen(barrio_id: str, periodo_id: str) -> str:
 # HELPERS DE VALIDACIÓN CSV
 # =============================================================================
 
-_COLUMNAS_REQUERIDAS = {
+# Columnas mínimas requeridas en el formato nuevo (EncuestaFormato.csv)
+_COLUMNAS_REQUERIDAS_NUEVO = {
     "fecha", "edad", "barrio_id", "ocupacion_cod",
     "inclinacion_voto_cod", "intencion_participacion_cod", "prob_1_cod",
+}
+
+# Columnas mínimas requeridas en el formato viejo (encuestas_prueba_api_csv.xls)
+_COLUMNAS_REQUERIDAS_VIEJO = {
+    "periodo_id", "edad", "barrio_id", "ocupacion_cod",
+    "inclinacion_voto_cod", "intencion_participacion_cod", "problematica_cod",
 }
 
 
 def _parsear_fila_csv(i: int, fila: Dict) -> tuple[Optional[Dict], Optional[str]]:
     """
     Valida y normaliza una fila de CSV.
+    Acepta dos formatos:
+      - Formato nuevo: columnas fecha, prob_1_cod, prob_2_cod, ...
+      - Formato viejo: columnas periodo_id, problematica_cod, ...
     Devuelve (fila_normalizada, None) si es válida o (None, mensaje_error).
     """
-    faltantes = _COLUMNAS_REQUERIDAS - set(fila.keys())
+    claves = set(fila.keys())
+    es_formato_viejo = "problematica_cod" in claves or "periodo_id" in claves
+
+    if es_formato_viejo:
+        faltantes = _COLUMNAS_REQUERIDAS_VIEJO - claves
+    else:
+        faltantes = _COLUMNAS_REQUERIDAS_NUEVO - claves
+
     if faltantes:
         return None, f"Fila {i}: columnas faltantes {faltantes}"
 
@@ -200,16 +217,30 @@ def _parsear_fila_csv(i: int, fila: Dict) -> tuple[Optional[Dict], Optional[str]
         return int(v) if v and str(v).strip() else None
 
     try:
+        # Normalizar fecha: formato viejo usa periodo_id en lugar de fecha
+        if es_formato_viejo:
+            fecha = fila.get("periodo_id", "").strip() or None
+        else:
+            fecha = fila["fecha"].strip()
+
+        # Normalizar problemáticas: formato viejo usa un solo campo problematica_cod
+        if es_formato_viejo:
+            prob_1_cod = _int(fila.get("problematica_cod"))
+            prob_2_cod = None
+        else:
+            prob_1_cod = _int(fila.get("prob_1_cod"))
+            prob_2_cod = _int(fila.get("prob_2_cod"))
+
         return {
-            "fecha":          fila["fecha"].strip(),
+            "fecha":          fecha,
             "edad":           int(fila["edad"]),
             "barrio":         fila.get("barrio", "").strip()    or None,
             "barrio_id":      fila.get("barrio_id", "").strip() or None,
             "ocupacion_cod":               _int(fila.get("ocupacion_cod")),
             "inclinacion_voto_cod":        _int(fila.get("inclinacion_voto_cod")),
             "intencion_participacion_cod": _int(fila.get("intencion_participacion_cod")),
-            "prob_1_cod":  _int(fila.get("prob_1_cod")),
-            "prob_2_cod":  _int(fila.get("prob_2_cod")),
+            "prob_1_cod":  prob_1_cod,
+            "prob_2_cod":  prob_2_cod,
             "prob_otra":   fila.get("prob_otra", "").strip()         or None,
             "opinion_politica": fila.get("opinion_politica", "").strip() or None,
         }, None
