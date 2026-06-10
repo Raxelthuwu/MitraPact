@@ -79,6 +79,10 @@ def analisis_territorial_estadisticas(request):
         "moduloEstadisticas/analisis_territorial.html"
     )
 
+@login_requerido
+def catalogos_estadisticas(request):
+    return render(request, "moduloEstadisticas/catalogos.html")
+
 
 def _ok(data=None, status: int = 200) -> JsonResponse:
     return JsonResponse({"ok": True, "data": data}, status=status)
@@ -114,12 +118,12 @@ csrf_exempt_cbv = method_decorator(csrf_exempt, name="dispatch")
 
 
 # =============================================================================
-# CATÁLOGOS (solo lectura)
+# CATÁLOGOS (CRUD completo)
 # =============================================================================
 
 @csrf_exempt_cbv
 class CatalogoOcupacionListView(View):
-    """GET /estadisticas/catalogos/ocupaciones/"""
+    """GET|POST /estadisticas/catalogos/ocupaciones/"""
 
     async def get(self, request):
         logger.debug("[CatalogoOcupacionListView] GET listar")
@@ -127,10 +131,19 @@ class CatalogoOcupacionListView(View):
             return _ok(await _catalogo_ocupacion_svc.listar())
         return await _handle(_)
 
+    async def post(self, request):
+        data = _body(request)
+        logger.debug("[CatalogoOcupacionListView] POST crear codigo=%s", data.get("codigo"))
+        async def _():
+            return _ok(
+                await _catalogo_ocupacion_svc.crear(int(data["codigo"]), data["descripcion"]), 201
+            )
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoOcupacionDetailView(View):
-    """GET /estadisticas/catalogos/ocupaciones/<codigo>/"""
+    """GET|PUT|DELETE /estadisticas/catalogos/ocupaciones/<codigo>/"""
 
     async def get(self, request, codigo):
         logger.debug("[CatalogoOcupacionDetailView] GET obtener codigo=%s", codigo)
@@ -139,10 +152,28 @@ class CatalogoOcupacionDetailView(View):
             return _ok(obj) if obj else _err("Ocupación no encontrada.", 404)
         return await _handle(_)
 
+    async def put(self, request, codigo):
+        data = _body(request)
+        logger.debug("[CatalogoOcupacionDetailView] PUT actualizar codigo=%s", codigo)
+        async def _():
+            if int(codigo) < 1:
+                return _err("El código debe ser un número entero positivo (≥ 1).", 400)
+            ok = await _catalogo_ocupacion_svc.actualizar(int(codigo), data["descripcion"])
+            return _ok() if ok else _err("Ocupación no encontrada.", 404)
+        return await _handle(_)
+
+    async def delete(self, request, codigo):
+        logger.debug("[CatalogoOcupacionDetailView] DELETE eliminar codigo=%s", codigo)
+        async def _():
+            if int(codigo) < 1:
+                return _err("El código debe ser un número entero positivo (≥ 1).", 400)
+            return _ok({"eliminado": await _catalogo_ocupacion_svc.eliminar(int(codigo))})
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoInclinacionVotoListView(View):
-    """GET /estadisticas/catalogos/inclinaciones-voto/"""
+    """GET|POST /estadisticas/catalogos/inclinaciones-voto/"""
 
     async def get(self, request):
         logger.debug("[CatalogoInclinacionVotoListView] GET listar")
@@ -150,10 +181,19 @@ class CatalogoInclinacionVotoListView(View):
             return _ok(await _catalogo_inclinacion_svc.listar())
         return await _handle(_)
 
+    async def post(self, request):
+        data = _body(request)
+        logger.debug("[CatalogoInclinacionVotoListView] POST crear codigo=%s", data.get("codigo"))
+        async def _():
+            return _ok(
+                await _catalogo_inclinacion_svc.crear(int(data["codigo"]), data["descripcion"]), 201
+            )
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoInclinacionVotoDetailView(View):
-    """GET /estadisticas/catalogos/inclinaciones-voto/<codigo>/"""
+    """GET|PUT|DELETE /estadisticas/catalogos/inclinaciones-voto/<codigo>/"""
 
     async def get(self, request, codigo):
         logger.debug("[CatalogoInclinacionVotoDetailView] GET obtener codigo=%s", codigo)
@@ -162,10 +202,24 @@ class CatalogoInclinacionVotoDetailView(View):
             return _ok(obj) if obj else _err("Inclinación de voto no encontrada.", 404)
         return await _handle(_)
 
+    async def put(self, request, codigo):
+        data = _body(request)
+        logger.debug("[CatalogoInclinacionVotoDetailView] PUT actualizar codigo=%s", codigo)
+        async def _():
+            ok = await _catalogo_inclinacion_svc.actualizar(int(codigo), data["descripcion"])
+            return _ok() if ok else _err("Inclinación de voto no encontrada.", 404)
+        return await _handle(_)
+
+    async def delete(self, request, codigo):
+        logger.debug("[CatalogoInclinacionVotoDetailView] DELETE eliminar codigo=%s", codigo)
+        async def _():
+            return _ok({"eliminado": await _catalogo_inclinacion_svc.eliminar(int(codigo))})
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoIntencionParticipacionListView(View):
-    """GET /estadisticas/catalogos/intenciones-participacion/"""
+    """GET|POST /estadisticas/catalogos/intenciones-participacion/"""
 
     async def get(self, request):
         logger.debug("[CatalogoIntencionParticipacionListView] GET listar")
@@ -173,10 +227,19 @@ class CatalogoIntencionParticipacionListView(View):
             return _ok(await _catalogo_intencion_svc.listar())
         return await _handle(_)
 
+    async def post(self, request):
+        data = _body(request)
+        logger.debug("[CatalogoIntencionParticipacionListView] POST crear codigo=%s", data.get("codigo"))
+        async def _():
+            return _ok(
+                await _catalogo_intencion_svc.crear(int(data["codigo"]), data["descripcion"]), 201
+            )
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoIntencionParticipacionDetailView(View):
-    """GET /estadisticas/catalogos/intenciones-participacion/<codigo>/"""
+    """GET|PUT|DELETE /estadisticas/catalogos/intenciones-participacion/<codigo>/"""
 
     async def get(self, request, codigo):
         logger.debug("[CatalogoIntencionParticipacionDetailView] GET obtener codigo=%s", codigo)
@@ -185,10 +248,24 @@ class CatalogoIntencionParticipacionDetailView(View):
             return _ok(obj) if obj else _err("Intención de participación no encontrada.", 404)
         return await _handle(_)
 
+    async def put(self, request, codigo):
+        data = _body(request)
+        logger.debug("[CatalogoIntencionParticipacionDetailView] PUT actualizar codigo=%s", codigo)
+        async def _():
+            ok = await _catalogo_intencion_svc.actualizar(int(codigo), data["descripcion"])
+            return _ok() if ok else _err("Intención de participación no encontrada.", 404)
+        return await _handle(_)
+
+    async def delete(self, request, codigo):
+        logger.debug("[CatalogoIntencionParticipacionDetailView] DELETE eliminar codigo=%s", codigo)
+        async def _():
+            return _ok({"eliminado": await _catalogo_intencion_svc.eliminar(int(codigo))})
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoProblematicaListView(View):
-    """GET /estadisticas/catalogos/problematicas/"""
+    """GET|POST /estadisticas/catalogos/problematicas/"""
 
     async def get(self, request):
         logger.debug("[CatalogoProblematicaListView] GET listar")
@@ -196,16 +273,39 @@ class CatalogoProblematicaListView(View):
             return _ok(await _catalogo_problematica_svc.listar())
         return await _handle(_)
 
+    async def post(self, request):
+        data = _body(request)
+        logger.debug("[CatalogoProblematicaListView] POST crear codigo=%s", data.get("codigo"))
+        async def _():
+            return _ok(
+                await _catalogo_problematica_svc.crear(int(data["codigo"]), data["descripcion"]), 201
+            )
+        return await _handle(_)
+
 
 @csrf_exempt_cbv
 class CatalogoProblematicaDetailView(View):
-    """GET /estadisticas/catalogos/problematicas/<codigo>/"""
+    """GET|PUT|DELETE /estadisticas/catalogos/problematicas/<codigo>/"""
 
     async def get(self, request, codigo):
         logger.debug("[CatalogoProblematicaDetailView] GET obtener codigo=%s", codigo)
         async def _():
             obj = await _catalogo_problematica_svc.obtener(int(codigo))
             return _ok(obj) if obj else _err("Problemática no encontrada.", 404)
+        return await _handle(_)
+
+    async def put(self, request, codigo):
+        data = _body(request)
+        logger.debug("[CatalogoProblematicaDetailView] PUT actualizar codigo=%s", codigo)
+        async def _():
+            ok = await _catalogo_problematica_svc.actualizar(int(codigo), data["descripcion"])
+            return _ok() if ok else _err("Problemática no encontrada.", 404)
+        return await _handle(_)
+
+    async def delete(self, request, codigo):
+        logger.debug("[CatalogoProblematicaDetailView] DELETE eliminar codigo=%s", codigo)
+        async def _():
+            return _ok({"eliminado": await _catalogo_problematica_svc.eliminar(int(codigo))})
         return await _handle(_)
 
 

@@ -1,0 +1,849 @@
+{% extends 'base.html' %}
+{% block title %}Catálogos — Pacto Histórico{% endblock %}
+{% block page_title %}Catálogos y Rangos{% endblock %}
+{% block page_subtitle %}Gestión de catálogos estadísticos{% endblock %}
+{% block nav_catalogos %}active{% endblock %}
+
+{% block content %}
+<style>
+  .cat-wrap { padding: 4px 0; }
+
+  .cat-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 5px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .cat-tab {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 14px;
+    border-radius: calc(var(--radius-md) - 3px);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: background var(--transition), color var(--transition);
+    white-space: nowrap;
+    border: none;
+    background: transparent;
+  }
+
+  .cat-tab:hover { background: var(--border-light); color: var(--text-primary); }
+
+  .cat-tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(109,40,217,.25);
+  }
+
+  .cat-panel { display: none; }
+  .cat-panel.active { display: block; }
+
+  .cat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .cat-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .cat-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .cat-cdot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .cat-count {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: 2px 8px;
+    border-radius: 99px;
+  }
+
+  .cat-table { width: 100%; border-collapse: collapse; }
+
+  .cat-table th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-muted);
+    padding: 10px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-subtle, var(--border-light));
+  }
+
+  .cat-table td {
+    padding: 12px 20px;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-light);
+    vertical-align: middle;
+  }
+
+  .cat-table tr:last-child td { border-bottom: none; }
+  .cat-table tr:hover td { background: var(--border-light); }
+
+  .cod-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--kpi-purple-bg);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    padding: 0 6px;
+  }
+
+  .cat-empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  .cat-skeleton td { padding: 12px 20px; }
+
+  /* Inline form row */
+  .inline-form {
+    display: flex;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--accent-light);
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .inline-form input, .inline-form select {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .inline-form label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .inline-field { display: flex; flex-direction: column; flex: 1; min-width: 80px; }
+
+  /* Action btns in table */
+  .tbl-actions { display: flex; gap: 4px; }
+
+  .btn-tbl {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 7px;
+    display: flex;
+    align-items: center;
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
+  }
+
+  .btn-tbl:hover { background: var(--border-light); color: var(--text-primary); }
+  .btn-tbl.edit:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent-mid); }
+  .btn-tbl.del:hover  { background: var(--danger-bg);    color: var(--danger);  border-color: var(--danger); }
+  .btn-tbl svg { width: 13px; height: 13px; }
+
+  /* Modal confirm */
+  .cat-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .cat-modal-overlay.open { display: flex; }
+
+  .cat-modal {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  }
+
+  .cat-modal-head {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cat-modal-title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .cat-modal-body { padding: 20px; }
+
+  .cat-modal-foot {
+    padding: 0 20px 18px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Toast */
+  #catToast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 11px 18px;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-hover);
+    z-index: 400;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: transform .25s, opacity .25s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 300px;
+  }
+
+  #catToast.show { transform: translateY(0); opacity: 1; }
+</style>
+
+<div class="cat-wrap">
+
+  <!-- Tabs -->
+  <div class="cat-tabs">
+    <button class="cat-tab active" onclick="switchTab('ocupacion')">Ocupaciones</button>
+    <button class="cat-tab" onclick="switchTab('inclinacion')">Inclinación voto</button>
+    <button class="cat-tab" onclick="switchTab('intencion')">Intención participación</button>
+    <button class="cat-tab" onclick="switchTab('problematica')">Problemáticas</button>
+    <button class="cat-tab" onclick="switchTab('rango')">Rangos de edad</button>
+  </div>
+
+  <!-- ── Panel: Ocupaciones (CRUD) ── -->
+  <div class="cat-panel active" id="panel-ocupacion">
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-card-title">
+          <div class="cat-cdot"></div>
+          Catálogo de Ocupaciones
+          <span class="cat-count" id="cnt-ocupacion">0</span>
+        </div>
+        <button class="btn btn-primary" id="btnNuevoOcupacion" style="padding:6px 14px;font-size:12px;display:flex;align-items:center;gap:5px;" onclick="abrirForm('ocupacion')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo
+        </button>
+      </div>
+      <table class="cat-table">
+        <thead><tr><th>Código</th><th>Descripción</th><th>Acciones</th></tr></thead>
+        <tbody id="tbl-ocupacion"><tr class="cat-skeleton"><td colspan="3"><div class="skeleton" style="height:14px;width:60%"></div></td></tr></tbody>
+      </table>
+      <div class="inline-form" id="formOcupacion" style="display:none;">
+        <input type="hidden" id="ocupacionEditCodigo" />
+        <div class="inline-field" style="max-width:100px;">
+          <label>Código</label>
+          <input type="number" id="ocupacionCodigo" class="form-control" placeholder="1" min="1" />
+        </div>
+        <div class="inline-field">
+          <label>Descripción</label>
+          <input type="text" id="ocupacionDescripcion" class="form-control" placeholder="Ej: Estudiante" />
+        </div>
+        <div style="display:flex;gap:6px;align-self:flex-end;">
+          <button class="btn btn-primary" onclick="guardarCatalogo('ocupacion')" id="btnGuardarOcupacion">Guardar</button>
+          <button class="btn btn-secondary" onclick="cerrarForm('ocupacion')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Inclinación voto (CRUD) ── -->
+  <div class="cat-panel" id="panel-inclinacion">
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-card-title">
+          <div class="cat-cdot"></div>
+          Catálogo de Inclinación de Voto
+          <span class="cat-count" id="cnt-inclinacion">0</span>
+        </div>
+        <button class="btn btn-primary" id="btnNuevoInclinacion" style="padding:6px 14px;font-size:12px;display:flex;align-items:center;gap:5px;" onclick="abrirForm('inclinacion')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo
+        </button>
+      </div>
+      <table class="cat-table">
+        <thead><tr><th>Código</th><th>Descripción</th><th>Acciones</th></tr></thead>
+        <tbody id="tbl-inclinacion"><tr class="cat-skeleton"><td colspan="3"><div class="skeleton" style="height:14px;width:60%"></div></td></tr></tbody>
+      </table>
+      <div class="inline-form" id="formInclinacion" style="display:none;">
+        <input type="hidden" id="inclinacionEditCodigo" />
+        <div class="inline-field" style="max-width:100px;">
+          <label>Código</label>
+          <input type="number" id="inclinacionCodigo" class="form-control" placeholder="1" min="1" />
+        </div>
+        <div class="inline-field">
+          <label>Descripción</label>
+          <input type="text" id="inclinacionDescripcion" class="form-control" placeholder="Ej: Afín" />
+        </div>
+        <div style="display:flex;gap:6px;align-self:flex-end;">
+          <button class="btn btn-primary" onclick="guardarCatalogo('inclinacion')" id="btnGuardarInclinacion">Guardar</button>
+          <button class="btn btn-secondary" onclick="cerrarForm('inclinacion')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Intención participación (CRUD) ── -->
+  <div class="cat-panel" id="panel-intencion">
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-card-title">
+          <div class="cat-cdot"></div>
+          Catálogo de Intención de Participación
+          <span class="cat-count" id="cnt-intencion">0</span>
+        </div>
+        <button class="btn btn-primary" id="btnNuevoIntencion" style="padding:6px 14px;font-size:12px;display:flex;align-items:center;gap:5px;" onclick="abrirForm('intencion')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo
+        </button>
+      </div>
+      <table class="cat-table">
+        <thead><tr><th>Código</th><th>Descripción</th><th>Acciones</th></tr></thead>
+        <tbody id="tbl-intencion"><tr class="cat-skeleton"><td colspan="3"><div class="skeleton" style="height:14px;width:60%"></div></td></tr></tbody>
+      </table>
+      <div class="inline-form" id="formIntencion" style="display:none;">
+        <input type="hidden" id="intencionEditCodigo" />
+        <div class="inline-field" style="max-width:100px;">
+          <label>Código</label>
+          <input type="number" id="intencionCodigo" class="form-control" placeholder="1" min="1" />
+        </div>
+        <div class="inline-field">
+          <label>Descripción</label>
+          <input type="text" id="intencionDescripcion" class="form-control" placeholder="Ej: Activo" />
+        </div>
+        <div style="display:flex;gap:6px;align-self:flex-end;">
+          <button class="btn btn-primary" onclick="guardarCatalogo('intencion')" id="btnGuardarIntencion">Guardar</button>
+          <button class="btn btn-secondary" onclick="cerrarForm('intencion')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Problemáticas (CRUD) ── -->
+  <div class="cat-panel" id="panel-problematica">
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-card-title">
+          <div class="cat-cdot"></div>
+          Catálogo de Problemáticas
+          <span class="cat-count" id="cnt-problematica">0</span>
+        </div>
+        <button class="btn btn-primary" id="btnNuevoProblematica" style="padding:6px 14px;font-size:12px;display:flex;align-items:center;gap:5px;" onclick="abrirForm('problematica')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo
+        </button>
+      </div>
+      <table class="cat-table">
+        <thead><tr><th>Código</th><th>Descripción</th><th>Acciones</th></tr></thead>
+        <tbody id="tbl-problematica"><tr class="cat-skeleton"><td colspan="3"><div class="skeleton" style="height:14px;width:60%"></div></td></tr></tbody>
+      </table>
+      <div class="inline-form" id="formProblematica" style="display:none;">
+        <input type="hidden" id="problematicaEditCodigo" />
+        <div class="inline-field" style="max-width:100px;">
+          <label>Código</label>
+          <input type="number" id="problematicaCodigo" class="form-control" placeholder="1" min="1" />
+        </div>
+        <div class="inline-field">
+          <label>Descripción</label>
+          <input type="text" id="problematicaDescripcion" class="form-control" placeholder="Ej: Inseguridad" />
+        </div>
+        <div style="display:flex;gap:6px;align-self:flex-end;">
+          <button class="btn btn-primary" onclick="guardarCatalogo('problematica')" id="btnGuardarProblematica">Guardar</button>
+          <button class="btn btn-secondary" onclick="cerrarForm('problematica')">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel: Rangos de edad (CRUD completo) ── -->
+  <div class="cat-panel" id="panel-rango">
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-card-title">
+          <div class="cat-cdot"></div>
+          Rangos de Edad
+          <span class="cat-count" id="cnt-rango">0</span>
+        </div>
+        <button class="btn btn-primary" id="btnNuevoRango" style="padding:6px 14px;font-size:12px;display:flex;align-items:center;gap:5px;" onclick="abrirFormRango()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+          Nuevo rango
+        </button>
+      </div>
+      <table class="cat-table">
+        <thead><tr><th>Etiqueta</th><th>Edad mín.</th><th>Edad máx.</th><th>Acciones</th></tr></thead>
+        <tbody id="tbl-rango"><tr class="cat-skeleton"><td colspan="4"><div class="skeleton" style="height:14px;width:60%"></div></td></tr></tbody>
+      </table>
+      <!-- Inline form (oculto por defecto) -->
+      <div class="inline-form" id="formRango" style="display:none;">
+        <input type="hidden" id="rangoEditId" />
+        <div class="inline-field">
+          <label>Etiqueta</label>
+          <input type="text" id="rangoEtiqueta" class="form-control" placeholder="Ej: 18-25 años" />
+        </div>
+        <div class="inline-field" style="max-width:100px;">
+          <label>Edad mín.</label>
+          <input type="number" id="rangoMin" class="form-control" placeholder="18" min="0" max="120" />
+        </div>
+        <div class="inline-field" style="max-width:100px;">
+          <label>Edad máx.</label>
+          <input type="number" id="rangoMax" class="form-control" placeholder="25" min="0" max="120" />
+        </div>
+        <div style="display:flex;gap:6px;align-self:flex-end;">
+          <button class="btn btn-primary" onclick="guardarRango()" id="btnGuardarRango">Guardar</button>
+          <button class="btn btn-secondary" onclick="cerrarFormRango()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal confirmar eliminación catálogo -->
+<div class="cat-modal-overlay" id="modalConfirmCat">
+  <div class="cat-modal">
+    <div class="cat-modal-head">
+      <span class="cat-modal-title">Confirmar eliminación</span>
+      <button onclick="cerrarModalConfirmCat()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="cat-modal-body">
+      <p style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.5;" id="confirmCatMsg">¿Eliminar este registro?</p>
+    </div>
+    <div class="cat-modal-foot">
+      <button class="btn btn-secondary" onclick="cerrarModalConfirmCat()">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmElimCat">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmar eliminación rango -->
+<div class="cat-modal-overlay" id="modalConfirmRango">
+  <div class="cat-modal">
+    <div class="cat-modal-head">
+      <span class="cat-modal-title">Confirmar eliminación</span>
+      <button onclick="cerrarModalConfirm()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="cat-modal-body">
+      <p style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.5;" id="confirmRangoMsg">¿Eliminar este rango de edad?</p>
+    </div>
+    <div class="cat-modal-foot">
+      <button class="btn btn-secondary" onclick="cerrarModalConfirm()">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmElimRango">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div id="catToast"><span id="catToastIcon"></span><span id="catToastMsg"></span></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const API = (path, opts = {}) =>
+  fetch(`/estadisticas${path}`, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers }, ...opts,
+  }).then(r => r.json());
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, ok = true) {
+  const t = document.getElementById('catToast');
+  document.getElementById('catToastIcon').textContent = ok ? '✓' : '✕';
+  document.getElementById('catToastIcon').style.color = ok ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('catToastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.cat-tab').forEach((t, i) => {
+    const tabs = ['ocupacion','inclinacion','intencion','problematica','rango'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.cat-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Catálogos (CRUD genérico, PK = codigo entero) ─────────────────────────
+const CAT_CFG = {
+  ocupacion:   { api: '/api/catalogos/ocupaciones/',            tbl: 'tbl-ocupacion',   cnt: 'cnt-ocupacion'   },
+  inclinacion: { api: '/api/catalogos/inclinaciones-voto/',     tbl: 'tbl-inclinacion', cnt: 'cnt-inclinacion' },
+  intencion:   { api: '/api/catalogos/intenciones-participacion/', tbl: 'tbl-intencion', cnt: 'cnt-intencion' },
+  problematica:{ api: '/api/catalogos/problematicas/',          tbl: 'tbl-problematica',cnt: 'cnt-problematica'},
+};
+const _catalogos = { ocupacion: [], inclinacion: [], intencion: [], problematica: [] };
+let _pendingDeleteCat = null;  // { tipo, codigo, descripcion }
+
+function _capName(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function renderCatalogo(tipo) {
+  const cfg  = CAT_CFG[tipo];
+  const data = _catalogos[tipo];
+  document.getElementById(cfg.cnt).textContent = data.length;
+  const tbody = document.getElementById(cfg.tbl);
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="cat-empty">Sin registros. Crea el primero.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td><span class="cod-badge">${r.codigo}</span></td>
+      <td>${r.descripcion}</td>
+      <td>
+        <div class="tbl-actions">
+          <button class="btn-tbl edit" title="Editar" onclick="editarCatalogo('${tipo}', ${r.codigo})">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>
+          </button>
+          <button class="btn-tbl del" title="Eliminar" onclick="confirmarElimCat('${tipo}', ${r.codigo}, '${r.descripcion.replace(/'/g,"\\'")}')">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+async function loadCatalogo(tipo) {
+  const cfg = CAT_CFG[tipo];
+  const res = await API(cfg.api);
+  _catalogos[tipo] = res.data || [];
+  renderCatalogo(tipo);
+}
+
+function abrirForm(tipo) {
+  const cap = _capName(tipo);
+  document.getElementById(`${tipo}EditCodigo`).value = '';
+  document.getElementById(`${tipo}Codigo`).value = '';
+  document.getElementById(`${tipo}Codigo`).disabled = false;
+  document.getElementById(`${tipo}Descripcion`).value = '';
+  document.getElementById(`btnGuardar${cap}`).textContent = 'Guardar';
+  document.getElementById(`form${cap}`).style.display = 'flex';
+  document.getElementById(`btnNuevo${cap}`).style.display = 'none';
+  document.getElementById(`${tipo}Descripcion`).focus();
+}
+
+function editarCatalogo(tipo, codigo) {
+  const r = _catalogos[tipo].find(x => x.codigo === codigo);
+  if (!r) return;
+  const cap = _capName(tipo);
+  document.getElementById(`${tipo}EditCodigo`).value = r.codigo;
+  document.getElementById(`${tipo}Codigo`).value = r.codigo;
+  document.getElementById(`${tipo}Codigo`).disabled = true;  // no editar PK
+  document.getElementById(`${tipo}Descripcion`).value = r.descripcion;
+  document.getElementById(`btnGuardar${cap}`).textContent = 'Actualizar';
+  document.getElementById(`form${cap}`).style.display = 'flex';
+  document.getElementById(`btnNuevo${cap}`).style.display = 'none';
+  document.getElementById(`${tipo}Descripcion`).focus();
+}
+
+function cerrarForm(tipo) {
+  const cap = _capName(tipo);
+  document.getElementById(`form${cap}`).style.display = 'none';
+  document.getElementById(`btnNuevo${cap}`).style.display = 'flex';
+}
+
+async function guardarCatalogo(tipo) {
+  const cap        = _capName(tipo);
+  const editCodigo = document.getElementById(`${tipo}EditCodigo`).value;
+  const codigo     = parseInt(document.getElementById(`${tipo}Codigo`).value);
+  const descripcion = document.getElementById(`${tipo}Descripcion`).value.trim();
+
+  if (!descripcion || (!editCodigo && isNaN(codigo))) {
+    toast('Todos los campos son obligatorios.', false); return;
+  }
+
+  const btn = document.getElementById(`btnGuardar${cap}`);
+  btn.disabled = true; btn.textContent = 'Guardando…';
+
+  try {
+    let res;
+    if (editCodigo) {
+      res = await API(`${CAT_CFG[tipo].api}${editCodigo}/`, {
+        method: 'PUT', body: JSON.stringify({ descripcion }),
+      });
+    } else {
+      res = await API(CAT_CFG[tipo].api, {
+        method: 'POST', body: JSON.stringify({ codigo, descripcion }),
+      });
+    }
+    if (res.ok) {
+      toast(editCodigo ? 'Registro actualizado' : 'Registro creado');
+      cerrarForm(tipo);
+      await loadCatalogo(tipo);
+    } else {
+      toast(res.error || 'Error al guardar', false);
+    }
+  } catch {
+    toast('Error de conexión', false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function confirmarElimCat(tipo, codigo, descripcion) {
+  _pendingDeleteCat = { tipo, codigo };
+  document.getElementById('confirmCatMsg').innerHTML =
+    `¿Eliminar <strong>${descripcion}</strong> (código ${codigo})? Esta acción no se puede deshacer.`;
+  document.getElementById('modalConfirmCat').classList.add('open');
+}
+
+function cerrarModalConfirmCat() {
+  document.getElementById('modalConfirmCat').classList.remove('open');
+  _pendingDeleteCat = null;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnConfirmElimCat').addEventListener('click', async function() {
+    if (!_pendingDeleteCat) return;
+    this.disabled = true; this.textContent = 'Eliminando…';
+    const { tipo, codigo } = _pendingDeleteCat;
+    try {
+      const res = await API(`${CAT_CFG[tipo].api}${codigo}/`, { method: 'DELETE' });
+      if (res.ok) {
+        toast('Registro eliminado');
+        cerrarModalConfirmCat();
+        await loadCatalogo(tipo);
+      } else {
+        toast(res.error || 'Error al eliminar', false);
+      }
+    } catch {
+      toast('Error de conexión', false);
+    } finally {
+      this.disabled = false; this.textContent = 'Eliminar';
+    }
+  });
+
+  document.getElementById('modalConfirmCat').addEventListener('click', e => {
+    if (e.target === e.currentTarget) cerrarModalConfirmCat();
+  });
+
+  // Enter / Escape en los forms de catálogos
+  ['ocupacion','inclinacion','intencion','problematica'].forEach(tipo => {
+    [`${tipo}Codigo`, `${tipo}Descripcion`].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter')  guardarCatalogo(tipo);
+          if (e.key === 'Escape') cerrarForm(tipo);
+        });
+      }
+    });
+  });
+});
+
+async function loadOcupacion()    { await loadCatalogo('ocupacion'); }
+async function loadInclinacion()  { await loadCatalogo('inclinacion'); }
+async function loadIntencion()    { await loadCatalogo('intencion'); }
+async function loadProblematica() { await loadCatalogo('problematica'); }
+
+// ── Rangos de edad (CRUD) ──────────────────────────────────────────────────
+let rangos = [];
+let _pendingDeleteRango = null;
+
+async function loadRangos() {
+  const res = await API('/api/rangos-edad/');
+  rangos = res.data || [];
+  renderRangos();
+}
+
+function renderRangos() {
+  document.getElementById('cnt-rango').textContent = rangos.length;
+  const tbody = document.getElementById('tbl-rango');
+  if (!rangos.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="cat-empty">Sin rangos de edad. Crea el primero.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rangos.map(r => `
+    <tr>
+      <td style="font-weight:600;">${r.etiqueta}</td>
+      <td>${r.edad_min}</td>
+      <td>${r.edad_max}</td>
+      <td>
+        <div class="tbl-actions">
+          <button class="btn-tbl edit" title="Editar" onclick="editarRango('${r.id}')">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>
+          </button>
+          <button class="btn-tbl del" title="Eliminar" onclick="confirmarElimRango('${r.id}','${r.etiqueta.replace(/'/g,"\\'")}')">
+            <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function abrirFormRango() {
+  document.getElementById('rangoEditId').value = '';
+  document.getElementById('rangoEtiqueta').value = '';
+  document.getElementById('rangoMin').value = '';
+  document.getElementById('rangoMax').value = '';
+  document.getElementById('btnGuardarRango').textContent = 'Guardar';
+  document.getElementById('formRango').style.display = 'flex';
+  document.getElementById('btnNuevoRango').style.display = 'none';
+  document.getElementById('rangoEtiqueta').focus();
+}
+
+function editarRango(id) {
+  const r = rangos.find(x => String(x.id) === String(id));
+  if (!r) return;
+  document.getElementById('rangoEditId').value = r.id;
+  document.getElementById('rangoEtiqueta').value = r.etiqueta;
+  document.getElementById('rangoMin').value = r.edad_min;
+  document.getElementById('rangoMax').value = r.edad_max;
+  document.getElementById('btnGuardarRango').textContent = 'Actualizar';
+  document.getElementById('formRango').style.display = 'flex';
+  document.getElementById('btnNuevoRango').style.display = 'none';
+  document.getElementById('rangoEtiqueta').focus();
+}
+
+function cerrarFormRango() {
+  document.getElementById('formRango').style.display = 'none';
+  document.getElementById('btnNuevoRango').style.display = 'flex';
+}
+
+async function guardarRango() {
+  const id       = document.getElementById('rangoEditId').value;
+  const etiqueta = document.getElementById('rangoEtiqueta').value.trim();
+  const edad_min = parseInt(document.getElementById('rangoMin').value);
+  const edad_max = parseInt(document.getElementById('rangoMax').value);
+
+  if (!etiqueta || isNaN(edad_min) || isNaN(edad_max)) {
+    toast('Todos los campos son obligatorios.', false); return;
+  }
+  if (edad_max <= edad_min) {
+    toast('La edad máxima debe ser mayor que la mínima.', false); return;
+  }
+
+  const btn = document.getElementById('btnGuardarRango');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+
+  try {
+    let res;
+    if (id) {
+      res = await API(`/api/rangos-edad/${id}/`, {
+        method: 'PUT', body: JSON.stringify({ etiqueta, edad_min, edad_max }),
+      });
+    } else {
+      res = await API('/api/rangos-edad/', {
+        method: 'POST', body: JSON.stringify({ etiqueta, edad_min, edad_max }),
+      });
+    }
+    if (res.ok) {
+      toast(id ? 'Rango actualizado' : 'Rango creado');
+      cerrarFormRango();
+      await loadRangos();
+    } else {
+      toast(res.error || 'Error al guardar', false);
+    }
+  } catch {
+    toast('Error de conexión', false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function confirmarElimRango(id, etiqueta) {
+  _pendingDeleteRango = id;
+  document.getElementById('confirmRangoMsg').innerHTML =
+    `¿Eliminar el rango <strong>${etiqueta}</strong>? Esta acción no se puede deshacer.`;
+  document.getElementById('modalConfirmRango').classList.add('open');
+}
+
+function cerrarModalConfirm() {
+  document.getElementById('modalConfirmRango').classList.remove('open');
+  _pendingDeleteRango = null;
+}
+
+document.getElementById('btnConfirmElimRango').addEventListener('click', async function() {
+  if (!_pendingDeleteRango) return;
+  this.disabled = true; this.textContent = 'Eliminando…';
+  try {
+    const res = await API(`/api/rangos-edad/${_pendingDeleteRango}/`, { method: 'DELETE' });
+    if (res.ok) {
+      toast('Rango eliminado');
+      cerrarModalConfirm();
+      await loadRangos();
+    } else {
+      toast(res.error || 'Error al eliminar', false);
+    }
+  } catch {
+    toast('Error de conexión', false);
+  } finally {
+    this.disabled = false; this.textContent = 'Eliminar';
+  }
+});
+
+document.getElementById('modalConfirmRango').addEventListener('click', e => {
+  if (e.target === e.currentTarget) cerrarModalConfirm();
+});
+
+// Enter en inputs del form
+['rangoEtiqueta','rangoMin','rangoMax'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') guardarRango();
+    if (e.key === 'Escape') cerrarFormRango();
+  });
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+Promise.all([loadOcupacion(), loadInclinacion(), loadIntencion(), loadProblematica(), loadRangos()]);
+</script>
+{% endblock %}

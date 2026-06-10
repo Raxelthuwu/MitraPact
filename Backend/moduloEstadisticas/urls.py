@@ -1,5 +1,5 @@
-from django.urls import path
-from .views import dashboard_estadisticas, cruces_estadisticas, importacion_estadisticas, analisis_territorial_estadisticas
+from django.urls import path, re_path
+from .views import dashboard_estadisticas, cruces_estadisticas, importacion_estadisticas, analisis_territorial_estadisticas, catalogos_estadisticas
 
 from Backend.moduloEstadisticas.views import (
     # Catálogos
@@ -86,15 +86,20 @@ urlpatterns = [
         importacion_estadisticas,
         name="importacion-estadisticas"
     ),
+    path(
+        "catalogos/",
+        catalogos_estadisticas,
+        name="catalogos-estadisticas"
+    ),
 
-    # ─── API REST — Catálogos (solo lectura) ──────────────────────────────────
+    # ─── API REST — Catálogos (CRUD completo) ─────────────────────────────────
     path(
         "api/catalogos/ocupaciones/",
         CatalogoOcupacionListView.as_view(),
         name="catalogo-ocupacion-list",
     ),
-    path(
-        "api/catalogos/ocupaciones/<int:codigo>/",
+    re_path(
+        r"^api/catalogos/ocupaciones/(?P<codigo>-?\d+)/$",
         CatalogoOcupacionDetailView.as_view(),
         name="catalogo-ocupacion-detail",
     ),
@@ -103,8 +108,8 @@ urlpatterns = [
         CatalogoInclinacionVotoListView.as_view(),
         name="catalogo-inclinacion-list",
     ),
-    path(
-        "api/catalogos/inclinaciones-voto/<int:codigo>/",
+    re_path(
+        r"^api/catalogos/inclinaciones-voto/(?P<codigo>-?\d+)/$",
         CatalogoInclinacionVotoDetailView.as_view(),
         name="catalogo-inclinacion-detail",
     ),
@@ -113,8 +118,8 @@ urlpatterns = [
         CatalogoIntencionParticipacionListView.as_view(),
         name="catalogo-intencion-list",
     ),
-    path(
-        "api/catalogos/intenciones-participacion/<int:codigo>/",
+    re_path(
+        r"^api/catalogos/intenciones-participacion/(?P<codigo>-?\d+)/$",
         CatalogoIntencionParticipacionDetailView.as_view(),
         name="catalogo-intencion-detail",
     ),
@@ -123,8 +128,8 @@ urlpatterns = [
         CatalogoProblematicaListView.as_view(),
         name="catalogo-problematica-list",
     ),
-    path(
-        "api/catalogos/problematicas/<int:codigo>/",
+    re_path(
+        r"^api/catalogos/problematicas/(?P<codigo>-?\d+)/$",
         CatalogoProblematicaDetailView.as_view(),
         name="catalogo-problematica-detail",
     ),
@@ -232,7 +237,6 @@ urlpatterns = [
         VariacionTemporalListView.as_view(),
         name="variacion-list",
     ),
-    # rutas fijas ANTES de <str:variacion_id> para evitar sombrado
     path(
         "api/variaciones/calcular/",
         VariacionCalcularView.as_view(),
@@ -255,7 +259,6 @@ urlpatterns = [
         RankingProblematicaListView.as_view(),
         name="ranking-list",
     ),
-    # rutas fijas ANTES de <str:ranking_id>
     path(
         "api/rankings/calcular/",
         RankingCalcularView.as_view(),
@@ -278,7 +281,6 @@ urlpatterns = [
         ResultadoCruceListView.as_view(),
         name="cruce-list",
     ),
-    # rutas fijas ANTES de <str:cruce_id>
     path(
         "api/cruces/calcular/",
         ResultadoCruceCalcularView.as_view(),
@@ -318,7 +320,6 @@ urlpatterns = [
         ExportacionResultadoListView.as_view(),
         name="exportacion-list",
     ),
-    # ruta fija ANTES de <str:exportacion_id>
     path(
         "api/exportaciones/exportar/",
         ExportacionResultadoExportarView.as_view(),

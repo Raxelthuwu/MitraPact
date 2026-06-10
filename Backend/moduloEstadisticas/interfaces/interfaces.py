@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 
 # =============================================================================
-# CATÁLOGOS (solo lectura)
+# CATÁLOGOS (CRUD completo)
 # =============================================================================
 
 class ICatalogoOcupacionService(ABC):
@@ -14,6 +14,15 @@ class ICatalogoOcupacionService(ABC):
     @abstractmethod
     async def obtener(self, codigo: int) -> Optional[Dict]: ...
 
+    @abstractmethod
+    async def crear(self, codigo: int, descripcion: str) -> Dict: ...
+
+    @abstractmethod
+    async def actualizar(self, codigo: int, descripcion: str) -> bool: ...
+
+    @abstractmethod
+    async def eliminar(self, codigo: int) -> bool: ...
+
 
 class ICatalogoInclinacionVotoService(ABC):
 
@@ -22,6 +31,15 @@ class ICatalogoInclinacionVotoService(ABC):
 
     @abstractmethod
     async def obtener(self, codigo: int) -> Optional[Dict]: ...
+
+    @abstractmethod
+    async def crear(self, codigo: int, descripcion: str) -> Dict: ...
+
+    @abstractmethod
+    async def actualizar(self, codigo: int, descripcion: str) -> bool: ...
+
+    @abstractmethod
+    async def eliminar(self, codigo: int) -> bool: ...
 
 
 class ICatalogoIntencionParticipacionService(ABC):
@@ -32,6 +50,15 @@ class ICatalogoIntencionParticipacionService(ABC):
     @abstractmethod
     async def obtener(self, codigo: int) -> Optional[Dict]: ...
 
+    @abstractmethod
+    async def crear(self, codigo: int, descripcion: str) -> Dict: ...
+
+    @abstractmethod
+    async def actualizar(self, codigo: int, descripcion: str) -> bool: ...
+
+    @abstractmethod
+    async def eliminar(self, codigo: int) -> bool: ...
+
 
 class ICatalogoProblematicaService(ABC):
 
@@ -40,6 +67,15 @@ class ICatalogoProblematicaService(ABC):
 
     @abstractmethod
     async def obtener(self, codigo: int) -> Optional[Dict]: ...
+
+    @abstractmethod
+    async def crear(self, codigo: int, descripcion: str) -> Dict: ...
+
+    @abstractmethod
+    async def actualizar(self, codigo: int, descripcion: str) -> bool: ...
+
+    @abstractmethod
+    async def eliminar(self, codigo: int) -> bool: ...
 
 
 # =============================================================================
