@@ -259,10 +259,10 @@ def _parsear_fila_csv(
 # SERVICIOS
 # =============================================================================
 
-# ── Catálogos (solo lectura) ──────────────────────────────────────────────────
+# ── Catálogos (CRUD completo) ─────────────────────────────────────────────────
 
 class _CatalogoBaseService:
-    """Base para los cuatro catálogos de solo lectura."""
+    """Base para los cuatro catálogos con CRUD completo."""
     _modelo = None  # subclases asignan el modelo concreto
 
     async def listar(self) -> List[Dict]:
@@ -276,6 +276,30 @@ class _CatalogoBaseService:
         result = await sync_to_async(self._modelo.obtener)(codigo)
         if not result:
             logger.warning("[%s.obtener] No encontrado: codigo=%s.", self.__class__.__name__, codigo)
+        return result
+
+    async def crear(self, codigo: int, descripcion: str) -> Dict:
+        logger.info("[%s.crear] codigo=%s.", self.__class__.__name__, codigo)
+        if codigo < 1:
+            raise ValueError("El código debe ser un número entero positivo (≥ 1).")
+        if not descripcion or not descripcion.strip():
+            raise ValueError("La descripción no puede estar vacía.")
+        result = await sync_to_async(self._modelo.crear)(codigo, descripcion.strip())
+        logger.info("[%s.crear] Registro creado.", self.__class__.__name__)
+        return result
+
+    async def actualizar(self, codigo: int, descripcion: str) -> bool:
+        logger.info("[%s.actualizar] codigo=%s.", self.__class__.__name__, codigo)
+        result = await sync_to_async(self._modelo.actualizar)(codigo, descripcion)
+        if not result:
+            logger.warning("[%s.actualizar] No encontrado: codigo=%s.", self.__class__.__name__, codigo)
+        return result
+
+    async def eliminar(self, codigo: int) -> bool:
+        logger.info("[%s.eliminar] codigo=%s.", self.__class__.__name__, codigo)
+        result = await sync_to_async(self._modelo.eliminar)(codigo)
+        if not result:
+            logger.warning("[%s.eliminar] No encontrado: codigo=%s.", self.__class__.__name__, codigo)
         return result
 
 

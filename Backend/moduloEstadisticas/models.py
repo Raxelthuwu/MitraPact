@@ -74,6 +74,44 @@ class CatalogoOcupacion:
             logger.warning("[CatalogoOcupacion.obtener] No se encontró codigo=%s.", codigo)
         return result
 
+    @classmethod
+    def crear(cls, codigo: int, descripcion: str) -> Dict:
+        logger.info("[CatalogoOcupacion.crear] Creando codigo=%s descripcion='%s'.", codigo, descripcion)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {cls.TABLE} (codigo, descripcion) VALUES (%s, %s)",
+                [codigo, descripcion],
+            )
+        logger.info("[CatalogoOcupacion.crear] Registro creado codigo=%s.", codigo)
+        return {"codigo": codigo, "descripcion": descripcion}
+
+    @classmethod
+    def actualizar(cls, codigo: int, descripcion: str) -> bool:
+        logger.info("[CatalogoOcupacion.actualizar] Actualizando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE {cls.TABLE} SET descripcion = %s WHERE codigo = %s",
+                [descripcion, codigo],
+            )
+            updated = cur.rowcount > 0
+        if updated:
+            logger.info("[CatalogoOcupacion.actualizar] Registro codigo=%s actualizado.", codigo)
+        else:
+            logger.warning("[CatalogoOcupacion.actualizar] No se encontró codigo=%s.", codigo)
+        return updated
+
+    @classmethod
+    def eliminar(cls, codigo: int) -> bool:
+        logger.info("[CatalogoOcupacion.eliminar] Eliminando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(f"DELETE FROM {cls.TABLE} WHERE codigo = %s", [codigo])
+            deleted = cur.rowcount > 0
+        if deleted:
+            logger.info("[CatalogoOcupacion.eliminar] Registro codigo=%s eliminado.", codigo)
+        else:
+            logger.warning("[CatalogoOcupacion.eliminar] No se encontró codigo=%s.", codigo)
+        return deleted
+
 
 class CatalogoInclinacionVoto:
     TABLE = db.catalogo_inclinacion_voto
@@ -101,6 +139,44 @@ class CatalogoInclinacionVoto:
         else:
             logger.warning("[CatalogoInclinacionVoto.obtener] No se encontró codigo=%s.", codigo)
         return result
+
+    @classmethod
+    def crear(cls, codigo: int, descripcion: str) -> Dict:
+        logger.info("[CatalogoInclinacionVoto.crear] Creando codigo=%s descripcion='%s'.", codigo, descripcion)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {cls.TABLE} (codigo, descripcion) VALUES (%s, %s)",
+                [codigo, descripcion],
+            )
+        logger.info("[CatalogoInclinacionVoto.crear] Registro creado codigo=%s.", codigo)
+        return {"codigo": codigo, "descripcion": descripcion}
+
+    @classmethod
+    def actualizar(cls, codigo: int, descripcion: str) -> bool:
+        logger.info("[CatalogoInclinacionVoto.actualizar] Actualizando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE {cls.TABLE} SET descripcion = %s WHERE codigo = %s",
+                [descripcion, codigo],
+            )
+            updated = cur.rowcount > 0
+        if updated:
+            logger.info("[CatalogoInclinacionVoto.actualizar] Registro codigo=%s actualizado.", codigo)
+        else:
+            logger.warning("[CatalogoInclinacionVoto.actualizar] No se encontró codigo=%s.", codigo)
+        return updated
+
+    @classmethod
+    def eliminar(cls, codigo: int) -> bool:
+        logger.info("[CatalogoInclinacionVoto.eliminar] Eliminando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(f"DELETE FROM {cls.TABLE} WHERE codigo = %s", [codigo])
+            deleted = cur.rowcount > 0
+        if deleted:
+            logger.info("[CatalogoInclinacionVoto.eliminar] Registro codigo=%s eliminado.", codigo)
+        else:
+            logger.warning("[CatalogoInclinacionVoto.eliminar] No se encontró codigo=%s.", codigo)
+        return deleted
 
 
 class CatalogoIntencionParticipacion:
@@ -130,6 +206,44 @@ class CatalogoIntencionParticipacion:
             logger.warning("[CatalogoIntencionParticipacion.obtener] No se encontró codigo=%s.", codigo)
         return result
 
+    @classmethod
+    def crear(cls, codigo: int, descripcion: str) -> Dict:
+        logger.info("[CatalogoIntencionParticipacion.crear] Creando codigo=%s descripcion='%s'.", codigo, descripcion)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {cls.TABLE} (codigo, descripcion) VALUES (%s, %s)",
+                [codigo, descripcion],
+            )
+        logger.info("[CatalogoIntencionParticipacion.crear] Registro creado codigo=%s.", codigo)
+        return {"codigo": codigo, "descripcion": descripcion}
+
+    @classmethod
+    def actualizar(cls, codigo: int, descripcion: str) -> bool:
+        logger.info("[CatalogoIntencionParticipacion.actualizar] Actualizando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE {cls.TABLE} SET descripcion = %s WHERE codigo = %s",
+                [descripcion, codigo],
+            )
+            updated = cur.rowcount > 0
+        if updated:
+            logger.info("[CatalogoIntencionParticipacion.actualizar] Registro codigo=%s actualizado.", codigo)
+        else:
+            logger.warning("[CatalogoIntencionParticipacion.actualizar] No se encontró codigo=%s.", codigo)
+        return updated
+
+    @classmethod
+    def eliminar(cls, codigo: int) -> bool:
+        logger.info("[CatalogoIntencionParticipacion.eliminar] Eliminando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(f"DELETE FROM {cls.TABLE} WHERE codigo = %s", [codigo])
+            deleted = cur.rowcount > 0
+        if deleted:
+            logger.info("[CatalogoIntencionParticipacion.eliminar] Registro codigo=%s eliminado.", codigo)
+        else:
+            logger.warning("[CatalogoIntencionParticipacion.eliminar] No se encontró codigo=%s.", codigo)
+        return deleted
+
 
 class CatalogoProblematica:
     TABLE = db.catalogo_problematica
@@ -157,6 +271,44 @@ class CatalogoProblematica:
         else:
             logger.warning("[CatalogoProblematica.obtener] No se encontró codigo=%s.", codigo)
         return result
+
+    @classmethod
+    def crear(cls, codigo: int, descripcion: str) -> Dict:
+        logger.info("[CatalogoProblematica.crear] Creando codigo=%s descripcion='%s'.", codigo, descripcion)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO {cls.TABLE} (codigo, descripcion) VALUES (%s, %s)",
+                [codigo, descripcion],
+            )
+        logger.info("[CatalogoProblematica.crear] Registro creado codigo=%s.", codigo)
+        return {"codigo": codigo, "descripcion": descripcion}
+
+    @classmethod
+    def actualizar(cls, codigo: int, descripcion: str) -> bool:
+        logger.info("[CatalogoProblematica.actualizar] Actualizando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE {cls.TABLE} SET descripcion = %s WHERE codigo = %s",
+                [descripcion, codigo],
+            )
+            updated = cur.rowcount > 0
+        if updated:
+            logger.info("[CatalogoProblematica.actualizar] Registro codigo=%s actualizado.", codigo)
+        else:
+            logger.warning("[CatalogoProblematica.actualizar] No se encontró codigo=%s.", codigo)
+        return updated
+
+    @classmethod
+    def eliminar(cls, codigo: int) -> bool:
+        logger.info("[CatalogoProblematica.eliminar] Eliminando codigo=%s.", codigo)
+        with connection.cursor() as cur:
+            cur.execute(f"DELETE FROM {cls.TABLE} WHERE codigo = %s", [codigo])
+            deleted = cur.rowcount > 0
+        if deleted:
+            logger.info("[CatalogoProblematica.eliminar] Registro codigo=%s eliminado.", codigo)
+        else:
+            logger.warning("[CatalogoProblematica.eliminar] No se encontró codigo=%s.", codigo)
+        return deleted
 
 
 # =============================================================================
@@ -554,13 +706,19 @@ class Encuesta:
         if not periodo:
             logger.warning("[Encuesta.listar_por_periodo] Período %s no encontrado.", periodo_id)
             return []
+        
+        # CORRECCIÓN: Filtramos directamente por el UUID del periodo_id 
+        # para garantizar un aislamiento absoluto entre periodos.
         sql = (
             cls._base_select()
-            + " WHERE e.fecha >= %s AND e.fecha <= %s ORDER BY e.fecha DESC"
+            + " WHERE e.periodo_id = %s ORDER BY e.fecha DESC"
         )
+        
         with connection.cursor() as cur:
-            cur.execute(sql, [periodo["fecha_inicio"], periodo["fecha_fin"]])
+            # Pasamos el periodo_id como argumento seguro
+            cur.execute(sql, [periodo_id])
             result = [_str_fields(r) for r in _fetchall(cur)]
+            
         logger.info("[Encuesta.listar_por_periodo] %d encuestas encontradas.", len(result))
         return result
 
