@@ -31,6 +31,7 @@ from Backend.moduloBusquedaSemantica.views import (
     BarrioFilterView,
     AuditoriaFilterView,
     ConsultaSemanticaView,
+    BusquedaPalabrasView,
 )
 
 urlpatterns = [
@@ -67,7 +68,7 @@ urlpatterns = [
     path('busqueda/temas/',              TemaBusquedaView.as_view(),        name='busqueda-temas'),
     path('busqueda/fragmentos/',         FragmentoBusquedaView.as_view(),   name='busqueda-fragmentos'),
     path('busqueda/argumentos/',         ArgumentoBusquedaView.as_view(),   name='busqueda-argumentos'),
-
+    path('busqueda/palabras/', BusquedaPalabrasView.as_view(), name='busqueda-palabras'),
     # ── API — Filtros ─────────────────────────────────────────────────────────
     path('filter/distribucion/',         DistribucionFilterView.as_view(),   name='filter-distribucion'),
     path('filter/problematica/',         ProblematicaFilterView.as_view(),   name='filter-problematica'),

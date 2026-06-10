@@ -20,6 +20,21 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
     # PÚBLICOS
     # -------------------------------------------------------------------------
 
+
+
+
+    async def buscarPorPalabras(
+        self,
+        texto: str,
+        nResultados: int = 20
+    ) -> dict:
+        logger.info(f"[ConsultaSemanticaService] Búsqueda por palabras: '{texto}'")
+
+        fragmentos = await Fragmento.buscarPorTextoGlobal(texto, nResultados)
+
+        logger.info(f"[ConsultaSemanticaService] {len(fragmentos)} fragmentos encontrados.")
+        return {'fragmentos': fragmentos, 'total': len(fragmentos)}
+
     async def buscarPorLenguajeNatural(
         self,
         consulta: str,

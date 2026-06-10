@@ -13,9 +13,9 @@ from .filterViews               import (
     BarrioFilterView,
     AuditoriaFilterView,
 )
-from .consultaSemanticaViews    import ConsultaSemanticaView
+from .consultaSemanticaViews    import ConsultaSemanticaView, BusquedaPalabrasView
 from .argumentoViews            import ArgumentoDetalleView, ArgumentoCreateView
-from .ArgumentosFrecuentesview import (
+from .ArgumentosFrecuentesview  import (
     argumentos_frecuentes_vista,
     ArgumentosFrecuentesView,
     ArgumentoIncrementarView,
@@ -51,6 +51,7 @@ __all__ = [
     'AuditoriaFilterView',
     # Consulta semántica
     'ConsultaSemanticaView',
+    'BusquedaPalabrasView',
     # Argumentos
     'ArgumentoDetalleView',
     'ArgumentoCreateView',
@@ -58,7 +59,7 @@ __all__ = [
     'ArgumentoIncrementarView',
     # Opiniones
     'OpinionesClasificadasView',
-    # Frontend (vistas HTML)
+    # Frontend
     'argumentos_frecuentes_vista',
     'dashboard_vista',
     'documento_lista_vista',

@@ -106,3 +106,26 @@ class ArgumentoDetailView(View):
             return _safe_json_response(
                 {'error': 'Error interno al actualizar el argumento.'}, status=500
             )
+        
+@method_decorator(csrf_exempt, name='dispatch')
+class BusquedaPalabrasView(View):
+    async def get(self, request):
+        try:
+            texto       = request.GET.get('texto', '').strip()
+            nResultados = int(request.GET.get('nResultados', '20'))
+
+            if not texto or len(texto) < 2:
+                return _safe_json_response(
+                    {'error': 'El texto debe tener al menos 2 caracteres.'},
+                    status=400
+                )
+
+            resultado = await _consulta_svc.buscarPorPalabras(texto, nResultados)
+            return _safe_json_response(resultado)
+
+        except Exception as e:
+            logger.error(f"[BusquedaPalabrasView] Error: {e}", exc_info=True)
+            return _safe_json_response(
+                {'error': 'Error interno en la búsqueda.'},
+                status=500
+            )

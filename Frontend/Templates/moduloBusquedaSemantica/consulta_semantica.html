@@ -1,19 +1,14 @@
 {% extends "base.HTML" %}
 {% load static %}
-
 {% block title %}Búsqueda Semántica · Pacto Histórico{% endblock %}
 {% block nav_busqueda %}active{% endblock %}
 {% block page_title %}Búsqueda Semántica{% endblock %}
-{% block page_subtitle %}Consulta por lenguaje natural o por problemática{% endblock %}
-
+{% block page_subtitle %}Consulta por lenguaje natural, problemática o palabras{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'eventos.css' %}">
 <style>
 @keyframes spin   { to { transform: rotate(360deg); } }
 @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-/* ── Overlay ── */
 #uiOverlay {
   display:none; position:fixed; inset:0; z-index:9999;
   background:rgba(244,246,251,.78); backdrop-filter:blur(4px);
@@ -27,13 +22,10 @@
   color:var(--text-secondary); font-weight:500;
 }
 .spin { animation:spin .75s linear infinite; color:var(--accent); }
-
-/* ── Modo tabs ── */
 .modo-tabs {
   display:flex; background:var(--bg-card);
   border:1px solid var(--border); border-radius:var(--radius-md);
-  padding:4px; width:fit-content; gap:3px;
-  box-shadow:var(--shadow-card);
+  padding:4px; width:fit-content; gap:3px; box-shadow:var(--shadow-card);
 }
 .modo-tab {
   display:inline-flex; align-items:center; gap:7px;
@@ -45,8 +37,6 @@
 .modo-tab:hover { color:var(--text-primary); background:var(--border-light); }
 .modo-tab.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(109,40,217,.28); }
 .modo-tab svg { width:14px; height:14px; flex-shrink:0; }
-
-/* ── Panel de búsqueda ── */
 .sem-panel {
   background:var(--bg-card); border:1px solid var(--border);
   border-radius:var(--radius-md); box-shadow:var(--shadow-card); overflow:hidden;
@@ -62,14 +52,18 @@
 }
 .sem-panel-label svg { width:13px; height:13px; }
 .sem-panel-body { padding:16px 18px; }
-
 .sem-textarea {
   width:100%; border:none; outline:none; background:transparent;
   font-family:var(--font-body); font-size:var(--font-size-md);
   color:var(--text-primary); resize:none; line-height:1.65; min-height:64px;
 }
 .sem-textarea::placeholder { color:var(--text-muted); }
-
+.sem-input {
+  width:100%; border:none; outline:none; background:transparent;
+  font-family:var(--font-body); font-size:var(--font-size-md);
+  color:var(--text-primary); line-height:1.65; padding:0;
+}
+.sem-input::placeholder { color:var(--text-muted); }
 .sem-panel-foot {
   display:flex; align-items:center; justify-content:space-between;
   padding:10px 18px; border-top:1px solid var(--border-light);
@@ -81,8 +75,6 @@
   font-size:11px; color:var(--text-secondary); box-shadow:0 1px 0 var(--border);
 }
 .sem-shortcut { display:flex; align-items:center; gap:5px; font-size:var(--font-size-xs); color:var(--text-muted); }
-
-/* ── Filtros ── */
 .sem-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .filter-chip {
   display:flex; align-items:center; gap:8px; padding:7px 14px;
@@ -97,8 +89,6 @@
   border:none; outline:none; background:transparent; font-family:inherit;
   font-size:var(--font-size-sm); color:var(--text-primary); cursor:pointer; min-width:80px;
 }
-
-/* ── Selector de problemática ── */
 .prob-select {
   width:100%; border:none; outline:none; background:transparent;
   font-family:inherit; font-size:var(--font-size-md); color:var(--text-primary);
@@ -113,19 +103,12 @@
   color:var(--accent); background:var(--accent-light);
   border-radius:99px; padding:3px 10px;
 }
-
-/* ── Barra de resultados ── */
 .results-bar {
   display:flex; align-items:center; justify-content:space-between;
   margin-bottom:14px; flex-wrap:wrap; gap:8px;
 }
-.results-title {
-  font-family:var(--font-display); font-size:var(--font-size-sm);
-  font-weight:700; color:var(--text-primary);
-}
+.results-title { font-family:var(--font-display); font-size:var(--font-size-sm); font-weight:700; color:var(--text-primary); }
 .results-query { color:var(--accent); font-style:italic; font-weight:400; }
-
-/* ── Fragmento card — rediseño ── */
 .frag-card {
   background:var(--bg-card); border:1px solid var(--border);
   border-radius:var(--radius-md); margin-bottom:10px; overflow:hidden;
@@ -134,7 +117,6 @@
   animation:fadeUp .2s ease both;
 }
 .frag-card:hover { box-shadow:var(--shadow-hover); border-color:#d1d5db; }
-
 .frag-card-head {
   display:flex; align-items:center; justify-content:space-between;
   padding:11px 16px; gap:10px; flex-wrap:wrap;
@@ -147,28 +129,17 @@
 }
 .frag-doc-name svg { width:14px; height:14px; color:var(--accent); flex-shrink:0; }
 .frag-pag { color:var(--text-muted); font-weight:400; font-size:var(--font-size-xs); }
-
-/* Score badge */
 .score-badge {
   display:inline-flex; align-items:center; gap:6px;
   padding:3px 10px; border-radius:99px; font-size:var(--font-size-xs); font-weight:700;
 }
-.score-badge.high   { background:var(--success-bg); color:#065F46; }
-.score-badge.mid    { background:var(--warning-bg); color:#92400E; }
-.score-badge.low    { background:var(--danger-bg);  color:#991B1B; }
-.score-badge svg    { width:10px; height:10px; }
-
-/* Score bar inline */
+.score-badge.high { background:var(--success-bg); color:#065F46; }
+.score-badge.mid  { background:var(--warning-bg); color:#92400E; }
+.score-badge.low  { background:var(--danger-bg);  color:#991B1B; }
 .score-bar-wrap { display:flex; align-items:center; gap:8px; }
-.score-bar {
-  width:72px; height:3px; background:var(--border);
-  border-radius:99px; overflow:hidden; flex-shrink:0;
-}
+.score-bar { width:72px; height:3px; background:var(--border); border-radius:99px; overflow:hidden; flex-shrink:0; }
 .score-bar-fill { height:100%; border-radius:99px; transition:width .4s ease; }
-
 .frag-card-body { padding:14px 16px; }
-
-/* Texto con highlight de palabras similares */
 .frag-text {
   font-size:var(--font-size-sm); color:var(--text-secondary);
   line-height:1.8; margin:0 0 12px;
@@ -176,82 +147,54 @@
   -webkit-line-clamp:4; -webkit-box-orient:vertical;
 }
 .frag-text.expanded { display:block; -webkit-line-clamp:unset; }
-
-/* Subrayado semántico — la firma visual de esta página */
 .sem-match {
   background:linear-gradient(120deg, rgba(109,40,217,.13) 0%, rgba(139,92,246,.09) 100%);
-  border-bottom:2px solid var(--accent-mid);
-  border-radius:2px 2px 0 0;
-  padding:0 1px;
-  color:var(--accent);
-  font-weight:600;
-  cursor:default;
-  transition:background var(--transition);
+  border-bottom:2px solid var(--accent-mid); border-radius:2px 2px 0 0;
+  padding:0 1px; color:var(--accent); font-weight:600; cursor:default;
 }
 .sem-match:hover { background:rgba(109,40,217,.2); }
-
+.word-match { background:#fef08a; border-radius:2px; padding:0 1px; font-weight:600; color:#713f12; }
 .frag-foot {
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   padding-top:10px; border-top:1px solid var(--border-light);
 }
-
-/* ── Argumento card — rediseño ── */
 .arg-card {
   background:var(--bg-card); border:1px solid var(--border);
   border-radius:var(--radius-md); margin-bottom:10px;
   box-shadow:var(--shadow-card); overflow:hidden;
-  transition:box-shadow var(--transition);
-  animation:fadeUp .2s ease both;
+  transition:box-shadow var(--transition); animation:fadeUp .2s ease both;
 }
 .arg-card:hover { box-shadow:var(--shadow-hover); }
-
 .arg-card-head {
-  display:flex; align-items:center; gap:10px;
-  padding:10px 16px; background:var(--bg-app);
-  border-bottom:1px solid var(--border-light);
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  background:var(--bg-app); border-bottom:1px solid var(--border-light);
 }
 .arg-num-badge {
   width:26px; height:26px; border-radius:50%;
   background:var(--accent-light); color:var(--accent);
   font-family:var(--font-display); font-size:var(--font-size-xs);
-  font-weight:700; display:flex; align-items:center; justify-content:center;
-  flex-shrink:0;
+  font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
 .arg-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; flex:1; }
-
 .arg-card-body { padding:14px 16px; }
-.arg-text {
-  font-size:var(--font-size-sm); color:var(--text-primary);
-  line-height:1.75; margin:0 0 12px;
-}
-.arg-pills { display:flex; gap:6px; flex-wrap:wrap; }
+.arg-text { font-size:var(--font-size-sm); color:var(--text-primary); line-height:1.75; margin:0 0 12px; }
 .tipo-pill {
   display:inline-flex; align-items:center;
   background:var(--border-light); color:var(--text-secondary);
-  border-radius:99px; padding:3px 10px;
-  font-size:var(--font-size-xs); font-weight:600;
+  border-radius:99px; padding:3px 10px; font-size:var(--font-size-xs); font-weight:600;
 }
 .tipo-pill.purple { background:var(--accent-light); color:var(--accent); }
 .tipo-pill.green  { background:var(--success-bg); color:#065F46; }
-
-/* ── Info cards ── */
-.info-grid {
-  display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;
-}
+.info-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; }
 .info-card {
   background:var(--bg-card); border:1px solid var(--border);
   border-radius:var(--radius-md); padding:14px 16px;
   display:flex; gap:12px; align-items:flex-start; box-shadow:var(--shadow-card);
 }
-.info-icon {
-  width:32px; height:32px; border-radius:8px;
-  display:flex; align-items:center; justify-content:center; flex-shrink:0;
-}
+.info-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .info-icon svg { width:16px; height:16px; }
 .info-card-title { font-size:var(--font-size-xs); font-weight:700; color:var(--text-primary); margin-bottom:3px; }
 .info-card-desc  { font-size:var(--font-size-xs); color:var(--text-muted); line-height:1.5; }
-
-/* ── Leyenda de colores de score ── */
 .score-legend {
   display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   padding:8px 14px; background:var(--bg-card); border:1px solid var(--border);
@@ -263,17 +206,15 @@
 {% endblock %}
 
 {% block content %}
-
 <div id="uiOverlay">
   <div class="overlay-box">
     <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
     </svg>
-    Analizando consulta…
+    Buscando…
   </div>
 </div>
 
-<!-- Tabs de modo -->
 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
   <div class="modo-tabs">
     <button class="modo-tab active" id="tabNatural" onclick="setModo('natural')">
@@ -284,20 +225,20 @@
       <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
       Por problemática
     </button>
+    <button class="modo-tab" id="tabPalabras" onclick="setModo('palabras')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+      Por palabras
+    </button>
   </div>
   <div class="score-legend" id="scoreLegend" style="display:none;">
     <span style="font-size:var(--font-size-xs);font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Similitud</span>
-    <span class="score-legend-item"><span class="score-dot" style="background:var(--success);"></span>≥ 70% alta</span>
-    <span class="score-legend-item"><span class="score-dot" style="background:var(--warning);"></span>40–70% media</span>
-    <span class="score-legend-item"><span class="score-dot" style="background:var(--danger);"></span>< 40% baja</span>
-    <span class="score-legend-item" style="margin-left:4px;">
-      <span style="border-bottom:2px solid var(--accent-mid);color:var(--accent);font-weight:600;font-size:var(--font-size-xs);padding:0 2px;">palabra</span>
-      términos relacionados
-    </span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--success);"></span>&ge; 70% alta</span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--warning);"></span>40&ndash;70% media</span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--danger);"></span>&lt; 40% baja</span>
   </div>
 </div>
 
-<!-- ── MODO NATURAL ── -->
+<!-- MODO NATURAL -->
 <div id="secNatural">
   <div class="sem-panel">
     <div class="sem-panel-head">
@@ -308,13 +249,13 @@
     </div>
     <div class="sem-panel-body">
       <textarea id="inputConsulta" class="sem-textarea"
-        placeholder="Ej: ¿Cuáles son las propuestas sobre seguridad en los barrios del sur?"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();buscar();}"></textarea>
+        placeholder="Ej: &#xBF;Cu&#xE1;les son las propuestas sobre seguridad en los barrios del sur?"
+        onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();buscar();}"></textarea>
     </div>
     <div class="sem-panel-foot">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
         <span class="sem-shortcut"><span class="kbd">Enter</span> buscar</span>
-        <span class="sem-shortcut"><span class="kbd">Shift+Enter</span> nueva línea</span>
+        <span class="sem-shortcut"><span class="kbd">Shift+Enter</span> nueva l&#xED;nea</span>
       </div>
       <button class="btn btn-primary" onclick="buscar()" id="btnBuscar">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
@@ -322,7 +263,6 @@
       </button>
     </div>
   </div>
-
   <div class="sem-filters">
     <div class="filter-chip">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
@@ -330,7 +270,7 @@
       <select id="selDocumento" class="filter-select" style="max-width:220px;" onchange="onDocumentoChange()">
         <option value="">Todos</option>
       </select>
-      <button id="btnLimpiarDoc" onclick="limpiarDocumento()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0;line-height:1;">✕</button>
+      <button id="btnLimpiarDoc" onclick="limpiarDocumento()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0;line-height:1;">&#x2715;</button>
     </div>
     <div class="filter-chip">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/></svg>
@@ -343,15 +283,14 @@
       </select>
     </div>
   </div>
-
-  <div class="info-grid" id="infoCardsNatural">
+  <div class="info-grid">
     <div class="info-card">
       <div class="info-icon" style="background:var(--accent-light);">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--accent)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>
       </div>
       <div>
-        <div class="info-card-title">Cómo funciona</div>
-        <div class="info-card-desc">Escribe una pregunta completa. Las palabras subrayadas en morado son términos que el motor asoció semánticamente.</div>
+        <div class="info-card-title">C&#xF3;mo funciona</div>
+        <div class="info-card-desc">Escribe una pregunta completa. Las palabras subrayadas en morado son t&#xE9;rminos que el motor asoci&#xF3; sem&#xE1;nticamente.</div>
       </div>
     </div>
     <div class="info-card">
@@ -360,7 +299,7 @@
       </div>
       <div>
         <div class="info-card-title">Limitaciones</div>
-        <div class="info-card-desc">Solo busca en documentos indexados. No interpreta fechas ni contexto histórico externo.</div>
+        <div class="info-card-desc">Solo busca en documentos indexados. No interpreta fechas ni contexto hist&#xF3;rico externo.</div>
       </div>
     </div>
     <div class="info-card">
@@ -368,26 +307,26 @@
         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
       </div>
       <div>
-        <div class="info-card-title">Para qué sirve</div>
-        <div class="info-card-desc">Identificar posiciones ciudadanas y cruzar argumentos con propuestas de campaña.</div>
+        <div class="info-card-title">Para qu&#xE9; sirve</div>
+        <div class="info-card-desc">Identificar posiciones ciudadanas y cruzar argumentos con propuestas de campa&#xF1;a.</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── MODO PROBLEMÁTICA ── -->
+<!-- MODO PROBLEMÁTICA -->
 <div id="secProblematica" style="display:none;">
   <div class="sem-panel">
     <div class="sem-panel-head">
       <div class="sem-panel-label">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-        Selecciona una problemática
+        Selecciona una problem&#xE1;tica
       </div>
       <span id="probCountBadge" class="prob-count" style="display:none;"></span>
     </div>
     <div class="sem-panel-body">
       <select id="selProblematica" class="prob-select">
-        <option value="">Cargando problemáticas…</option>
+        <option value="">Cargando problem&#xE1;ticas&#x2026;</option>
       </select>
       <div id="probInfo" style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:8px;min-height:16px;"></div>
     </div>
@@ -409,7 +348,43 @@
   </div>
 </div>
 
-<!-- ── RESULTADOS ── -->
+<!-- MODO POR PALABRAS -->
+<div id="secPalabras" style="display:none;">
+  <div class="sem-panel">
+    <div class="sem-panel-head">
+      <div class="sem-panel-label">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
+        Buscar por palabras
+      </div>
+    </div>
+    <div class="sem-panel-body">
+      <input id="inputPalabras" type="text" class="sem-input"
+        placeholder="Ej: acueducto, seguridad vial, empleo juvenil"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();buscar();}">
+    </div>
+    <div class="sem-panel-foot">
+      <span style="font-size:var(--font-size-xs);color:var(--text-muted);">
+        Busca fragmentos que contengan exactamente esa palabra o frase
+      </span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="filter-chip" style="box-shadow:none;border:none;background:transparent;padding:0;">
+          <label>Resultados</label>
+          <select id="selNPalabras" class="filter-select">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="buscar()" id="btnBuscarPalabras">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+          Buscar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTADOS -->
 <div id="contenedorResultados" style="display:none;">
   <div class="results-bar">
     <div class="results-title" id="lblResultados"></div>
@@ -421,35 +396,29 @@
   <div id="listaResultados"></div>
 </div>
 
-<!-- Estado vacío -->
 <div id="estadoVacio" class="empty-state">
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.4" stroke="currentColor">
     <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
   </svg>
   <h3>Haz tu primera consulta</h3>
-  <p id="emptyMsg">Escribe en lenguaje natural o selecciona una problemática</p>
+  <p id="emptyMsg">Escribe en lenguaje natural o selecciona una problem&#xE1;tica</p>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  // ─── URL CORREGIDA ───────────────────────────────────────────────
   const API_CONSULTA = '/semantica/consulta/api/';
-  // ────────────────────────────────────────────────────────────────
+  const API_PALABRAS = '/semantica/busqueda/palabras/';
 
-  let _modo     = 'natural';
+  let _modo = 'natural';
   let _buscando = false;
-  let _ultimaConsulta = '';
 
   document.addEventListener('DOMContentLoaded', () => {
     cargarDocumentos();
     cargarProblematicas();
   });
-
-  // ── Carga de datos ────────────────────────────────────────────────
 
   async function cargarDocumentos() {
     try {
@@ -459,7 +428,7 @@
       (data.documentos || []).forEach(d => {
         const op = document.createElement('option');
         op.value = d.nombre;
-        op.textContent = d.nombre.length > 55 ? d.nombre.slice(0, 55) + '…' : d.nombre;
+        op.textContent = d.nombre.length > 55 ? d.nombre.slice(0, 55) + '\u2026' : d.nombre;
         sel.appendChild(op);
       });
     } catch(e) { console.error('[cargarDocumentos]', e); }
@@ -472,7 +441,7 @@
       const res   = await fetch('/semantica/filter/distribucion/?tipo=argumentos');
       const data  = await res.json();
       const items = data.distribucion || [];
-      sel.innerHTML = '<option value="">— Selecciona una problemática —</option>';
+      sel.innerHTML = '<option value="">\u2014 Selecciona una problem\u00e1tica \u2014</option>';
       items.forEach(p => {
         const op = document.createElement('option');
         op.value = p.codigo;
@@ -484,11 +453,10 @@
         badge.textContent = `${items.length} disponibles`;
         badge.style.display = 'inline-flex';
       } else {
-        sel.innerHTML = '<option value="">Sin problemáticas registradas</option>';
+        sel.innerHTML = '<option value="">Sin problem\u00e1ticas registradas</option>';
       }
       sel.addEventListener('change', onProblematicaChange);
     } catch(e) {
-      console.error('[cargarProblematicas]', e);
       sel.innerHTML = '<option value="">Error al cargar</option>';
     }
   }
@@ -497,31 +465,34 @@
     const sel  = document.getElementById('selProblematica');
     const opt  = sel.selectedOptions[0];
     const info = document.getElementById('probInfo');
-    info.textContent = opt?.dataset.total
+    info.textContent = opt && opt.dataset.total
       ? `${opt.dataset.total} argumento${opt.dataset.total != 1 ? 's' : ''} registrado${opt.dataset.total != 1 ? 's' : ''}`
       : '';
   }
 
-  // ── UI helpers ────────────────────────────────────────────────────
-
   function setModo(modo) {
     _modo = modo;
-    const nat = modo === 'natural';
-    document.getElementById('tabNatural').className      = nat ? 'modo-tab active' : 'modo-tab';
-    document.getElementById('tabProblematica').className = nat ? 'modo-tab'        : 'modo-tab active';
-    document.getElementById('secNatural').style.display      = nat ? 'block' : 'none';
-    document.getElementById('secProblematica').style.display = nat ? 'none'  : 'block';
+    const modos = ['natural', 'problematica', 'palabras'];
+    modos.forEach(m => {
+      const tabId = 'tab' + m.charAt(0).toUpperCase() + m.slice(1);
+      const secId = 'sec' + m.charAt(0).toUpperCase() + m.slice(1);
+      document.getElementById(tabId).className = m === modo ? 'modo-tab active' : 'modo-tab';
+      document.getElementById(secId).style.display = m === modo ? 'block' : 'none';
+    });
     limpiarResultados();
-    document.getElementById('emptyMsg').textContent = nat
-      ? 'Escribe en lenguaje natural o selecciona una problemática'
-      : 'Elige una problemática y pulsa Ver argumentos';
+    const msgs = {
+      natural:      'Escribe en lenguaje natural o selecciona una problem\u00e1tica',
+      problematica: 'Elige una problem\u00e1tica y pulsa Ver argumentos',
+      palabras:     'Escribe una palabra o frase exacta para buscar en los documentos',
+    };
+    document.getElementById('emptyMsg').textContent = msgs[modo];
+    if (modo === 'palabras') document.getElementById('scoreLegend').style.display = 'none';
   }
 
   function onDocumentoChange() {
     document.getElementById('btnLimpiarDoc').style.display =
       document.getElementById('selDocumento').value ? 'inline-block' : 'none';
   }
-
   function limpiarDocumento() {
     document.getElementById('selDocumento').value = '';
     onDocumentoChange();
@@ -529,14 +500,12 @@
 
   function bloquearUI() {
     document.getElementById('uiOverlay').style.display = 'flex';
-    document.querySelectorAll('button, select, textarea').forEach(el => el.disabled = true);
+    document.querySelectorAll('button, select, textarea, input').forEach(el => el.disabled = true);
   }
   function desbloquearUI() {
     document.getElementById('uiOverlay').style.display = 'none';
-    document.querySelectorAll('button, select, textarea').forEach(el => el.disabled = false);
+    document.querySelectorAll('button, select, textarea, input').forEach(el => el.disabled = false);
   }
-
-  // ── Búsqueda ──────────────────────────────────────────────────────
 
   async function buscar() {
     if (_buscando) return;
@@ -545,164 +514,157 @@
     if (_modo === 'natural') {
       const texto = document.getElementById('inputConsulta').value.trim();
       if (!texto) { _buscando = false; document.getElementById('inputConsulta').focus(); return; }
-      _ultimaConsulta = texto;
-
       const btn = document.getElementById('btnBuscar');
-      btn.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Buscando…';
+      const spinSvg = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+      btn.innerHTML = spinSvg + ' Buscando\u2026';
       ocultarResultados(); bloquearUI();
-
-      const n         = document.getElementById('selN').value;
+      const n = document.getElementById('selN').value;
       const documento = document.getElementById('selDocumento').value;
-
       try {
         let fragmentos;
         if (documento) {
           const res  = await fetch(`/semantica/busqueda/documentos/?consulta=${encodeURIComponent(texto)}&nResultados=${n}&documento=${encodeURIComponent(documento)}`);
           const data = await res.json();
-          fragmentos = (data.fragmentos || []).map(f => ({
-            ...f,
-            score: f.similitud ?? f.score ?? null,
-            nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
-            tokens_similares: f.tokens_similares || []
-          }));
+          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.similitud ?? f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento', tokens_similares: f.tokens_similares || []}));
         } else {
           const res  = await fetch(`${API_CONSULTA}?consulta=${encodeURIComponent(texto)}&nResultados=${n}`);
           const data = await res.json();
           if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
-          fragmentos = (data.fragmentos || []).map(f => ({
-            ...f,
-            score: f.score ?? null,
-            nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
-            tokens_similares: f.tokens_similares || []
-          }));
+          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento', tokens_similares: f.tokens_similares || []}));
         }
         renderFragmentos(fragmentos, texto, documento);
         document.getElementById('scoreLegend').style.display = 'flex';
-      } catch { toast('Error de conexión.', 'error'); }
+      } catch { toast('Error de conexi\u00f3n.', 'error'); }
       finally {
         desbloquearUI();
         btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Buscar';
         _buscando = false;
       }
 
-    } else {
+    } else if (_modo === 'problematica') {
       const sel = document.getElementById('selProblematica');
       const cod = sel.value;
-      if (!cod) { _buscando = false; sel.focus(); toast('Selecciona una problemática primero.', 'error'); return; }
-
-      const label = sel.selectedOptions[0]?.textContent.trim() ?? `Problemática ${cod}`;
+      if (!cod) { _buscando = false; sel.focus(); toast('Selecciona una problem\u00e1tica primero.', 'error'); return; }
+      const label = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : `Problem\u00e1tica ${cod}`;
       const btn   = document.getElementById('btnBuscarProb');
       const n     = document.getElementById('selNProb').value;
-      btn.textContent = 'Buscando…';
+      btn.textContent = 'Buscando\u2026';
       ocultarResultados(); bloquearUI();
-
       try {
-        // ── URL CORREGIDA ──
         const res  = await fetch(`${API_CONSULTA}?problematica=${encodeURIComponent(cod)}&nResultados=${n}`);
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
-        const argumentos = Array.isArray(data) ? data : (data.argumentos || []);
-        renderArgumentos(argumentos, label);
-      } catch(e) { console.error(e); toast('Error de conexión.', 'error'); }
+        renderArgumentos(Array.isArray(data) ? data : (data.argumentos || []), label);
+      } catch(e) { toast('Error de conexi\u00f3n.', 'error'); }
       finally {
         desbloquearUI();
         btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Ver argumentos';
         _buscando = false;
       }
+
+    } else {
+      const texto = document.getElementById('inputPalabras').value.trim();
+      if (!texto || texto.length < 2) {
+        _buscando = false;
+        document.getElementById('inputPalabras').focus();
+        toast('Escribe al menos 2 caracteres.', 'error');
+        return;
+      }
+      const btn = document.getElementById('btnBuscarPalabras');
+      const spinSvg = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+      btn.innerHTML = spinSvg + ' Buscando\u2026';
+      ocultarResultados(); bloquearUI();
+      const n = document.getElementById('selNPalabras').value;
+      try {
+        const res  = await fetch(`${API_PALABRAS}?texto=${encodeURIComponent(texto)}&nResultados=${n}`);
+        const data = await res.json();
+        if (!res.ok) { toast(data.error || 'Error en la b\u00fasqueda.', 'error'); throw new Error(); }
+        const fragmentos = (data.fragmentos || []).map(f => ({...f, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento'}));
+        renderFragmentosPalabras(fragmentos, texto);
+      } catch(e) { toast('Error de conexi\u00f3n.', 'error'); }
+      finally {
+        desbloquearUI();
+        btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Buscar';
+        _buscando = false;
+      }
     }
   }
 
-  // ── Highlight de palabras similares ──────────────────────────────
-  // Resalta en el contenido del fragmento los términos que comparte
-  // semánticamente con la consulta del usuario.
   function destacarTerminos(texto, consulta, tokenesSimilares) {
     if (!texto) return '';
-
-    // Construir lista de términos a destacar:
-    // 1. Palabras de la consulta (≥4 caracteres para evitar ruido)
-    // 2. tokens_similares si el backend los devuelve
     const terminosConsulta = consulta
-      ? consulta.toLowerCase().split(/\s+/).filter(w => w.length >= 4).map(w => w.replace(/[^a-záéíóúüñ]/gi, ''))
+      ? consulta.toLowerCase().split(/\s+/).filter(w => w.length >= 4).map(w => w.replace(/[^a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1]/gi, ''))
       : [];
     const extras = Array.isArray(tokenesSimilares) ? tokenesSimilares : [];
     const todos  = [...new Set([...terminosConsulta, ...extras])].filter(Boolean);
-
     if (!todos.length) return escapeHtml(texto);
-
-    // Escapar para regex y construir patrón
     const patron = todos.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-    const regex  = new RegExp(`(${patron})`, 'gi');
+    return escapeHtml(texto).replace(new RegExp(`(${patron})`, 'gi'), '<mark class="sem-match">$1</mark>');
+  }
 
-    return escapeHtml(texto).replace(regex, '<mark class="sem-match">$1</mark>');
+  function destacarPalabras(texto, busqueda) {
+    if (!texto || !busqueda) return escapeHtml(texto);
+    const escapado = busqueda.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escapeHtml(texto).replace(new RegExp(`(${escapado})`, 'gi'), '<mark class="word-match">$1</mark>');
   }
 
   function escapeHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ── Render fragmentos ─────────────────────────────────────────────
-
-  function renderFragmentos(items, consulta, documento) {
-    const scope = documento
-      ? ` · <span style="color:var(--text-muted);font-weight:400;font-style:normal;">"${documento.length > 35 ? documento.slice(0,35)+'…' : documento}"</span>`
-      : '';
-    document.getElementById('lblResultados').innerHTML =
-      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span>`
-      + ` <span class="results-query">· "${consulta}"</span>${scope}`;
-
-    if (!items.length) { mostrarVacio('Sin resultados para esta consulta.'); return; }
-
-    const html = items.map((f, i) => {
-      const score    = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
-      const scoreClass = score == null ? '' : score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
-      const scoreColor = score == null ? 'var(--text-muted)' : score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
-      const contenidoHtml = destacarTerminos(f.contenido || '', consulta, f.tokens_similares);
-
-      return `
-      <div class="frag-card">
-        <div class="frag-card-head">
-          <div class="frag-doc-name">
-            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-            ${escapeHtml(f.nombre_documento || 'Documento')}
-            ${f.pagina != null ? `<span class="frag-pag">· pág. ${f.pagina}</span>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            ${score != null ? `
-            <div class="score-bar-wrap">
-              <div class="score-bar"><div class="score-bar-fill" style="width:${score}%;background:${scoreColor};"></div></div>
-              <span class="score-badge ${scoreClass}">${score}%</span>
-            </div>` : ''}
-          </div>
+  function fragCardHtml(f, i, contenidoHtml, score, scoreClass, scoreColor) {
+    return `
+    <div class="frag-card">
+      <div class="frag-card-head">
+        <div class="frag-doc-name">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+          ${escapeHtml(f.nombre_documento || 'Documento')}
+          ${f.pagina != null ? `<span class="frag-pag">&middot; p\u00e1g. ${f.pagina}</span>` : ''}
         </div>
-        <div class="frag-card-body">
-          <p class="frag-text" id="ft-${i}">${contenidoHtml}</p>
-          <div class="frag-foot">
-            <button class="btn btn-ghost btn-sm" onclick="expandirFrag('ft-${i}',this)">
-              <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
-              Ver más
-            </button>
-            ${f.pagina != null ? `
-            <a class="btn btn-ghost btn-sm" style="color:var(--accent);"
-               href="/semantica/fragmentos/?nombre=${encodeURIComponent(f.nombre_documento||'')}&pagina=${f.pagina}">
-              Ver en contexto →
-            </a>` : '<span></span>'}
-          </div>
+        ${score != null ? `
+        <div class="score-bar-wrap">
+          <div class="score-bar"><div class="score-bar-fill" style="width:${score}%;background:${scoreColor};"></div></div>
+          <span class="score-badge ${scoreClass}">${score}%</span>
+        </div>` : ''}
+      </div>
+      <div class="frag-card-body">
+        <p class="frag-text" id="ft-${i}">${contenidoHtml}</p>
+        <div class="frag-foot">
+          <button class="btn btn-ghost btn-sm" onclick="expandirFrag('ft-${i}',this)">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            Ver m\u00e1s
+          </button>
+          ${f.pagina != null ? `<a class="btn btn-ghost btn-sm" style="color:var(--accent);" href="/semantica/fragmentos/?nombre=${encodeURIComponent(f.nombre_documento||'')}&pagina=${f.pagina}">Ver en contexto &rarr;</a>` : '<span></span>'}
         </div>
-      </div>`;
-    }).join('');
-
-    mostrarResultados(html);
+      </div>
+    </div>`;
   }
 
-  // ── Render argumentos ─────────────────────────────────────────────
+  function renderFragmentos(items, consulta, documento) {
+    const scope = documento ? ` &middot; <span style="color:var(--text-muted);font-weight:400;font-style:normal;">"${documento.length > 35 ? documento.slice(0,35)+'\u2026' : documento}"</span>` : '';
+    document.getElementById('lblResultados').innerHTML =
+      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">&middot; &ldquo;${escapeHtml(consulta)}&rdquo;</span>${scope}`;
+    if (!items.length) { mostrarVacio('Sin resultados para esta consulta.'); return; }
+    mostrarResultados(items.map((f, i) => {
+      const score = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
+      const scoreClass = score == null ? '' : score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
+      const scoreColor = score == null ? '' : score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
+      return fragCardHtml(f, i, destacarTerminos(f.contenido || '', consulta, f.tokens_similares), score, scoreClass, scoreColor);
+    }).join(''));
+  }
+
+  function renderFragmentosPalabras(items, busqueda) {
+    document.getElementById('lblResultados').innerHTML =
+      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">&middot; &ldquo;${escapeHtml(busqueda)}&rdquo;</span>`;
+    if (!items.length) { mostrarVacio('No se encontraron fragmentos con esa palabra o frase.'); return; }
+    mostrarResultados(items.map((f, i) => fragCardHtml(f, i, destacarPalabras(f.contenido || '', busqueda), null, '', '')).join(''));
+  }
 
   function renderArgumentos(items, label) {
     document.getElementById('lblResultados').innerHTML =
-      `<span>${items.length} argumento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">· ${escapeHtml(label)}</span>`;
-
-    if (!items.length) { mostrarVacio('Sin argumentos registrados para esta problemática.'); return; }
-
-    const html = items.map((a, i) => {
+      `<span>${items.length} argumento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">&middot; ${escapeHtml(label)}</span>`;
+    if (!items.length) { mostrarVacio('Sin argumentos registrados para esta problem\u00e1tica.'); return; }
+    mostrarResultados(items.map((a, i) => {
       const contenido = a.texto || a.descripcion || a.argumento || '(sin contenido)';
       const docs = Array.isArray(a.documentos) && a.documentos.length
         ? a.documentos.map(d => `<span class="tipo-pill">${escapeHtml(d.nombre || String(d))}</span>`).join('') : '';
@@ -713,31 +675,23 @@
           <div class="arg-meta">
             ${a.tema ? `<span class="tipo-pill purple">${escapeHtml(a.tema)}</span>` : ''}
             ${a.problematica_descripcion ? `<span class="tipo-pill purple">${escapeHtml(a.problematica_descripcion)}</span>` : ''}
-            ${a.frecuencia != null ? `<span class="tipo-pill green">× ${a.frecuencia} menciones</span>` : ''}
+            ${a.frecuencia != null ? `<span class="tipo-pill green">&times; ${a.frecuencia} menciones</span>` : ''}
             ${docs}
           </div>
         </div>
-        <div class="arg-card-body">
-          <p class="arg-text">${escapeHtml(contenido)}</p>
-        </div>
+        <div class="arg-card-body"><p class="arg-text">${escapeHtml(contenido)}</p></div>
       </div>`;
-    }).join('');
-
-    mostrarResultados(html);
+    }).join(''));
   }
-
-  // ── Expandir fragmento ────────────────────────────────────────────
 
   function expandirFrag(id, btn) {
     const el  = document.getElementById(id);
     const exp = el.classList.contains('expanded');
     el.classList.toggle('expanded', !exp);
     btn.innerHTML = exp
-      ? '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg> Ver más'
+      ? '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg> Ver m\u00e1s'
       : '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg> Ver menos';
   }
-
-  // ── Estado de resultados ──────────────────────────────────────────
 
   function mostrarResultados(html) {
     document.getElementById('estadoVacio').style.display = 'none';
@@ -757,21 +711,21 @@
   function limpiarResultados() {
     const inp = document.getElementById('inputConsulta');
     if (inp) inp.value = '';
-    _ultimaConsulta = '';
+    const inp2 = document.getElementById('inputPalabras');
+    if (inp2) inp2.value = '';
     document.getElementById('scoreLegend').style.display = 'none';
     ocultarResultados();
     document.getElementById('estadoVacio').style.display = 'flex';
   }
 
-  // ── Toast ─────────────────────────────────────────────────────────
-
-  function toast(msg, tipo = 'success') {
+  function toast(msg, tipo) {
+    tipo = tipo || 'success';
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
-    t.className = `toast ${tipo}`;
+    t.className = 'toast ' + tipo;
     t.textContent = msg;
     c.appendChild(t);
-    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3500);
+    setTimeout(function() { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(function(){t.remove();},300); }, 3500);
   }
 </script>
 {% endblock %}

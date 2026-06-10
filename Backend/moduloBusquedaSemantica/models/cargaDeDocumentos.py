@@ -183,6 +183,33 @@ class Fragmento:
             logger.error(f"[Fragmento] Error al insertar: {e}")
             raise
 
+
+    @staticmethod
+    async def buscarPorTextoGlobal(texto: str, limite: int = 20) -> list[dict]:
+        logger.info(f"[Fragmento] Búsqueda global por texto: '{texto}'")
+        sql = f"""
+            SELECT
+                f.id,
+                f.documento_id,
+                f.pagina,
+                f.contenido,
+                f.vector_id,
+                d.nombre AS documento_nombre
+            FROM {db.fragmento} f
+            JOIN {db.documento} d ON d.id = f.documento_id
+            WHERE f.contenido ILIKE %s
+            ORDER BY d.nombre ASC, f.pagina ASC
+            LIMIT %s
+        """
+        try:
+            return await _query(sql, [f"%{texto}%", limite], fetchall=True)
+        except Exception as e:
+            logger.error(f"[Fragmento] Error en buscarPorTextoGlobal: {e}")
+            raise   
+
+
+
+
     @staticmethod
     async def insertarBatch(fragmentos: list[dict]) -> list[dict]:
         logger.info(f"[Fragmento] Insertando lote de {len(fragmentos)} fragmentos.")
