@@ -37,12 +37,23 @@ class ArgumentoService:
             logger.error(f"[ArgumentoService] Error en crear: {e}")
             raise
 
-    async def actualizar(self, argumentoId: str, texto: str = None, frecuencia: int = None) -> dict | None:
+    async def actualizar(
+        self,
+        argumentoId: str,
+        texto: str = None,
+        frecuencia: int = None,
+        documentoIds: list[str] | None = None,
+    ) -> dict | None:
         logger.info(f"[ArgumentoService] Actualizando argumento id: '{argumentoId}'")
         try:
             resultado = await Argumento.actualizar(argumentoId, texto=texto, frecuencia=frecuencia)
             if not resultado:
                 raise ValueError(f"Argumento id: '{argumentoId}' no encontrado.")
+
+            if documentoIds:
+                logger.info(f"[ArgumentoService] Vinculando {len(documentoIds)} documentos al argumento '{argumentoId}'")
+                await ArgumentoDocumento.insertarBatch(argumentoId, documentoIds)
+
             return resultado
         except Exception as e:
             logger.error(f"[ArgumentoService] Error en actualizar: {e}")

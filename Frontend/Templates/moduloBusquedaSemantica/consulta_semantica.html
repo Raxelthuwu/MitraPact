@@ -9,430 +9,296 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'eventos.css' %}">
 <style>
-@keyframes spin    { to { transform: rotate(360deg); } }
-@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes spin   { to { transform: rotate(360deg); } }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.4} }
 
 /* ── Overlay ── */
 #uiOverlay {
-  display: none;
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(244,246,251,.72);
-  backdrop-filter: blur(4px);
-  align-items: center; justify-content: center;
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(244,246,251,.78); backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
 }
 .overlay-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 24px;
-  display: flex; align-items: center; gap: 10px;
-  box-shadow: var(--shadow-hover);
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  font-weight: 500;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:14px 22px;
+  display:flex; align-items:center; gap:10px;
+  box-shadow:var(--shadow-hover); font-size:var(--font-size-sm);
+  color:var(--text-secondary); font-weight:500;
 }
-.spin { animation: spin .8s linear infinite; color: var(--accent); flex-shrink: 0; }
+.spin { animation:spin .75s linear infinite; color:var(--accent); }
 
-/* ── Banner superior ── */
-.sem-banner {
-  background: linear-gradient(130deg, var(--accent) 0%, #9333EA 100%);
-  border-radius: var(--radius-lg);
-  padding: 24px 28px;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-.sem-banner::before {
-  content: '';
-  position: absolute; top: -50px; right: -30px;
-  width: 200px; height: 200px; border-radius: 50%;
-  background: rgba(255,255,255,.06);
-  pointer-events: none;
-}
-.sem-banner::after {
-  content: '';
-  position: absolute; bottom: -70px; right: 100px;
-  width: 260px; height: 260px; border-radius: 50%;
-  background: rgba(255,255,255,.04);
-  pointer-events: none;
-}
-.sem-banner-title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  margin-bottom: 5px;
-}
-.sem-banner-sub {
-  font-size: var(--font-size-sm);
-  opacity: .85;
-  max-width: 540px;
-  line-height: 1.55;
-  margin-bottom: 18px;
-}
-.sem-banner-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.sem-chip {
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.22);
-  border-radius: 99px;
-  padding: 4px 12px;
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-  display: inline-flex; align-items: center; gap: 5px;
-}
-.sem-chip svg { width: 11px; height: 11px; }
-
-/* ── Tabs de modo ── */
+/* ── Modo tabs ── */
 .modo-tabs {
-  display: flex;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 5px;
-  width: fit-content;
-  gap: 4px;
-  box-shadow: var(--shadow-card);
+  display:flex; background:var(--bg-card);
+  border:1px solid var(--border); border-radius:var(--radius-md);
+  padding:4px; width:fit-content; gap:3px;
+  box-shadow:var(--shadow-card);
 }
 .modo-tab {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 18px;
-  border-radius: 8px;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-muted);
-  border: none; background: transparent;
-  cursor: pointer;
-  transition: all var(--transition);
+  display:inline-flex; align-items:center; gap:7px;
+  padding:7px 16px; border-radius:8px;
+  font-size:var(--font-size-sm); font-weight:600;
+  color:var(--text-muted); border:none; background:transparent;
+  cursor:pointer; transition:all var(--transition);
 }
-.modo-tab:hover { color: var(--text-primary); background: var(--border-light); }
-.modo-tab.active {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(109,40,217,.28);
-}
-.modo-tab svg { width: 14px; height: 14px; flex-shrink: 0; }
+.modo-tab:hover { color:var(--text-primary); background:var(--border-light); }
+.modo-tab.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(109,40,217,.28); }
+.modo-tab svg { width:14px; height:14px; flex-shrink:0; }
 
 /* ── Panel de búsqueda ── */
 .sem-panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); box-shadow:var(--shadow-card); overflow:hidden;
 }
 .sem-panel-head {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-light);
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap;
+  padding:14px 18px; border-bottom:1px solid var(--border-light);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
 }
 .sem-panel-label {
-  display: flex; align-items: center; gap: 7px;
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  color: var(--text-muted);
+  display:flex; align-items:center; gap:7px;
+  font-size:var(--font-size-xs); font-weight:700;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted);
 }
-.sem-panel-label svg { width: 13px; height: 13px; }
-.sem-panel-body { padding: 18px 20px; }
+.sem-panel-label svg { width:13px; height:13px; }
+.sem-panel-body { padding:16px 18px; }
 
-/* Textarea de búsqueda */
 .sem-textarea {
-  width: 100%;
-  border: none; outline: none;
-  background: transparent;
-  font-family: var(--font-body);
-  font-size: var(--font-size-md);
-  color: var(--text-primary);
-  resize: none;
-  line-height: 1.65;
-  min-height: 68px;
+  width:100%; border:none; outline:none; background:transparent;
+  font-family:var(--font-body); font-size:var(--font-size-md);
+  color:var(--text-primary); resize:none; line-height:1.65; min-height:64px;
 }
-.sem-textarea::placeholder { color: var(--text-muted); }
+.sem-textarea::placeholder { color:var(--text-muted); }
+
 .sem-panel-foot {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  border-top: 1px solid var(--border-light);
-  background: var(--bg-app);
-  gap: 10px; flex-wrap: wrap;
-}
-.sem-shortcuts {
-  display: flex; gap: 14px; align-items: center;
-  flex-wrap: wrap;
-}
-.sem-shortcut {
-  display: flex; align-items: center; gap: 5px;
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 18px; border-top:1px solid var(--border-light);
+  background:var(--bg-app); gap:10px; flex-wrap:wrap;
 }
 .kbd {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--text-secondary);
-  box-shadow: 0 1px 0 var(--border);
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:4px; padding:1px 6px; font-family:monospace;
+  font-size:11px; color:var(--text-secondary); box-shadow:0 1px 0 var(--border);
 }
+.sem-shortcut { display:flex; align-items:center; gap:5px; font-size:var(--font-size-xs); color:var(--text-muted); }
 
-/* ── Barra de filtros ── */
-.sem-filters {
-  display: flex; align-items: center;
-  gap: 10px; flex-wrap: wrap;
-}
+/* ── Filtros ── */
+.sem-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .filter-chip {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
-  box-shadow: var(--shadow-card);
+  display:flex; align-items:center; gap:8px; padding:7px 14px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); font-size:var(--font-size-sm); box-shadow:var(--shadow-card);
 }
 .filter-chip label {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--text-muted);
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: .05em;
+  font-size:var(--font-size-xs); font-weight:700; color:var(--text-muted);
+  white-space:nowrap; text-transform:uppercase; letter-spacing:.05em;
 }
 .filter-chip select {
-  border: none; outline: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  cursor: pointer;
-  min-width: 80px;
+  border:none; outline:none; background:transparent; font-family:inherit;
+  font-size:var(--font-size-sm); color:var(--text-primary); cursor:pointer; min-width:80px;
 }
 
-/* ── Tarjetas de información ── */
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-}
-.info-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  display: flex; gap: 12px; align-items: flex-start;
-  box-shadow: var(--shadow-card);
-}
-.info-icon {
-  width: 34px; height: 34px;
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.info-icon svg { width: 17px; height: 17px; }
-.info-card-title {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 3px;
-}
-.info-card-desc {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-/* ── Select de problemática ── */
-.prob-select-wrap {
-  position: relative;
-}
+/* ── Selector de problemática ── */
 .prob-select {
-  width: 100%;
-  border: none; outline: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: var(--font-size-md);
-  color: var(--text-primary);
-  cursor: pointer;
-  padding: 2px 0;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 4px center;
-  background-size: 16px;
-  padding-right: 28px;
+  width:100%; border:none; outline:none; background:transparent;
+  font-family:inherit; font-size:var(--font-size-md); color:var(--text-primary);
+  cursor:pointer; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236B7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 4px center;
+  background-size:16px; padding-right:28px;
 }
 .prob-count {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: var(--font-size-xs); font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-light);
-  border-radius: 99px;
-  padding: 3px 10px;
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:var(--font-size-xs); font-weight:600;
+  color:var(--accent); background:var(--accent-light);
+  border-radius:99px; padding:3px 10px;
 }
 
-/* ── Resultados ── */
+/* ── Barra de resultados ── */
 .results-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px; flex-wrap:wrap; gap:8px;
 }
 .results-title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--text-primary);
+  font-family:var(--font-display); font-size:var(--font-size-sm);
+  font-weight:700; color:var(--text-primary);
 }
-.results-query { color: var(--accent); font-style: italic; font-weight: 400; }
+.results-query { color:var(--accent); font-style:italic; font-weight:400; }
 
-/* Tarjeta de fragmento */
+/* ── Fragmento card — rediseño ── */
 .frag-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  margin-bottom: 10px;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  transition: box-shadow var(--transition), border-color var(--transition);
-  animation: fadeIn .25s ease both;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); margin-bottom:10px; overflow:hidden;
+  box-shadow:var(--shadow-card);
+  transition:box-shadow var(--transition), border-color var(--transition);
+  animation:fadeUp .2s ease both;
 }
-.frag-card:hover { box-shadow: var(--shadow-hover); border-color: #d4d4d8; }
+.frag-card:hover { box-shadow:var(--shadow-hover); border-color:#d1d5db; }
 
 .frag-card-head {
-  display: flex; align-items: center;
-  justify-content: space-between;
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border-light);
-  gap: 10px; flex-wrap: wrap;
-  background: var(--bg-app);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 16px; gap:10px; flex-wrap:wrap;
+  background:var(--bg-app); border-bottom:1px solid var(--border-light);
 }
 .frag-doc-name {
-  display: flex; align-items: center; gap: 7px;
-  font-family: var(--font-display);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-primary);
+  display:flex; align-items:center; gap:7px;
+  font-family:var(--font-display); font-size:var(--font-size-sm);
+  font-weight:600; color:var(--text-primary);
 }
-.frag-doc-name svg { width: 14px; height: 14px; color: var(--accent); flex-shrink: 0; }
-.frag-pag {
-  color: var(--text-muted);
-  font-weight: 400;
-  font-size: var(--font-size-xs);
-  margin-left: 2px;
-}
+.frag-doc-name svg { width:14px; height:14px; color:var(--accent); flex-shrink:0; }
+.frag-pag { color:var(--text-muted); font-weight:400; font-size:var(--font-size-xs); }
 
-.score-row { display: flex; align-items: center; gap: 8px; }
-.score-track {
-  width: 80px; height: 4px;
-  background: var(--border);
-  border-radius: 99px;
-  overflow: hidden;
+/* Score badge */
+.score-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:3px 10px; border-radius:99px; font-size:var(--font-size-xs); font-weight:700;
 }
-.score-fill { height: 100%; border-radius: 99px; }
-.score-val {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  min-width: 32px;
-}
+.score-badge.high   { background:var(--success-bg); color:#065F46; }
+.score-badge.mid    { background:var(--warning-bg); color:#92400E; }
+.score-badge.low    { background:var(--danger-bg);  color:#991B1B; }
+.score-badge svg    { width:10px; height:10px; }
 
-.frag-card-body { padding: 16px 18px; }
+/* Score bar inline */
+.score-bar-wrap { display:flex; align-items:center; gap:8px; }
+.score-bar {
+  width:72px; height:3px; background:var(--border);
+  border-radius:99px; overflow:hidden; flex-shrink:0;
+}
+.score-bar-fill { height:100%; border-radius:99px; transition:width .4s ease; }
+
+.frag-card-body { padding:14px 16px; }
+
+/* Texto con highlight de palabras similares */
 .frag-text {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  line-height: 1.75;
-  margin: 0 0 12px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
+  font-size:var(--font-size-sm); color:var(--text-secondary);
+  line-height:1.8; margin:0 0 12px;
+  overflow:hidden; display:-webkit-box;
+  -webkit-line-clamp:4; -webkit-box-orient:vertical;
 }
+.frag-text.expanded { display:block; -webkit-line-clamp:unset; }
+
+/* Subrayado semántico — la firma visual de esta página */
+.sem-match {
+  background:linear-gradient(120deg, rgba(109,40,217,.13) 0%, rgba(139,92,246,.09) 100%);
+  border-bottom:2px solid var(--accent-mid);
+  border-radius:2px 2px 0 0;
+  padding:0 1px;
+  color:var(--accent);
+  font-weight:600;
+  cursor:default;
+  transition:background var(--transition);
+}
+.sem-match:hover { background:rgba(109,40,217,.2); }
+
 .frag-foot {
-  display: flex; align-items: center;
-  justify-content: space-between; gap: 8px;
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding-top:10px; border-top:1px solid var(--border-light);
 }
 
-/* Tarjeta argumento */
+/* ── Argumento card — rediseño ── */
 .arg-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  margin-bottom: 10px;
-  padding: 18px 20px;
-  display: flex; gap: 16px; align-items: flex-start;
-  box-shadow: var(--shadow-card);
-  transition: box-shadow var(--transition);
-  animation: fadeIn .25s ease both;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); margin-bottom:10px;
+  box-shadow:var(--shadow-card); overflow:hidden;
+  transition:box-shadow var(--transition);
+  animation:fadeUp .2s ease both;
 }
-.arg-card:hover { box-shadow: var(--shadow-hover); }
-.arg-num {
-  font-family: var(--font-display);
-  font-size: 20px; font-weight: 800;
-  color: var(--accent); opacity: .25;
-  min-width: 26px; line-height: 1;
-  padding-top: 2px;
-  flex-shrink: 0;
+.arg-card:hover { box-shadow:var(--shadow-hover); }
+
+.arg-card-head {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; background:var(--bg-app);
+  border-bottom:1px solid var(--border-light);
 }
-.arg-body { flex: 1; }
+.arg-num-badge {
+  width:26px; height:26px; border-radius:50%;
+  background:var(--accent-light); color:var(--accent);
+  font-family:var(--font-display); font-size:var(--font-size-xs);
+  font-weight:700; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.arg-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; flex:1; }
+
+.arg-card-body { padding:14px 16px; }
 .arg-text {
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  line-height: 1.7;
-  margin: 0 0 10px;
+  font-size:var(--font-size-sm); color:var(--text-primary);
+  line-height:1.75; margin:0 0 12px;
 }
-.arg-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.arg-pills { display:flex; gap:6px; flex-wrap:wrap; }
+.tipo-pill {
+  display:inline-flex; align-items:center;
+  background:var(--border-light); color:var(--text-secondary);
+  border-radius:99px; padding:3px 10px;
+  font-size:var(--font-size-xs); font-weight:600;
+}
+.tipo-pill.purple { background:var(--accent-light); color:var(--accent); }
+.tipo-pill.green  { background:var(--success-bg); color:#065F46; }
+
+/* ── Info cards ── */
+.info-grid {
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;
+}
+.info-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:14px 16px;
+  display:flex; gap:12px; align-items:flex-start; box-shadow:var(--shadow-card);
+}
+.info-icon {
+  width:32px; height:32px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.info-icon svg { width:16px; height:16px; }
+.info-card-title { font-size:var(--font-size-xs); font-weight:700; color:var(--text-primary); margin-bottom:3px; }
+.info-card-desc  { font-size:var(--font-size-xs); color:var(--text-muted); line-height:1.5; }
+
+/* ── Leyenda de colores de score ── */
+.score-legend {
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  padding:8px 14px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); width:fit-content;
+}
+.score-legend-item { display:flex; align-items:center; gap:5px; font-size:var(--font-size-xs); color:var(--text-muted); }
+.score-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Overlay de carga -->
 <div id="uiOverlay">
   <div class="overlay-box">
-    <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
     </svg>
     Analizando consulta…
   </div>
 </div>
 
-<!-- Banner -->
-<div class="sem-banner">
-  <div class="sem-banner-title">Motor de Búsqueda Semántica</div>
-  <div class="sem-banner-sub">
-    Busca por significado, no por palabras exactas. El sistema entiende preguntas
-    en lenguaje natural y las conecta con fragmentos de documentos y argumentos ciudadanos.
-  </div>
-  <div class="sem-banner-chips">
-    <span class="sem-chip">
-      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-      Búsqueda por significado
-    </span>
-    <span class="sem-chip">
-      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12"/></svg>
-      {{ documentos_count|default:"2" }} documentos indexados
-    </span>
-    <span class="sem-chip">
-      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-      Análisis por problemática
-    </span>
-  </div>
-</div>
-
 <!-- Tabs de modo -->
-<div class="modo-tabs">
-  <button class="modo-tab active" id="tabNatural" onclick="setModo('natural')">
-    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-    Lenguaje natural
-  </button>
-  <button class="modo-tab" id="tabProblematica" onclick="setModo('problematica')">
-    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-    Por problemática
-  </button>
+<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+  <div class="modo-tabs">
+    <button class="modo-tab active" id="tabNatural" onclick="setModo('natural')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+      Lenguaje natural
+    </button>
+    <button class="modo-tab" id="tabProblematica" onclick="setModo('problematica')">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
+      Por problemática
+    </button>
+  </div>
+  <div class="score-legend" id="scoreLegend" style="display:none;">
+    <span style="font-size:var(--font-size-xs);font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Similitud</span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--success);"></span>≥ 70% alta</span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--warning);"></span>40–70% media</span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--danger);"></span>< 40% baja</span>
+    <span class="score-legend-item" style="margin-left:4px;">
+      <span style="border-bottom:2px solid var(--accent-mid);color:var(--accent);font-weight:600;font-size:var(--font-size-xs);padding:0 2px;">palabra</span>
+      términos relacionados
+    </span>
+  </div>
 </div>
 
-<!-- ─────────────────── MODO NATURAL ─────────────────── -->
+<!-- ── MODO NATURAL ── -->
 <div id="secNatural">
-
-  <!-- Caja de texto principal -->
   <div class="sem-panel">
     <div class="sem-panel-head">
       <div class="sem-panel-label">
@@ -446,7 +312,7 @@
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();buscar();}"></textarea>
     </div>
     <div class="sem-panel-foot">
-      <div class="sem-shortcuts">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
         <span class="sem-shortcut"><span class="kbd">Enter</span> buscar</span>
         <span class="sem-shortcut"><span class="kbd">Shift+Enter</span> nueva línea</span>
       </div>
@@ -457,20 +323,19 @@
     </div>
   </div>
 
-  <!-- Filtros -->
   <div class="sem-filters">
     <div class="filter-chip">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
       <label>Documento</label>
-      <select id="selDocumento" class="filter-select" style="max-width:240px;" onchange="onDocumentoChange()">
+      <select id="selDocumento" class="filter-select" style="max-width:220px;" onchange="onDocumentoChange()">
         <option value="">Todos</option>
       </select>
-      <button id="btnLimpiarDoc" onclick="limpiarDocumento()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1;">✕</button>
+      <button id="btnLimpiarDoc" onclick="limpiarDocumento()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0;line-height:1;">✕</button>
     </div>
     <div class="filter-chip">
       <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/></svg>
       <label>Resultados</label>
-      <select id="selN" class="filter-select" onchange="limpiarResultados()">
+      <select id="selN" class="filter-select">
         <option value="3">3</option>
         <option value="5" selected>5</option>
         <option value="10">10</option>
@@ -479,15 +344,14 @@
     </div>
   </div>
 
-  <!-- Info cards -->
-  <div class="info-grid">
+  <div class="info-grid" id="infoCardsNatural">
     <div class="info-card">
       <div class="info-icon" style="background:var(--accent-light);">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--accent)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>
       </div>
       <div>
-        <div class="info-card-title">Cómo usarla</div>
-        <div class="info-card-desc">Escribe una pregunta completa o describe lo que buscas. Más contexto da mejores resultados.</div>
+        <div class="info-card-title">Cómo funciona</div>
+        <div class="info-card-desc">Escribe una pregunta completa. Las palabras subrayadas en morado son términos que el motor asoció semánticamente.</div>
       </div>
     </div>
     <div class="info-card">
@@ -505,25 +369,14 @@
       </div>
       <div>
         <div class="info-card-title">Para qué sirve</div>
-        <div class="info-card-desc">Identificar posiciones ciudadanas, cruzar argumentos con propuestas oficiales de campaña.</div>
-      </div>
-    </div>
-    <div class="info-card">
-      <div class="info-icon" style="background:var(--info-bg);">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--info)"><path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/></svg>
-      </div>
-      <div>
-        <div class="info-card-title">Porcentaje de similitud</div>
-        <div class="info-card-desc">Sobre 70% es muy relevante. Entre 40–70% es moderado. Bajo 40% puede ser coincidencia.</div>
+        <div class="info-card-desc">Identificar posiciones ciudadanas y cruzar argumentos con propuestas de campaña.</div>
       </div>
     </div>
   </div>
-
 </div>
 
-<!-- ─────────────────── MODO PROBLEMÁTICA ─────────────────── -->
+<!-- ── MODO PROBLEMÁTICA ── -->
 <div id="secProblematica" style="display:none;">
-
   <div class="sem-panel">
     <div class="sem-panel-head">
       <div class="sem-panel-label">
@@ -533,11 +386,9 @@
       <span id="probCountBadge" class="prob-count" style="display:none;"></span>
     </div>
     <div class="sem-panel-body">
-      <div class="prob-select-wrap">
-        <select id="selProblematica" class="prob-select">
-          <option value="">Cargando problemáticas…</option>
-        </select>
-      </div>
+      <select id="selProblematica" class="prob-select">
+        <option value="">Cargando problemáticas…</option>
+      </select>
       <div id="probInfo" style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:8px;min-height:16px;"></div>
     </div>
     <div class="sem-panel-foot" style="justify-content:flex-end;">
@@ -556,32 +407,9 @@
       </button>
     </div>
   </div>
-
-  <!-- Info -->
-  <div class="info-grid">
-    <div class="info-card">
-      <div class="info-icon" style="background:var(--accent-light);">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--accent)"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-      </div>
-      <div>
-        <div class="info-card-title">Cómo usarla</div>
-        <div class="info-card-desc">Elige una problemática del catálogo para ver todos los argumentos ciudadanos asociados.</div>
-      </div>
-    </div>
-    <div class="info-card">
-      <div class="info-icon" style="background:var(--warning-bg);">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--warning)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-      </div>
-      <div>
-        <div class="info-card-title">Limitaciones</div>
-        <div class="info-card-desc">Solo muestra argumentos ya clasificados. Los nuevos sin clasificar no aparecen aquí.</div>
-      </div>
-    </div>
-  </div>
-
 </div>
 
-<!-- ─────────────────── RESULTADOS ─────────────────── -->
+<!-- ── RESULTADOS ── -->
 <div id="contenedorResultados" style="display:none;">
   <div class="results-bar">
     <div class="results-title" id="lblResultados"></div>
@@ -602,17 +430,26 @@
   <p id="emptyMsg">Escribe en lenguaje natural o selecciona una problemática</p>
 </div>
 
+<div class="toast-container" id="toastContainer"></div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  let _modo = 'natural';
+  // ─── URL CORREGIDA ───────────────────────────────────────────────
+  const API_CONSULTA = '/semantica/consulta/api/';
+  // ────────────────────────────────────────────────────────────────
+
+  let _modo     = 'natural';
   let _buscando = false;
+  let _ultimaConsulta = '';
 
   document.addEventListener('DOMContentLoaded', () => {
     cargarDocumentos();
     cargarProblematicas();
   });
+
+  // ── Carga de datos ────────────────────────────────────────────────
 
   async function cargarDocumentos() {
     try {
@@ -620,8 +457,8 @@
       const data = await res.json();
       const sel  = document.getElementById('selDocumento');
       (data.documentos || []).forEach(d => {
-        const op       = document.createElement('option');
-        op.value       = d.nombre;
+        const op = document.createElement('option');
+        op.value = d.nombre;
         op.textContent = d.nombre.length > 55 ? d.nombre.slice(0, 55) + '…' : d.nombre;
         sel.appendChild(op);
       });
@@ -657,19 +494,19 @@
   }
 
   function onProblematicaChange() {
-    const sel = document.getElementById('selProblematica');
-    const opt = sel.selectedOptions[0];
+    const sel  = document.getElementById('selProblematica');
+    const opt  = sel.selectedOptions[0];
     const info = document.getElementById('probInfo');
     info.textContent = opt?.dataset.total
       ? `${opt.dataset.total} argumento${opt.dataset.total != 1 ? 's' : ''} registrado${opt.dataset.total != 1 ? 's' : ''}`
       : '';
   }
 
+  // ── UI helpers ────────────────────────────────────────────────────
+
   function setModo(modo) {
-    _buscando = false;
     _modo = modo;
     const nat = modo === 'natural';
-
     document.getElementById('tabNatural').className      = nat ? 'modo-tab active' : 'modo-tab';
     document.getElementById('tabProblematica').className = nat ? 'modo-tab'        : 'modo-tab active';
     document.getElementById('secNatural').style.display      = nat ? 'block' : 'none';
@@ -699,6 +536,8 @@
     document.querySelectorAll('button, select, textarea').forEach(el => el.disabled = false);
   }
 
+  // ── Búsqueda ──────────────────────────────────────────────────────
+
   async function buscar() {
     if (_buscando) return;
     _buscando = true;
@@ -706,6 +545,7 @@
     if (_modo === 'natural') {
       const texto = document.getElementById('inputConsulta').value.trim();
       if (!texto) { _buscando = false; document.getElementById('inputConsulta').focus(); return; }
+      _ultimaConsulta = texto;
 
       const btn = document.getElementById('btnBuscar');
       btn.innerHTML = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Buscando…';
@@ -713,19 +553,31 @@
 
       const n         = document.getElementById('selN').value;
       const documento = document.getElementById('selDocumento').value;
+
       try {
         let fragmentos;
         if (documento) {
           const res  = await fetch(`/semantica/busqueda/documentos/?consulta=${encodeURIComponent(texto)}&nResultados=${n}&documento=${encodeURIComponent(documento)}`);
           const data = await res.json();
-          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.similitud ?? f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento'}));
+          fragmentos = (data.fragmentos || []).map(f => ({
+            ...f,
+            score: f.similitud ?? f.score ?? null,
+            nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
+            tokens_similares: f.tokens_similares || []
+          }));
         } else {
-          const res  = await fetch(`/semantica/consulta/semantica/?consulta=${encodeURIComponent(texto)}&nResultados=${n}`);
+          const res  = await fetch(`${API_CONSULTA}?consulta=${encodeURIComponent(texto)}&nResultados=${n}`);
           const data = await res.json();
           if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
-          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento'}));
+          fragmentos = (data.fragmentos || []).map(f => ({
+            ...f,
+            score: f.score ?? null,
+            nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
+            tokens_similares: f.tokens_similares || []
+          }));
         }
         renderFragmentos(fragmentos, texto, documento);
+        document.getElementById('scoreLegend').style.display = 'flex';
       } catch { toast('Error de conexión.', 'error'); }
       finally {
         desbloquearUI();
@@ -745,7 +597,8 @@
       ocultarResultados(); bloquearUI();
 
       try {
-        const res  = await fetch(`/semantica/consulta/semantica/?problematica=${encodeURIComponent(cod)}&nResultados=${n}`);
+        // ── URL CORREGIDA ──
+        const res  = await fetch(`${API_CONSULTA}?problematica=${encodeURIComponent(cod)}&nResultados=${n}`);
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
         const argumentos = Array.isArray(data) ? data : (data.argumentos || []);
@@ -759,80 +612,132 @@
     }
   }
 
+  // ── Highlight de palabras similares ──────────────────────────────
+  // Resalta en el contenido del fragmento los términos que comparte
+  // semánticamente con la consulta del usuario.
+  function destacarTerminos(texto, consulta, tokenesSimilares) {
+    if (!texto) return '';
+
+    // Construir lista de términos a destacar:
+    // 1. Palabras de la consulta (≥4 caracteres para evitar ruido)
+    // 2. tokens_similares si el backend los devuelve
+    const terminosConsulta = consulta
+      ? consulta.toLowerCase().split(/\s+/).filter(w => w.length >= 4).map(w => w.replace(/[^a-záéíóúüñ]/gi, ''))
+      : [];
+    const extras = Array.isArray(tokenesSimilares) ? tokenesSimilares : [];
+    const todos  = [...new Set([...terminosConsulta, ...extras])].filter(Boolean);
+
+    if (!todos.length) return escapeHtml(texto);
+
+    // Escapar para regex y construir patrón
+    const patron = todos.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const regex  = new RegExp(`(${patron})`, 'gi');
+
+    return escapeHtml(texto).replace(regex, '<mark class="sem-match">$1</mark>');
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Render fragmentos ─────────────────────────────────────────────
+
   function renderFragmentos(items, consulta, documento) {
-    const scope = documento ? ` en "${documento.length > 35 ? documento.slice(0,35)+'…' : documento}"` : '';
+    const scope = documento
+      ? ` · <span style="color:var(--text-muted);font-weight:400;font-style:normal;">"${documento.length > 35 ? documento.slice(0,35)+'…' : documento}"</span>`
+      : '';
     document.getElementById('lblResultados').innerHTML =
-      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">· "${consulta}"${scope}</span>`;
+      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span>`
+      + ` <span class="results-query">· "${consulta}"</span>${scope}`;
 
     if (!items.length) { mostrarVacio('Sin resultados para esta consulta.'); return; }
 
     const html = items.map((f, i) => {
-      const score = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
-      const col   = score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
+      const score    = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
+      const scoreClass = score == null ? '' : score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
+      const scoreColor = score == null ? 'var(--text-muted)' : score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
+      const contenidoHtml = destacarTerminos(f.contenido || '', consulta, f.tokens_similares);
+
       return `
       <div class="frag-card">
         <div class="frag-card-head">
           <div class="frag-doc-name">
             <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-            ${f.nombre_documento || 'Documento'}
+            ${escapeHtml(f.nombre_documento || 'Documento')}
             ${f.pagina != null ? `<span class="frag-pag">· pág. ${f.pagina}</span>` : ''}
           </div>
-          ${score != null ? `
-          <div class="score-row">
-            <div class="score-track"><div class="score-fill" style="width:${score}%;background:${col};"></div></div>
-            <span class="score-val" style="color:${col};">${score}%</span>
-          </div>` : ''}
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${score != null ? `
+            <div class="score-bar-wrap">
+              <div class="score-bar"><div class="score-bar-fill" style="width:${score}%;background:${scoreColor};"></div></div>
+              <span class="score-badge ${scoreClass}">${score}%</span>
+            </div>` : ''}
+          </div>
         </div>
         <div class="frag-card-body">
-          <p class="frag-text" id="frag-${i}">${f.contenido || ''}</p>
+          <p class="frag-text" id="ft-${i}">${contenidoHtml}</p>
           <div class="frag-foot">
-            <button class="btn btn-ghost btn-sm" onclick="expandir('frag-${i}',this)">Ver más</button>
+            <button class="btn btn-ghost btn-sm" onclick="expandirFrag('ft-${i}',this)">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              Ver más
+            </button>
             ${f.pagina != null ? `
             <a class="btn btn-ghost btn-sm" style="color:var(--accent);"
                href="/semantica/fragmentos/?nombre=${encodeURIComponent(f.nombre_documento||'')}&pagina=${f.pagina}">
               Ver en contexto →
-            </a>` : ''}
+            </a>` : '<span></span>'}
           </div>
         </div>
       </div>`;
     }).join('');
+
     mostrarResultados(html);
   }
 
+  // ── Render argumentos ─────────────────────────────────────────────
+
   function renderArgumentos(items, label) {
     document.getElementById('lblResultados').innerHTML =
-      `<span>${items.length} argumento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">· ${label}</span>`;
+      `<span>${items.length} argumento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">· ${escapeHtml(label)}</span>`;
 
     if (!items.length) { mostrarVacio('Sin argumentos registrados para esta problemática.'); return; }
 
     const html = items.map((a, i) => {
       const contenido = a.texto || a.descripcion || a.argumento || '(sin contenido)';
       const docs = Array.isArray(a.documentos) && a.documentos.length
-        ? a.documentos.map(d => `<span class="tipo-pill" style="background:#f8fafc;">${d.nombre || d}</span>`).join('') : '';
+        ? a.documentos.map(d => `<span class="tipo-pill">${escapeHtml(d.nombre || String(d))}</span>`).join('') : '';
       return `
       <div class="arg-card">
-        <div class="arg-num">${i + 1}</div>
-        <div class="arg-body">
-          <p class="arg-text">${contenido}</p>
-          <div class="arg-pills">
-            ${a.tema ? `<span class="tipo-pill">${a.tema}</span>` : ''}
-            ${a.problematica_descripcion ? `<span class="tipo-pill" style="background:#ede9fe;color:#5b21b6;">${a.problematica_descripcion}</span>` : ''}
-            ${a.frecuencia != null ? `<span class="tipo-pill" style="background:#f0fdf4;color:#15803d;">× ${a.frecuencia} menciones</span>` : ''}
+        <div class="arg-card-head">
+          <div class="arg-num-badge">${i + 1}</div>
+          <div class="arg-meta">
+            ${a.tema ? `<span class="tipo-pill purple">${escapeHtml(a.tema)}</span>` : ''}
+            ${a.problematica_descripcion ? `<span class="tipo-pill purple">${escapeHtml(a.problematica_descripcion)}</span>` : ''}
+            ${a.frecuencia != null ? `<span class="tipo-pill green">× ${a.frecuencia} menciones</span>` : ''}
             ${docs}
           </div>
         </div>
+        <div class="arg-card-body">
+          <p class="arg-text">${escapeHtml(contenido)}</p>
+        </div>
       </div>`;
     }).join('');
+
     mostrarResultados(html);
   }
 
-  function expandir(id, btn) {
-    const el = document.getElementById(id);
-    const exp = el.style.webkitLineClamp === 'unset';
-    el.style.webkitLineClamp = exp ? '4' : 'unset';
-    el.style.display         = exp ? '-webkit-box' : 'block';
-    btn.textContent          = exp ? 'Ver más' : 'Ver menos';
+  // ── Expandir fragmento ────────────────────────────────────────────
+
+  function expandirFrag(id, btn) {
+    const el  = document.getElementById(id);
+    const exp = el.classList.contains('expanded');
+    el.classList.toggle('expanded', !exp);
+    btn.innerHTML = exp
+      ? '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg> Ver más'
+      : '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg> Ver menos';
   }
+
+  // ── Estado de resultados ──────────────────────────────────────────
 
   function mostrarResultados(html) {
     document.getElementById('estadoVacio').style.display = 'none';
@@ -852,22 +757,21 @@
   function limpiarResultados() {
     const inp = document.getElementById('inputConsulta');
     if (inp) inp.value = '';
+    _ultimaConsulta = '';
+    document.getElementById('scoreLegend').style.display = 'none';
     ocultarResultados();
     document.getElementById('estadoVacio').style.display = 'flex';
   }
 
+  // ── Toast ─────────────────────────────────────────────────────────
+
   function toast(msg, tipo = 'success') {
-    const c = document.querySelector('.toast-container') || (() => {
-      const d = document.createElement('div');
-      d.className = 'toast-container';
-      document.body.appendChild(d);
-      return d;
-    })();
+    const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
     t.className = `toast ${tipo}`;
     t.textContent = msg;
     c.appendChild(t);
-    setTimeout(() => t.remove(), 3500);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3500);
   }
 </script>
 {% endblock %}

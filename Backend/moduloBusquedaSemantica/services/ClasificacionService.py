@@ -227,9 +227,10 @@ class ClasificacionService(IClasificacionService):
 
         opinion   = await self._clasificarOpinion(encuestaId, barrioId, textoOpinion)
         opinionId = opinion['id']
+        tema      = opinion['tema']          # ← tomar el tema clasificado
 
         argumentos = await self._extraerArgumentos(
-            opinionId, textoOpinion, prob1Cod, prob2Cod, probOtra
+            opinionId, textoOpinion, prob1Cod, prob2Cod, probOtra, tema
         )
 
         for argumento in argumentos:
@@ -328,6 +329,7 @@ class ClasificacionService(IClasificacionService):
         prob1Cod,
         prob2Cod,
         probOtra: str,
+        tema: str = 'sin_clasificar',
     ) -> list[dict]:
         """
         Por cada problemática de la encuesta:
@@ -407,7 +409,7 @@ class ClasificacionService(IClasificacionService):
             argumento = await Argumento.insertar(
                 opinionId       = opinionId,
                 texto           = textoOpinion,
-                tema            = 'sin_clasificar',
+                tema            = tema,
                 problematicaCod = problematicaCod,
                 frecuencia      = 1,
             )
@@ -424,6 +426,7 @@ class ClasificacionService(IClasificacionService):
                         'argumento_id':     str(argumento['id']),
                         'problematica_cod': problematicaCod,
                         'es_semilla':       False,
+                        'tema':             tema, 
                     }],
                 )
             except Exception as e:

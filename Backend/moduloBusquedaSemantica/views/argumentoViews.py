@@ -35,10 +35,11 @@ class ArgumentoDetalleView(View):
             data      = json.loads(request.body or '{}')
             texto     = data.get('texto', '').strip() or None
             frecuencia = data.get('frecuencia')
+            documentoIds = data.get('documentoIds')
             if frecuencia is not None:
                 frecuencia = int(frecuencia)
 
-            resultado = await _argumento_svc.actualizar(pk, texto=texto, frecuencia=frecuencia)
+            resultado = await _argumento_svc.actualizar(pk, texto=texto, frecuencia=frecuencia, documentoIds=documentoIds,)
             return JsonResponse(resultado, status=200)
         except ValueError as e:
             return JsonResponse({'error': str(e)}, status=404)

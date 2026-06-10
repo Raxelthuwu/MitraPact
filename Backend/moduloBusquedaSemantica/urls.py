@@ -61,7 +61,7 @@ urlpatterns = [
     # ── API — Documentos ──────────────────────────────────────────────────────
     path('documentos/api/',              DocumentoView.as_view(),         name='documento-list-api'),
     path('documentos/api/<str:pk>/',     DocumentoDetalleView.as_view(),  name='documento-detalle-api'),
-
+    path('busqueda/documentos/<str:pk>/', DocumentoDetalleView.as_view(), name='busqueda-documento-detalle'),
     # ── API — Búsqueda ────────────────────────────────────────────────────────
     path('busqueda/documentos/',         DocumentoBusquedaView.as_view(),   name='busqueda-documentos'),
     path('busqueda/temas/',              TemaBusquedaView.as_view(),        name='busqueda-temas'),

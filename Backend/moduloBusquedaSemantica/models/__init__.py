@@ -1,11 +1,8 @@
-# Backend/moduloBusquedaSemantica/models/__init__.py
-
-from Backend.moduloEventos.models import Barrio
-from .cargaDeDocumentos           import Documento, Fragmento, TemaDocumento
-from .argumentos                  import Argumento
-from .argumentoDocumento          import ArgumentoDocumento
-from .opiniones                   import OpinionClasificada
-from .filtros                     import FiltroSemantico
+from .cargaDeDocumentos import Documento, Fragmento, TemaDocumento
+from .argumentos        import Argumento
+from .argumentoDocumento import ArgumentoDocumento
+from .opiniones         import OpinionClasificada
+from .filtros           import FiltroSemantico, Barrio   # ← Barrio viene de aquí ahora
 
 __all__ = [
     'Documento',
