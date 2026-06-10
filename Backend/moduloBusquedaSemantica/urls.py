@@ -1,26 +1,7 @@
-# Backend/moduloBusquedaSemantica/urls.py
-
 from django.urls import path
-from django.views.decorators.csrf import csrf_exempt
-from Backend.moduloLogin.views import login_requerido
-from .views import (
-    # API views
-    DocumentoView,
-    DocumentoDetalleView,
-    DocumentoBusquedaView,
-    TemaBusquedaView,
-    FragmentoBusquedaView,
-    ArgumentoBusquedaView,
-    DistribucionFilterView,
-    ProblematicaFilterView,
-    TemaFilterView,
-    OpinionFilterView,
-    BarrioFilterView,
-    AuditoriaFilterView,
-    ConsultaSemanticaView,
-    ArgumentoDetalleView,
-    ArgumentoCreateView,
-    # Frontend views
+from Backend.moduloBusquedaSemantica.views import (
+    # Frontend
+    dashboard_vista,
     documento_lista_vista,
     documento_form_vista,
     busqueda_vista,
@@ -29,45 +10,72 @@ from .views import (
     dashboard_barrio_vista,
     dashboard_problematica_vista,
     auditoria_vista,
-    dashboard_vista,
+    argumentos_frecuentes_vista,
+
+    # API
+    DocumentoView,
+    DocumentoDetalleView,
+    DocumentoBusquedaView,
+    TemaBusquedaView,
+    FragmentoBusquedaView,
+    ArgumentoBusquedaView,
+    ArgumentoDetalleView,
+    ArgumentoCreateView,
+    ArgumentosFrecuentesView,
+    ArgumentoIncrementarView,
+    OpinionesClasificadasView,
+    DistribucionFilterView,
+    ProblematicaFilterView,
+    TemaFilterView,
+    OpinionFilterView,
+    BarrioFilterView,
+    AuditoriaFilterView,
+    ConsultaSemanticaView,
 )
 
 urlpatterns = [
-    # FRONTEND
-    path('',                         login_requerido(dashboard_vista),               name='semantica-inicio'),
-    path('documentos/lista/',        login_requerido(documento_lista_vista),         name='documento-lista-vista'),
-    path('documentos/nuevo/',        login_requerido(documento_form_vista),          name='documento-form-vista'),
-    path('busqueda/',                login_requerido(busqueda_vista),                name='busqueda-vista'),
-    path('fragmentos/',              login_requerido(fragmentos_vista),              name='fragmentos-vista'),
-    path('consulta/',                login_requerido(consulta_semantica_vista),      name='consulta-semantica-vista'),
-    path('dashboard/barrio/',        login_requerido(dashboard_barrio_vista),        name='dashboard-barrio-vista'),
-    path('dashboard/problematica/',  login_requerido(dashboard_problematica_vista),  name='dashboard-problematica-vista'),
-    path('auditoria/',               login_requerido(auditoria_vista),               name='auditoria-vista'),
-    path('dashboard/',               login_requerido(dashboard_vista),               name='dashboard-vista'),
 
-    # API — DOCUMENTOS
-    path('documentos/',              csrf_exempt(login_requerido(DocumentoView.as_view())),               name='documento-cargar'),
-    path('documentos/<str:pk>/',     csrf_exempt(login_requerido(DocumentoDetalleView.as_view())),        name='documento-detalle'),
+    # ── Vistas HTML ───────────────────────────────────────────────────────────
+    path('',                             dashboard_vista,               name='dashboard-vista'),
+    path('documentos/',                  documento_lista_vista,         name='documento-lista-vista'),
+    path('documentos/nuevo/',            documento_form_vista,          name='documento-form-vista'),
+    path('busqueda/',                    busqueda_vista,                name='busqueda-vista'),
+    path('fragmentos/',                  fragmentos_vista,              name='fragmentos-vista'),
+    path('consulta/',                    consulta_semantica_vista,      name='consulta-semantica-vista'),
+    path('dashboard/barrio/',            dashboard_barrio_vista,        name='dashboard-barrio-vista'),
+    path('dashboard/problematica/',      dashboard_problematica_vista,  name='dashboard-problematica-vista'),
+    path('auditoria/',                   auditoria_vista,               name='auditoria-vista'),
 
-    # API — BÚSQUEDA
-    path('busqueda/documentos/',     csrf_exempt(login_requerido(DocumentoBusquedaView.as_view())),       name='busqueda-documentos'),
-    path('busqueda/documentos/<str:pk>/', csrf_exempt(login_requerido(DocumentoDetalleView.as_view())),  name='documento-detalle-busqueda'),
-    path('busqueda/temas/',          csrf_exempt(login_requerido(TemaBusquedaView.as_view())),            name='busqueda-temas'),
-    path('busqueda/fragmentos/',     csrf_exempt(login_requerido(FragmentoBusquedaView.as_view())),       name='busqueda-fragmentos'),
-    path('busqueda/argumentos/',     csrf_exempt(login_requerido(ArgumentoBusquedaView.as_view())),       name='busqueda-argumentos'),
+    # IMPORTANTE: frecuentes antes de <str:pk> para que no colisione
+    path('argumentos/frecuentes/',       argumentos_frecuentes_vista,   name='argumentos-frecuentes-vista'),
 
-    # API — FILTROS
-    path('filter/distribucion/',     csrf_exempt(login_requerido(DistribucionFilterView.as_view())),      name='filter-distribucion'),
-    path('filter/problematica/',     csrf_exempt(login_requerido(ProblematicaFilterView.as_view())),      name='filter-problematica'),
-    path('filter/tema/',             csrf_exempt(login_requerido(TemaFilterView.as_view())),              name='filter-tema'),
-    path('filter/opiniones/',        csrf_exempt(login_requerido(OpinionFilterView.as_view())),           name='filter-opiniones'),
-    path('filter/barrio/',           csrf_exempt(login_requerido(BarrioFilterView.as_view())),            name='filter-barrio'),
-    path('filter/auditoria/',        csrf_exempt(login_requerido(AuditoriaFilterView.as_view())),         name='filter-auditoria'),
+    # ── API — Argumentos ──────────────────────────────────────────────────────
+    path('argumentos/frecuentes/api/',               ArgumentosFrecuentesView.as_view(),   name='argumentos-frecuentes-api'),
+    path('argumentos/<str:pk>/incrementar/',         ArgumentoIncrementarView.as_view(),   name='argumento-incrementar'),
+    path('argumentos/<str:pk>/',                     ArgumentoDetalleView.as_view(),       name='argumento-detalle'),
+    path('argumentos/',                              ArgumentoCreateView.as_view(),         name='argumento-create'),
 
-    # API — CONSULTA SEMÁNTICA
-    path('consulta/semantica/',      csrf_exempt(login_requerido(ConsultaSemanticaView.as_view())),       name='consulta-semantica'),
+    # ── API — Opiniones clasificadas ──────────────────────────────────────────
+    path('opiniones/clasificadas/',      OpinionesClasificadasView.as_view(),  name='opiniones-clasificadas-api'),
 
-    # API — ARGUMENTOS
-    path('argumentos/',              csrf_exempt(login_requerido(ArgumentoCreateView.as_view())),         name='argumento-crear'),
-    path('argumentos/<str:pk>/',     csrf_exempt(login_requerido(ArgumentoDetalleView.as_view())),        name='argumento-detalle'),
+    # ── API — Documentos ──────────────────────────────────────────────────────
+    path('documentos/api/',              DocumentoView.as_view(),         name='documento-list-api'),
+    path('documentos/api/<str:pk>/',     DocumentoDetalleView.as_view(),  name='documento-detalle-api'),
+
+    # ── API — Búsqueda ────────────────────────────────────────────────────────
+    path('busqueda/documentos/',         DocumentoBusquedaView.as_view(),   name='busqueda-documentos'),
+    path('busqueda/temas/',              TemaBusquedaView.as_view(),        name='busqueda-temas'),
+    path('busqueda/fragmentos/',         FragmentoBusquedaView.as_view(),   name='busqueda-fragmentos'),
+    path('busqueda/argumentos/',         ArgumentoBusquedaView.as_view(),   name='busqueda-argumentos'),
+
+    # ── API — Filtros ─────────────────────────────────────────────────────────
+    path('filter/distribucion/',         DistribucionFilterView.as_view(),   name='filter-distribucion'),
+    path('filter/problematica/',         ProblematicaFilterView.as_view(),   name='filter-problematica'),
+    path('filter/tema/',                 TemaFilterView.as_view(),           name='filter-tema'),
+    path('filter/opinion/',              OpinionFilterView.as_view(),        name='filter-opinion'),
+    path('filter/barrio/',               BarrioFilterView.as_view(),         name='filter-barrio'),
+    path('filter/auditoria/',            AuditoriaFilterView.as_view(),      name='filter-auditoria'),
+
+    # ── API — Consulta semántica ──────────────────────────────────────────────
+    path('consulta/api/',                ConsultaSemanticaView.as_view(),   name='consulta-semantica-api'),
 ]

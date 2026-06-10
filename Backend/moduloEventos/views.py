@@ -51,6 +51,15 @@ def eventos_vista(request):
     """Carga la interfaz del frontend de eventos."""
     return render(request, 'moduloEventos/eventos_lista.html')
 
+
+@login_requerido
+def territorios_vista(request):
+    return render(request, 'moduloEventos/territorios_admin.html')
+
+@login_requerido
+def simpatizantes_vista(request):
+    return render(request, 'moduloEventos/simpatizantes_admin.html')
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Instancias de servicios (singleton ligero — sin estado mutable)
 # ─────────────────────────────────────────────────────────────────────────────

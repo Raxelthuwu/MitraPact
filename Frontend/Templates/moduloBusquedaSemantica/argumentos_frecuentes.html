@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Argumentos Frecuentes — Búsqueda Semántica{% endblock %}
+
+{% block content %}
+<div class="page-content">
+
+  <!-- Topbar -->
+  <div class="topbar" style="position:sticky;top:0;z-index:90;">
+    <div class="topbar-title">
+      <h1>Argumentos &amp; Opiniones</h1>
+      <p>Opiniones clasificadas y argumentos recurrentes por problemática y barrio</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="cargarTodo()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Recargar
+      </button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi-card">
+      <div class="kpi-icon blue">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpi-total-args">—</div>
+        <div class="kpi-label">Total argumentos</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon purple">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpi-max-freq">—</div>
+        <div class="kpi-label">Mayor frecuencia</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon green">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpi-barrios">—</div>
+        <div class="kpi-label">Barrios representados</div>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon orange">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+        </svg>
+      </div>
+      <div class="kpi-data">
+        <div class="kpi-value" id="kpi-total-opiniones">—</div>
+        <div class="kpi-label">Total opiniones</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros compartidos -->
+  <div class="card">
+    <div class="card-header" style="align-items:center;flex-wrap:wrap;gap:12px;">
+      <span class="card-title">Filtros</span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;flex:1;align-items:center;">
+
+        <!-- Barrio (filtra ambas columnas) -->
+        <div style="position:relative;min-width:210px;" id="barrio-wrapper">
+          <input type="text" id="filtro-barrio-input" class="af-input"
+            placeholder="Barrio…"
+            oninput="onBarrioInput()"
+            onfocus="abrirDropdownBarrio()"
+            autocomplete="off">
+          <div id="filtro-barrio-results" class="af-dropdown" style="display:none;"></div>
+        </div>
+
+        <!-- Problemática (solo argumentos) -->
+        <select id="filtro-problematica" class="af-input af-select" style="min-width:220px;" onchange="aplicarFiltros()">
+          <option value="">Todas las problemáticas</option>
+        </select>
+
+        <!-- Búsqueda texto (filtra ambas columnas) -->
+        <input type="text" id="filtro-texto" class="af-input"
+          placeholder="Buscar texto u opinión…"
+          style="min-width:200px;flex:1;"
+          oninput="debounceTexto()">
+
+        <!-- Límite argumentos -->
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label class="text-xs text-muted" for="filtro-limite">Args.</label>
+          <select id="filtro-limite" class="af-input af-select" style="width:80px;" onchange="cargarArgumentos()">
+            <option value="20">20</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+
+        <button class="btn btn-ghost btn-sm" onclick="limpiarFiltros()">Limpiar</button>
+      </div>
+      <span class="text-muted text-xs" id="badge-total" style="white-space:nowrap;"></span>
+    </div>
+  </div>
+
+  <!-- Layout dos columnas -->
+  <div class="af-cols">
+
+    <!-- ── Columna izquierda: Argumentos ──────────────────────────────── -->
+    <div class="af-col">
+      <div class="card" style="height:100%;">
+        <div class="card-header">
+          <span class="card-title">Argumentos</span>
+          <span class="status-badge" id="badge-args" style="display:none;"></span>
+        </div>
+        <div class="card-body af-scroll" id="lista-argumentos">
+          <div class="skeleton skeleton-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Columna derecha: Opiniones ─────────────────────────────────── -->
+    <div class="af-col">
+      <div class="card" style="height:100%;">
+        <div class="card-header">
+          <span class="card-title">Opiniones clasificadas</span>
+          <span class="status-badge" id="badge-opiniones" style="display:none;"></span>
+        </div>
+        <div class="card-body af-scroll" id="lista-opiniones">
+          <div class="skeleton skeleton-card"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Distribución por problemática -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Distribución por problemática</span>
+      <span class="text-muted text-xs" id="badge-dist">cargando…</span>
+    </div>
+    <div class="card-body" id="dist-problematica">
+      <div class="skeleton skeleton-card"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<style>
+.af-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.af-col { min-width: 0; }
+.af-scroll { max-height: 580px; overflow-y: auto; padding-right: 2px; }
+
+@media (max-width: 900px) { .af-cols { grid-template-columns: 1fr; } }
+
+.af-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--bg-input, var(--bg-card));
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.af-input:focus { outline: none; border-color: var(--accent); }
+.af-select { padding-right: 28px; }
+
+.af-dropdown {
+  position: absolute;
+  top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface, var(--bg-card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  z-index: 50; max-height: 200px; overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+.af-dropdown-item {
+  padding: 8px 12px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.af-dropdown-item:last-child { border-bottom: none; }
+.af-dropdown-item:hover { background: var(--bg-hover, #f5f5f5); }
+
+/* Argumentos */
+.arg-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.arg-row:last-child { border-bottom: none; }
+.arg-rank {
+  font-family: var(--font-display); font-size: var(--font-size-sm);
+  font-weight: 700; min-width: 26px; text-align: right;
+  flex-shrink: 0; padding-top: 2px;
+}
+.arg-main { flex: 1; min-width: 0; }
+.arg-texto { font-size: var(--font-size-sm); color: var(--text-primary); font-weight: 500; margin-bottom: 5px; line-height: 1.45; }
+.arg-meta  { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.arg-opinion {
+  font-size: var(--font-size-xs); color: var(--text-muted); font-style: italic;
+  margin-top: 4px; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.arg-freq-block {
+  display: flex; flex-direction: column; align-items: flex-end;
+  gap: 6px; flex-shrink: 0; min-width: 68px;
+}
+.freq-value { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.freq-label { font-size: 10px; color: var(--text-muted); }
+
+.btn-incrementar {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  background: transparent; cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+  white-space: nowrap;
+}
+.btn-incrementar:hover  { border-color: var(--accent); color: var(--accent); background: var(--accent-light, #ede9fe); }
+.btn-incrementar.loading { opacity: .5; pointer-events: none; }
+.btn-incrementar.updated { border-color: var(--success, #16a34a); color: var(--success, #16a34a); }
+
+/* Tags */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.tag-prob   { background: var(--kpi-purple-bg, #ede9fe); color: var(--accent, #7c3aed); }
+.tag-barrio { background: var(--kpi-blue-bg,   #dbeafe); color: #1e40af; }
+.tag-doc    { background: var(--kpi-green-bg,  #d1fae5); color: #065f46; }
+.tag-tema   { background: var(--kpi-orange-bg, #ffedd5); color: #9a3412; }
+
+/* Opiniones */
+.op-row { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.op-row:last-child { border-bottom: none; }
+.op-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+.op-tema   { font-size: var(--font-size-sm); font-weight: 600; color: var(--text-primary); }
+.op-fecha  { font-size: 10px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+.op-texto  { font-size: var(--font-size-xs); color: var(--text-secondary); line-height: 1.5; font-style: italic; }
+
+.af-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+
+mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
+</style>
+
+<script>
+const BASE = '/semantica';
+
+// ── Estado global ─────────────────────────────────────────────────────────────
+let _todosArgs      = [];   // todos los argumentos cargados
+let _todosOp        = [];   // todas las opiniones cargadas
+let _barrios        = null; // nombres para dropdown
+let _barrioFiltrado = null; // { nombre, id } | null
+let _textoDebounce  = null;
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, tipo = 'error') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${tipo}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function formatFecha(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function getCookie(name) {
+  const v = `; ${document.cookie}`;
+  const p = v.split(`; ${name}=`);
+  if (p.length === 2) return p.pop().split(';').shift();
+  return '';
+}
+
+function highlight(texto, termino) {
+  if (!termino || !texto) return texto ?? '';
+  const re = new RegExp(`(${termino.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return texto.replace(re, '<mark>$1</mark>');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARGA INICIAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function cargarTodo() {
+  await Promise.all([cargarArgumentos(), cargarOpiniones()]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ARGUMENTOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function cargarArgumentos() {
+  const limite   = document.getElementById('filtro-limite').value;
+  const barrioId = _barrioFiltrado?.id ?? '';
+  const el       = document.getElementById('lista-argumentos');
+
+  el.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  document.getElementById('badge-args').style.display = 'none';
+
+  try {
+    const params = new URLSearchParams({ limite });
+    if (barrioId) params.set('barrio_id', barrioId);
+
+    const r = await fetch(`${BASE}/argumentos/frecuentes/api/?${params}`);
+    const d = await r.json();
+    _todosArgs = d.argumentos || [];
+
+    cargarProblematicasFiltro(_todosArgs);
+    aplicarFiltros();
+
+  } catch {
+    el.innerHTML = `<div class="af-empty"><p>Error al cargar argumentos.</p></div>`;
+    toast('Error al cargar argumentos.');
+  }
+}
+
+function cargarProblematicasFiltro(items) {
+  const sel   = document.getElementById('filtro-problematica');
+  const valor = sel.value;
+  const mapa  = {};
+  items.forEach(i => {
+    if (i.problematica_cod && !mapa[i.problematica_cod])
+      mapa[i.problematica_cod] = i.problematica_descripcion ?? `P-${i.problematica_cod}`;
+  });
+  const opts = Object.entries(mapa)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([cod, desc]) => `<option value="${cod}">${cod} — ${desc}</option>`)
+    .join('');
+  sel.innerHTML = `<option value="">Todas las problemáticas</option>${opts}`;
+  if (valor) sel.value = valor;
+}
+
+function renderArgumentos(items) {
+  const badge = document.getElementById('badge-args');
+  badge.textContent   = `${items.length} argumentos`;
+  badge.className     = `status-badge ${items.length > 0 ? 'success' : 'warning'}`;
+  badge.style.display = '';
+
+  document.getElementById('kpi-total-args').textContent = items.length;
+  const maxFreq = items.reduce((m, i) => Math.max(m, i.frecuencia ?? 0), 0);
+  document.getElementById('kpi-max-freq').textContent   = maxFreq;
+  const barrios = new Set(items.map(i => i.barrio_nombre).filter(Boolean));
+  document.getElementById('kpi-barrios').textContent    = barrios.size;
+
+  const el  = document.getElementById('lista-argumentos');
+  const max = maxFreq;
+  const q   = document.getElementById('filtro-texto').value.trim();
+
+  if (!items.length) {
+    el.innerHTML = `<div class="af-empty"><p>Sin argumentos para los filtros seleccionados.</p></div>`;
+    return;
+  }
+
+  const medals = ['#F59E0B', '#9CA3AF', '#D97706'];
+
+  el.innerHTML = `<div style="padding:0 4px;">` +
+    items.map((arg, idx) => {
+      const rankColor = idx < 3 ? medals[idx] : 'var(--text-muted)';
+      const pct       = max > 0 ? Math.round((arg.frecuencia / max) * 100) : 0;
+      const prob      = arg.problematica_descripcion ?? (arg.problematica_cod ? `P-${arg.problematica_cod}` : '');
+      const barrio    = arg.barrio_nombre ?? '';
+      const doc       = arg.documento_nombre ?? '';
+      const opinion   = arg.opinion_texto ?? '';
+      const textoHL   = highlight(arg.texto ?? '—', q);
+      const opinionHL = highlight(opinion, q);
+
+      return `<div class="arg-row" id="arg-row-${arg.id}">
+        <span class="arg-rank" style="color:${rankColor};">${idx + 1}</span>
+        <div class="arg-main">
+          <div class="arg-texto">${textoHL}</div>
+          <div class="arg-meta">
+            ${prob   ? `<span class="tag tag-prob">${prob}</span>`    : ''}
+            ${barrio ? `<span class="tag tag-barrio">${barrio}</span>` : ''}
+            ${doc    ? `<span class="tag tag-doc">📄 ${doc}</span>`   : ''}
+          </div>
+          ${opinionHL ? `<div class="arg-opinion">"${opinionHL}"</div>` : ''}
+          <div style="margin-top:7px;">
+            <div class="cobertura-bar-bg">
+              <div class="cobertura-bar-fill" id="bar-${arg.id}"
+                style="width:${pct}%;background:${rankColor};"></div>
+            </div>
+          </div>
+        </div>
+        <div class="arg-freq-block">
+          <span class="freq-value" id="freq-val-${arg.id}">${arg.frecuencia ?? 0}</span>
+          <span class="freq-label">veces</span>
+          <button class="btn-incrementar" id="btn-inc-${arg.id}"
+            onclick="incrementarFrecuencia('${arg.id}', ${max})">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            +1
+          </button>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+async function incrementarFrecuencia(argumentoId, maxActual) {
+  const btn   = document.getElementById(`btn-inc-${argumentoId}`);
+  const valEl = document.getElementById(`freq-val-${argumentoId}`);
+  const barEl = document.getElementById(`bar-${argumentoId}`);
+
+  btn.classList.add('loading');
+  try {
+    const r = await fetch(`${BASE}/argumentos/${argumentoId}/incrementar/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const nueva = d.argumento?.frecuencia ?? (parseInt(valEl.textContent) + 1);
+
+    const arg = _todosArgs.find(a => a.id === argumentoId);
+    if (arg) arg.frecuencia = nueva;
+
+    valEl.textContent = nueva;
+    const nuevoMax = Math.max(maxActual, nueva);
+    if (barEl && nuevoMax > 0) barEl.style.width = `${Math.round((nueva / nuevoMax) * 100)}%`;
+
+    const maxGlobal = _todosArgs.reduce((m, i) => Math.max(m, i.frecuencia ?? 0), 0);
+    document.getElementById('kpi-max-freq').textContent = maxGlobal;
+
+    btn.classList.remove('loading');
+    btn.classList.add('updated');
+    setTimeout(() => btn.classList.remove('updated'), 1500);
+    toast(`Frecuencia actualizada a ${nueva}`, 'success');
+  } catch {
+    btn.classList.remove('loading');
+    toast('No se pudo incrementar la frecuencia.');
+  }
+}
+
+function renderDistribucion(items) {
+  const el     = document.getElementById('dist-problematica');
+  const grupos = {};
+  items.forEach(i => {
+    const cod  = i.problematica_cod ?? 0;
+    const desc = i.problematica_descripcion ?? `P-${cod}`;
+    if (!grupos[cod]) grupos[cod] = { desc, total: 0, args: 0 };
+    grupos[cod].total += (i.frecuencia ?? 0);
+    grupos[cod].args  += 1;
+  });
+  const lista = Object.values(grupos).sort((a, b) => b.total - a.total);
+  document.getElementById('badge-dist').textContent = `${lista.length} problemáticas`;
+
+  if (!lista.length) { el.innerHTML = `<div class="af-empty"><p>Sin datos</p></div>`; return; }
+
+  const maxTotal = lista[0].total;
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">` +
+    lista.map(g => {
+      const pct = maxTotal > 0 ? Math.round((g.total / maxTotal) * 100) : 0;
+      return `<div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:8px;">
+          <span class="text-sm" style="flex:1;">${g.desc}</span>
+          <span class="text-xs text-muted" style="white-space:nowrap;">
+            ${g.args} arg${g.args !== 1 ? 's' : ''} · ${g.total} menciones
+          </span>
+        </div>
+        <div class="cobertura-bar-bg">
+          <div class="cobertura-bar-fill" style="width:${pct}%;"></div>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPINIONES
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function cargarOpiniones() {
+  const el = document.getElementById('lista-opiniones');
+  el.innerHTML = '<div class="skeleton skeleton-card"></div>';
+  document.getElementById('badge-opiniones').style.display = 'none';
+
+  try {
+    // Sin filtros en la petición inicial → trae todas (límite 200 en la view)
+    const r = await fetch(`${BASE}/opiniones/clasificadas/`);
+    const d = await r.json();
+    _todosOp = d.opiniones || [];
+
+    document.getElementById('kpi-total-opiniones').textContent = _todosOp.length;
+    renderOpiniones(_todosOp);
+
+  } catch {
+    el.innerHTML = `<div class="af-empty"><p>Error al cargar opiniones.</p></div>`;
+    toast('Error al cargar opiniones clasificadas.');
+  }
+}
+
+function renderOpiniones(items) {
+  const badge = document.getElementById('badge-opiniones');
+  badge.textContent   = `${items.length} opiniones`;
+  badge.className     = `status-badge ${items.length > 0 ? 'success' : 'warning'}`;
+  badge.style.display = '';
+
+  const el = document.getElementById('lista-opiniones');
+  const q  = document.getElementById('filtro-texto').value.trim();
+
+  if (!items.length) {
+    el.innerHTML = `<div class="af-empty"><p>Sin opiniones para los filtros seleccionados.</p></div>`;
+    return;
+  }
+
+  el.innerHTML = `<div style="padding:0 4px;">` +
+    items.map(op => {
+      const barrio  = op.barrio_nombre ?? '';
+      const fecha   = formatFecha(op.clasificado_en);
+      const texto   = op.opinion_texto ?? '';
+      const temaHL  = highlight(op.tema ?? '', q);
+      const textoHL = highlight(texto, q);
+
+      return `<div class="op-row">
+        <div class="op-header">
+          <span class="op-tema">${temaHL}</span>
+          ${barrio ? `<span class="tag tag-barrio">${barrio}</span>` : ''}
+          <span class="op-fecha">${fecha}</span>
+        </div>
+        ${textoHL ? `<div class="op-texto">"${textoHL}"</div>` : ''}
+      </div>`;
+    }).join('') + `</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTROS — aplican en cliente sobre datos ya cargados
+// ─────────────────────────────────────────────────────────────────────────────
+
+function aplicarFiltros() {
+  const probFiltro   = document.getElementById('filtro-problematica').value;
+  const barrioNombre = _barrioFiltrado?.nombre ?? '';
+  const texto        = document.getElementById('filtro-texto').value.trim().toLowerCase();
+
+  // Argumentos
+  let args = _todosArgs;
+  if (barrioNombre) args = args.filter(a => a.barrio_nombre === barrioNombre);
+  if (probFiltro)   args = args.filter(a => String(a.problematica_cod) === probFiltro);
+  if (texto)        args = args.filter(a =>
+    (a.texto        ?? '').toLowerCase().includes(texto) ||
+    (a.opinion_texto ?? '').toLowerCase().includes(texto) ||
+    (a.tema         ?? '').toLowerCase().includes(texto)
+  );
+  renderArgumentos(args);
+  renderDistribucion(args);
+
+  // Opiniones
+  let ops = _todosOp;
+  if (barrioNombre) ops = ops.filter(o => o.barrio_nombre === barrioNombre);
+  if (texto)        ops = ops.filter(o =>
+    (o.tema          ?? '').toLowerCase().includes(texto) ||
+    (o.opinion_texto ?? '').toLowerCase().includes(texto) ||
+    (o.barrio_nombre ?? '').toLowerCase().includes(texto)
+  );
+  renderOpiniones(ops);
+
+  document.getElementById('badge-total').textContent =
+    `${args.length} args · ${ops.length} opiniones`;
+}
+
+function debounceTexto() {
+  clearTimeout(_textoDebounce);
+  _textoDebounce = setTimeout(aplicarFiltros, 300);
+}
+
+function limpiarFiltros() {
+  _barrioFiltrado = null;
+  document.getElementById('filtro-barrio-input').value  = '';
+  document.getElementById('filtro-problematica').value  = '';
+  document.getElementById('filtro-texto').value         = '';
+  document.getElementById('filtro-limite').value        = '50';
+  cargarTodo();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DROPDOWN BARRIO
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function abrirDropdownBarrio() {
+  if (!_barrios) {
+    try {
+      const r = await fetch(`${BASE}/filter/distribucion/?tipo=opinionesPorBarrio`);
+      const d = await r.json();
+      _barrios = [...new Set(
+        (d.distribucion || []).map(b => b.barrio_nombre).filter(Boolean)
+      )].sort();
+    } catch { _barrios = []; }
+  }
+  renderDropdownBarrio(_barrios);
+}
+
+function onBarrioInput() {
+  const val = document.getElementById('filtro-barrio-input').value.trim();
+  if (!val) { _barrioFiltrado = null; aplicarFiltros(); }
+  if (!_barrios) { abrirDropdownBarrio(); return; }
+  renderDropdownBarrio(_barrios.filter(b => b.toLowerCase().includes(val.toLowerCase())));
+}
+
+function renderDropdownBarrio(lista) {
+  const resEl = document.getElementById('filtro-barrio-results');
+  if (!lista.length) { resEl.style.display = 'none'; return; }
+  resEl.innerHTML = lista.map(b =>
+    `<div class="af-dropdown-item" data-nombre="${b.replace(/"/g,'&quot;')}">${b}</div>`
+  ).join('');
+  resEl.querySelectorAll('.af-dropdown-item').forEach(el => {
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const nombre = el.dataset.nombre;
+      document.getElementById('filtro-barrio-input').value = nombre;
+      resEl.style.display = 'none';
+
+      // Intentar obtener el id desde los datos ya cargados
+      const encontrado = _todosArgs.find(a => a.barrio_nombre === nombre)
+                      ?? _todosOp.find(o => o.barrio_nombre === nombre);
+      _barrioFiltrado = { nombre, id: encontrado?.barrio_id ?? null };
+
+      aplicarFiltros();
+    });
+  });
+  resEl.style.display = 'block';
+}
+
+document.getElementById('filtro-barrio-input').addEventListener('blur', () => {
+  setTimeout(() => {
+    document.getElementById('filtro-barrio-results').style.display = 'none';
+  }, 150);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+cargarTodo();
+</script>
+{% endblock %}

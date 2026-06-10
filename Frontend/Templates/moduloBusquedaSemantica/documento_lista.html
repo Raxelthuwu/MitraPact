@@ -10,175 +10,639 @@
 <a href="{% url 'documento-form-vista' %}" class="btn btn-primary btn-sm">+ Nuevo documento</a>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+/* ── KPI strip ── */
+.doc-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.doc-kpi {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.doc-kpi-val {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.doc-kpi-label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+}
+
+/* ── Barra de búsqueda ── */
+.doc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.doc-search {
+  flex: 1;
+  position: relative;
+}
+.doc-search svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.doc-search input {
+  width: 100%;
+  padding: 9px 12px 9px 38px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.doc-search input:focus { border-color: var(--accent); }
+.doc-count {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Grid de tarjetas ── */
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.doc-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.doc-card:hover {
+  box-shadow: var(--shadow-hover);
+  border-color: var(--accent-mid);
+}
+.doc-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.doc-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.doc-name {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.35;
+  word-break: break-word;
+}
+.doc-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Temas ── */
+.doc-temas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 22px;
+}
+.doc-tema-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.doc-sin-temas {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Acciones ── */
+.doc-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-light);
+  margin-top: 2px;
+}
+.doc-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1.5px solid transparent;
+  text-decoration: none;
+}
+.doc-btn-edit {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.doc-btn-edit:hover {
+  border-color: var(--accent-mid);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+.doc-btn-delete {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+.doc-btn-delete:hover {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ── Empty state ── */
+.doc-empty {
+  grid-column: 1 / -1;
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.doc-empty svg { opacity: .2; margin: 0 auto 12px; display: block; }
+.doc-empty p { font-size: var(--font-size-sm); }
+.doc-empty a { color: var(--accent); font-weight: 600; text-decoration: none; }
+
+/* ── Modales ── */
+.doc-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(4px);
+  align-items: center;
+  justify-content: center;
+}
+.doc-modal-overlay.open { display: flex; }
+.doc-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  width: 100%;
+  max-width: 440px;
+  padding: 28px 28px 22px;
+  position: relative;
+}
+.doc-modal-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.doc-modal-title-icon {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.doc-modal-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition);
+}
+.doc-modal-close:hover { color: var(--text-primary); }
+.doc-form-group { margin-bottom: 14px; }
+.doc-form-label {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+.doc-form-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.doc-form-input:focus { border-color: var(--accent); }
+.doc-form-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.doc-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 22px;
+}
+.doc-modal-btn {
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition);
+}
+.doc-modal-btn-cancel {
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.doc-modal-btn-cancel:hover { background: var(--border-light); }
+.doc-modal-btn-primary {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+}
+.doc-modal-btn-primary:hover { opacity: .88; }
+.doc-modal-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+.doc-modal-btn-danger {
+  border: none;
+  background: var(--danger);
+  color: #fff;
+}
+.doc-modal-btn-danger:hover { opacity: .88; }
+.doc-modal-btn-danger:disabled { opacity: .55; cursor: not-allowed; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 700px) {
+  .doc-kpis { grid-template-columns: 1fr 1fr; }
+  .doc-grid  { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiDocs">0</div><div class="kpi-label">Documentos</div></div></div>
-    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiTemas">0</div><div class="kpi-label">Temas</div></div></div>
-    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiFragmentos">0</div><div class="kpi-label">Fragmentos</div></div></div>
-    <div class="kpi-card"><div class="kpi-data"><div class="kpi-value" id="kpiArgumentos">0</div><div class="kpi-label">Argumentos</div></div></div>
+
+<!-- KPIs -->
+<div class="doc-kpis">
+  <div class="doc-kpi">
+    <div class="doc-kpi-val" id="kpiDocs">—</div>
+    <div class="doc-kpi-label">Documentos</div>
+  </div>
+  <div class="doc-kpi">
+    <div class="doc-kpi-val" id="kpiTemas">—</div>
+    <div class="doc-kpi-label">Temas</div>
+  </div>
+  <div class="doc-kpi">
+    <div class="doc-kpi-val" id="kpiFragmentos">—</div>
+    <div class="doc-kpi-label">Fragmentos</div>
+  </div>
+  <div class="doc-kpi">
+    <div class="doc-kpi-val" id="kpiArgumentos">—</div>
+    <div class="doc-kpi-label">Argumentos</div>
+  </div>
 </div>
 
-<div class="card mt-4">
-    <div class="card-header"><h3 class="card-title">Documentos indexados</h3></div>
-    <div class="card-body" id="lista"></div>
+<!-- Barra de búsqueda -->
+<div class="doc-toolbar">
+  <div class="doc-search">
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+    </svg>
+    <input type="text" id="docBuscador" placeholder="Buscar por nombre o tema…" oninput="filtrarDocs()">
+  </div>
+  <span class="doc-count" id="docCount"></span>
 </div>
 
-<div class="modal-overlay" id="modalEditar">
-    <div class="modal">
-        <h3>Editar Documento</h3>
-        <input type="hidden" id="editId">
-        <div class="form-group"><label>Nombre</label><input id="editNombre" type="text" class="form-control"></div>
-        <div class="form-group"><label>Temas</label><input id="editTemas" type="text" class="form-control" placeholder="tema1, tema2, tema3"></div>
-        <div class="form-group"><label>Reemplazar PDF</label><input id="editArchivo" type="file" class="form-control"></div>
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="cerrarModal('modalEditar')">Cancelar</button>
-            <button class="btn btn-primary" id="btnGuardarEdicion" onclick="guardarEdicion()"><span class="btn-text">Guardar</span></button>
-        </div>
+<!-- Grid de documentos -->
+<div class="doc-grid" id="docGrid">
+  <!-- skeletons mientras carga -->
+  ${[...Array(6)].map(() => `
+  <div class="doc-card">
+    <div class="doc-card-top">
+      <div class="skeleton" style="width:36px;height:36px;border-radius:var(--radius-sm);flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div class="skeleton" style="height:14px;width:70%;border-radius:4px;margin-bottom:6px;"></div>
+        <div class="skeleton" style="height:11px;width:40%;border-radius:4px;"></div>
+      </div>
     </div>
+    <div class="doc-temas">
+      <div class="skeleton" style="height:20px;width:60px;border-radius:99px;"></div>
+      <div class="skeleton" style="height:20px;width:80px;border-radius:99px;"></div>
+    </div>
+    <div class="doc-card-footer">
+      <div class="skeleton" style="height:28px;width:64px;border-radius:var(--radius-md);"></div>
+      <div class="skeleton" style="height:28px;width:32px;border-radius:var(--radius-md);"></div>
+    </div>
+  </div>`).join('')}
 </div>
 
-<div class="modal-overlay" id="modalEliminar">
-    <div class="modal">
-        <h3>Eliminar documento</h3>
-        <p>¿Seguro de eliminar <strong id="eliminarNombre"></strong>?</p>
-        <input type="hidden" id="eliminarId">
-        <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="cerrarModal('modalEliminar')">Cancelar</button>
-            <button id="btnConfirmarEliminar" class="btn btn-danger" onclick="confirmarEliminar()"><span class="btn-text">Eliminar</span></button>
-        </div>
+<!-- ── Modal Editar ── -->
+<div class="doc-modal-overlay" id="modalEditar">
+  <div class="doc-modal">
+    <button class="doc-modal-close" onclick="cerrarModal('modalEditar')" title="Cerrar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <div class="doc-modal-title">
+      <div class="doc-modal-title-icon" style="background:var(--accent-light);color:var(--accent);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/>
+        </svg>
+      </div>
+      Editar documento
     </div>
+    <input type="hidden" id="editId">
+    <div class="doc-form-group">
+      <label class="doc-form-label">Nombre</label>
+      <input id="editNombre" type="text" class="doc-form-input" placeholder="Nombre del documento">
+    </div>
+    <div class="doc-form-group">
+      <label class="doc-form-label">Temas</label>
+      <input id="editTemas" type="text" class="doc-form-input" placeholder="tema1, tema2, tema3">
+      <div class="doc-form-hint">Separados por coma</div>
+    </div>
+    <div class="doc-form-group">
+      <label class="doc-form-label">Reemplazar PDF <span style="font-weight:400;text-transform:none;letter-spacing:0;">(opcional)</span></label>
+      <input id="editArchivo" type="file" class="doc-form-input" accept=".pdf">
+    </div>
+    <div class="doc-modal-footer">
+      <button class="doc-modal-btn doc-modal-btn-cancel" onclick="cerrarModal('modalEditar')">Cancelar</button>
+      <button class="doc-modal-btn doc-modal-btn-primary" id="btnGuardarEdicion" onclick="guardarEdicion()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        </svg>
+        <span id="lblGuardar">Guardar cambios</span>
+      </button>
+    </div>
+  </div>
 </div>
+
+<!-- ── Modal Eliminar ── -->
+<div class="doc-modal-overlay" id="modalEliminar">
+  <div class="doc-modal" style="max-width:400px;">
+    <div class="doc-modal-title">
+      <div class="doc-modal-title-icon" style="background:var(--danger-bg);color:var(--danger);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+        </svg>
+      </div>
+      ¿Eliminar documento?
+    </div>
+    <p style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.55;margin:0 0 4px;">
+      Se eliminará <strong id="eliminarNombre" style="color:var(--text-primary);"></strong>
+      junto con todos sus fragmentos y argumentos indexados.
+      <br><span style="font-size:11px;color:var(--text-muted);margin-top:6px;display:block;">Esta acción no se puede deshacer.</span>
+    </p>
+    <input type="hidden" id="eliminarId">
+    <div class="doc-modal-footer">
+      <button class="doc-modal-btn doc-modal-btn-cancel" onclick="cerrarModal('modalEliminar')">Cancelar</button>
+      <button class="doc-modal-btn doc-modal-btn-danger" id="btnConfirmarEliminar" onclick="confirmarEliminar()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+        </svg>
+        <span id="lblEliminar">Sí, eliminar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
+let _todosLosDocs = [];
+
+function getCookie(name) {
+  let v = null;
+  if (document.cookie) {
+    for (const c of document.cookie.split(';')) {
+      const t = c.trim();
+      if (t.startsWith(name + '=')) { v = decodeURIComponent(t.slice(name.length + 1)); break; }
     }
+  }
+  return v;
+}
 
-    async function cargarDocumentos() {
-        const res = await fetch('/semantica/busqueda/documentos/');
-        const data = await res.json();
-        const docs = data.documentos || [];
-        renderizar(docs);
-        actualizarKPIs(docs);
-    }
+async function cargarDocumentos() {
+  const res  = await fetch('/semantica/busqueda/documentos/');
+  const data = await res.json();
+  _todosLosDocs = data.documentos || [];
+  actualizarKPIs(_todosLosDocs);
+  renderizarGrid(_todosLosDocs);
+}
 
-    function renderizar(docs) {
-        document.getElementById('lista').innerHTML = docs.map(d => `
-            <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <strong>${d.nombre}</strong>
-                    ${d.temas && d.temas.length > 0
-                        ? `<div style="margin-top:4px; font-size:0.85em;">${d.temas.map(t => `<span style="background:#f0eaff;color:#7c3aed;padding:2px 8px;border-radius:999px;margin-right:4px;">${t}</span>`).join('')}</div>`
-                        : '<div style="margin-top:4px;font-size:0.85em;color:#aaa;">Sin temas</div>'}
-                </div>
-                <div>
-                    <button class="btn btn-sm" onclick="abrirEditar('${d.id}', '${d.nombre.replace(/'/g,"\\'")}', '${(d.temas||[]).join(', ')}')">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="abrirEliminar('${d.id}', '${d.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
-                </div>
-            </div>
-        `).join('');
-    }
+function actualizarKPIs(docs) {
+  document.getElementById('kpiDocs').textContent       = docs.length;
+  document.getElementById('kpiTemas').textContent      = new Set(docs.flatMap(d => d.temas || [])).size;
+  document.getElementById('kpiFragmentos').textContent = docs.reduce((s, d) => s + (d.total_fragmentos || 0), 0);
+  document.getElementById('kpiArgumentos').textContent = docs.reduce((s, d) => s + (d.total_argumentos || 0), 0);
+}
 
-    function actualizarKPIs(docs) {
-        document.getElementById('kpiDocs').textContent = docs.length;
+function renderizarGrid(docs) {
+  const grid = document.getElementById('docGrid');
+  document.getElementById('docCount').textContent = `${docs.length} documento${docs.length !== 1 ? 's' : ''}`;
 
-        const temasUnicos = new Set(docs.flatMap(d => d.temas || []));
-        document.getElementById('kpiTemas').textContent = temasUnicos.size;
+  if (!docs.length) {
+    grid.innerHTML = `
+      <div class="doc-empty">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+        </svg>
+        <p>No hay documentos. <a href="{% url 'documento-form-vista' %}">Subir el primero →</a></p>
+      </div>`;
+    return;
+  }
 
-        const totalFragmentos = docs.reduce((s, d) => s + (d.total_fragmentos || 0), 0);
-        document.getElementById('kpiFragmentos').textContent = totalFragmentos;
+  grid.innerHTML = docs.map(d => {
+    const temasHtml = (d.temas && d.temas.length)
+      ? d.temas.map(t => `<span class="doc-tema-chip">${t}</span>`).join('')
+      : '<span class="doc-sin-temas">Sin temas</span>';
 
-        const totalArgumentos = docs.reduce((s, d) => s + (d.total_argumentos || 0), 0);
-        document.getElementById('kpiArgumentos').textContent = totalArgumentos;
-    }
+    const meta = [];
+    if (d.total_fragmentos) meta.push(`${d.total_fragmentos} fragmentos`);
+    if (d.total_argumentos) meta.push(`${d.total_argumentos} argumentos`);
 
-    function abrirEditar(id, nombre, temas) {
-        document.getElementById('editId').value = id;
-        document.getElementById('editNombre').value = nombre;
-        document.getElementById('editTemas').value = temas;
-        document.getElementById('modalEditar').classList.add('open');
-    }
+    const nombreEsc = d.nombre.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const temasEsc  = (d.temas || []).join(', ').replace(/'/g, "\\'");
 
-    function abrirEliminar(id, nombre) {
-        document.getElementById('eliminarId').value = id;
-        document.getElementById('eliminarNombre').textContent = nombre;
-        document.getElementById('modalEliminar').classList.add('open');
-    }
+    return `
+      <div class="doc-card">
+        <div class="doc-card-top">
+          <div class="doc-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+            </svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="doc-name">${d.nombre}</div>
+            ${meta.length ? `<div class="doc-meta">${meta.join(' · ')}</div>` : ''}
+          </div>
+        </div>
+        <div class="doc-temas">${temasHtml}</div>
+        <div class="doc-card-footer">
+          <button class="doc-btn doc-btn-edit" onclick="abrirEditar('${d.id}', '${nombreEsc}', '${temasEsc}')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/>
+            </svg>
+            Editar
+          </button>
+          <button class="doc-btn doc-btn-delete" onclick="abrirEliminar('${d.id}', '${nombreEsc}')" title="Eliminar documento">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/>
+            </svg>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+}
 
-    async function guardarEdicion() {
-        const id = document.getElementById('editId').value;
-        const btn = document.getElementById('btnGuardarEdicion');
+function filtrarDocs() {
+  const q = document.getElementById('docBuscador').value.trim().toLowerCase();
+  if (!q) { renderizarGrid(_todosLosDocs); return; }
+  const filtrados = _todosLosDocs.filter(d =>
+    d.nombre.toLowerCase().includes(q) ||
+    (d.temas || []).some(t => t.toLowerCase().includes(q))
+  );
+  renderizarGrid(filtrados);
+}
 
-        const formData = new FormData();
-        formData.append('nombre', document.getElementById('editNombre').value);
-        formData.append('temas', document.getElementById('editTemas').value);
-        formData.append('temas_enviado', '1');
+// ── Modales ──
+function abrirEditar(id, nombre, temas) {
+  document.getElementById('editId').value    = id;
+  document.getElementById('editNombre').value = nombre;
+  document.getElementById('editTemas').value  = temas;
+  document.getElementById('editArchivo').value = '';
+  document.getElementById('modalEditar').classList.add('open');
+}
 
-        const file = document.getElementById('editArchivo').files[0];
-        if (file) formData.append('archivo', file);
+function abrirEliminar(id, nombre) {
+  document.getElementById('eliminarId').value = id;
+  document.getElementById('eliminarNombre').textContent = nombre;
+  document.getElementById('modalEliminar').classList.add('open');
+}
 
-        btn.disabled = true;
-        btn.querySelector('.btn-text').textContent = 'Guardando...';
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
 
-        try {
-            const res = await fetch(`/semantica/busqueda/documentos/${id}/`, { // <- Añade /busqueda si tus URLs de Django lo requieren
-                method: 'PUT',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') },
-                body: formData
-            });
+document.getElementById('modalEditar').addEventListener('click',  e => { if (e.target === e.currentTarget) cerrarModal('modalEditar'); });
+document.getElementById('modalEliminar').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarModal('modalEliminar'); });
 
+// ── Guardar edición ──
+async function guardarEdicion() {
+  const id  = document.getElementById('editId').value;
+  const btn = document.getElementById('btnGuardarEdicion');
+  const lbl = document.getElementById('lblGuardar');
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Error en el servidor');
-            }
+  const formData = new FormData();
+  formData.append('nombre', document.getElementById('editNombre').value);
+  formData.append('temas',  document.getElementById('editTemas').value);
+  formData.append('temas_enviado', '1');
+  const file = document.getElementById('editArchivo').files[0];
+  if (file) formData.append('archivo', file);
 
-            cerrarModal('modalEditar');
-            await cargarDocumentos();
-        } catch (e) {
-            alert('Error: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.querySelector('.btn-text').textContent = 'Guardar';
-        }
-    }
+  btn.disabled = true;
+  lbl.textContent = 'Guardando…';
 
-    async function confirmarEliminar() {
-        const btn = document.getElementById('btnConfirmarEliminar');
-        const id = document.getElementById('eliminarId').value;
-        btn.disabled = true;
-        btn.querySelector('.btn-text').textContent = 'Eliminando...';
-        try {
-            const res = await fetch(`/semantica/busqueda/documentos/${id}/`, {
-                method: 'DELETE',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') }
-            });
-            if (!res.ok) throw new Error();
-            cerrarModal('modalEliminar');
-            await cargarDocumentos();
-        } catch {
-            alert('Error al eliminar');
-        } finally {
-            btn.disabled = false;
-            btn.querySelector('.btn-text').textContent = 'Eliminar';
-        }
-    }
+  try {
+    const res = await fetch(`/semantica/busqueda/documentos/${id}/`, {
+      method: 'PUT',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      body: formData,
+    });
+    if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Error en el servidor'); }
+    cerrarModal('modalEditar');
+    await cargarDocumentos();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    lbl.textContent = 'Guardar cambios';
+  }
+}
 
-    function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+// ── Confirmar eliminar ──
+async function confirmarEliminar() {
+  const btn = document.getElementById('btnConfirmarEliminar');
+  const lbl = document.getElementById('lblEliminar');
+  const id  = document.getElementById('eliminarId').value;
 
-    cargarDocumentos();
+  btn.disabled = true;
+  lbl.textContent = 'Eliminando…';
+
+  try {
+    const res = await fetch(`/semantica/busqueda/documentos/${id}/`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': getCookie('csrftoken') },
+    });
+    if (!res.ok) throw new Error();
+    cerrarModal('modalEliminar');
+    await cargarDocumentos();
+  } catch {
+    alert('Error al eliminar');
+  } finally {
+    btn.disabled = false;
+    lbl.textContent = 'Sí, eliminar';
+  }
+}
+
+cargarDocumentos();
 </script>
-{% endblock %}a
+{% endblock %}
