@@ -10,7 +10,6 @@
 
 {% block extra_css %}
 <style>
-  /* ── Layout principal ── */
   .import-layout {
     display: grid;
     grid-template-columns: 1fr 360px;
@@ -18,7 +17,6 @@
     align-items: start;
   }
 
-  /* ── Upload zone ── */
   .upload-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -60,7 +58,6 @@
     margin-top: 1px;
   }
 
-  /* ── Drop zone ── */
   .drop-zone {
     margin: 24px;
     border: 2px dashed var(--border);
@@ -124,7 +121,6 @@
     font-weight: 600;
   }
 
-  /* ── File preview (after selection) ── */
   .file-preview {
     margin: 0 24px 24px;
     background: var(--border-light);
@@ -175,7 +171,6 @@
   }
   .btn-remove-file:hover { background: var(--danger-bg); color: var(--danger); }
 
-  /* ── Periodo selector ── */
   .import-form-section {
     padding: 0 24px 24px;
   }
@@ -190,7 +185,6 @@
     margin-bottom: 6px;
   }
 
-  /* ── Progress bar ── */
   .progress-wrap {
     padding: 0 24px 24px;
     display: none;
@@ -219,7 +213,6 @@
     margin-top: 6px;
   }
 
-  /* ── Historial sidebar ── */
   .history-card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -293,7 +286,6 @@
     border-radius: 99px;
   }
 
-  /* ── Validación de columnas ── */
   .columns-check {
     margin: 0 24px 24px;
     border: 1px solid var(--border);
@@ -325,7 +317,6 @@
   .col-row.ok  { color: var(--success); }
   .col-row.err { color: var(--danger); }
 
-  /* ── Bottom actions ── */
   .import-actions {
     padding: 0 24px 24px;
     display: flex;
@@ -333,7 +324,6 @@
     align-items: center;
   }
 
-  /* ── Estado badge ── */
   .badge {
     display: inline-flex;
     align-items: center;
@@ -350,7 +340,6 @@
   .badge-info     { background: var(--info-bg);     color: #1E40AF; }
   .badge-muted    { background: var(--border-light); color: var(--text-muted); }
 
-  /* ── Empty historial ── */
   .history-empty {
     padding: 40px 20px;
     text-align: center;
@@ -358,7 +347,6 @@
   }
   .history-empty p { font-size: var(--font-size-sm); margin-top: 8px; }
 
-  /* ── Detail modal ── */
   .modal-overlay {
     display: none;
     position: fixed;
@@ -434,7 +422,6 @@
   .detail-label { color: var(--text-muted); font-weight: 500; flex-shrink: 0; }
   .detail-value { color: var(--text-primary); font-weight: 600; text-align: right; }
 
-  /* ── Responsive ── */
   @media (max-width: 900px) {
     .import-layout { grid-template-columns: 1fr; }
   }
@@ -444,12 +431,8 @@
 {% block content %}
 <div class="import-layout">
 
-  <!-- ═══════════════════════════════════════════════
-       COLUMNA IZQUIERDA — Formulario de importación
-  ════════════════════════════════════════════════════ -->
   <div style="display:flex;flex-direction:column;gap:20px;">
 
-    <!-- Card principal -->
     <div class="upload-card">
       <div class="upload-card-header">
         <div class="icon-wrap">
@@ -458,14 +441,13 @@
           </svg>
         </div>
         <div>
-          <h2>Cargar archivo CSV</h2>
-          <p>Sube el archivo de encuesta para procesarlo estadísticamente</p>
+          <h2>Cargar archivo</h2>
+          <p>Sube el archivo de encuesta CSV o Excel para procesarlo estadísticamente</p>
         </div>
       </div>
 
-      <!-- Drop zone -->
       <div class="drop-zone" id="dropZone">
-        <input type="file" id="csvInput" accept=".csv" />
+        <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" />
         <div class="drop-zone-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
@@ -473,10 +455,9 @@
         </div>
         <div class="drop-zone-title">Arrastra tu archivo aquí</div>
         <div class="drop-zone-sub">o <span>haz clic para seleccionar</span></div>
-        <div class="drop-zone-sub" style="margin-top:6px;">Solo archivos .csv · Máx. 10 MB</div>
+        <div class="drop-zone-sub" style="margin-top:6px;">Archivos .csv, .xlsx, .xls · Máx. 10 MB</div>
       </div>
 
-      <!-- File preview (oculto hasta selección) -->
       <div class="file-preview" id="filePreview" style="display:none;">
         <div class="file-preview-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
@@ -494,16 +475,13 @@
         </button>
       </div>
 
-      <!-- Validación de columnas (oculto hasta que se analice el CSV) -->
       <div class="columns-check" id="columnsCheck">
         <div class="columns-check-header">Validación de columnas requeridas</div>
         <div id="colsList"></div>
       </div>
 
-      <!-- Separador -->
       <div style="height:1px;background:var(--border-light);margin:0 24px;"></div>
 
-      <!-- Selección de período -->
       <div class="import-form-section" style="padding-top:20px;">
         <label for="selectPeriodo">Período estadístico</label>
         <select class="form-control form-select" id="selectPeriodo">
@@ -512,7 +490,6 @@
         <div class="form-hint">El archivo quedará vinculado a este período de análisis.</div>
       </div>
 
-      <!-- Barra de progreso (oculta hasta importar) -->
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-bar-track">
           <div class="progress-bar-fill" id="progressFill"></div>
@@ -523,7 +500,6 @@
         </div>
       </div>
 
-      <!-- Acciones -->
       <div class="import-actions">
         <button class="btn btn-primary" id="btnImportar" disabled>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -531,14 +507,11 @@
           </svg>
           Importar datos
         </button>
-        <button class="btn btn-secondary" id="btnReset">
-          Limpiar
-        </button>
+        <button class="btn btn-secondary" id="btnReset">Limpiar</button>
         <span id="importResult" style="font-size:var(--font-size-xs);margin-left:4px;"></span>
       </div>
     </div>
 
-    <!-- Card: columnas requeridas (referencia rápida) -->
     <div class="upload-card">
       <div class="upload-card-header">
         <div class="icon-wrap" style="background:var(--kpi-blue-bg);color:var(--info);">
@@ -547,7 +520,7 @@
           </svg>
         </div>
         <div>
-          <h2>Formato esperado del CSV</h2>
+          <h2>Formato esperado</h2>
           <p>Columnas requeridas para el procesamiento correcto</p>
         </div>
       </div>
@@ -585,9 +558,6 @@
 
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       COLUMNA DERECHA — Historial de importaciones
-  ════════════════════════════════════════════════════ -->
   <div class="history-card">
     <div class="history-card-header">
       <h3>Historial de importaciones</h3>
@@ -598,9 +568,7 @@
         Actualizar
       </button>
     </div>
-
     <div class="history-list" id="historyList">
-      <!-- Skeleton mientras carga -->
       <div style="padding:16px 20px;display:flex;flex-direction:column;gap:10px;" id="historySkeleton">
         <div class="skeleton" style="height:54px;border-radius:var(--radius-sm);"></div>
         <div class="skeleton" style="height:54px;border-radius:var(--radius-sm);"></div>
@@ -611,7 +579,6 @@
 
 </div>
 
-<!-- ── Modal detalle importación ── -->
 <div class="modal-overlay" id="importModal">
   <div class="modal-box">
     <div class="modal-header">
@@ -626,13 +593,12 @@
   </div>
 </div>
 
-<!-- ── Toast container ── -->
 <div class="toast-container" id="toastContainer"></div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-// ── Columnas comunes a ambos formatos ──────────────────────────────────
 const REQUIRED_COLS_COMUN = [
   'barrio_id',
   'ocupacion_cod',
@@ -640,17 +606,13 @@ const REQUIRED_COLS_COMUN = [
   'intencion_participacion_cod',
   'edad',
 ];
-
-// Columnas exclusivas de cada formato
 const REQUIRED_COLS_NUEVO = ['fecha', 'prob_1_cod'];
 const REQUIRED_COLS_VIEJO = ['periodo_id', 'problematica_cod'];
 
-// ── Estado ────────────────────────────────────────────────────────────
-let selectedFile   = null;
-let columnsValid   = false;
-let periodos       = [];
+let selectedFile = null;
+let columnsValid = false;
+let periodos     = [];
 
-// ── Utils ─────────────────────────────────────────────────────────────
 const API = (path, opts = {}) =>
   fetch(`/estadisticas${path}`, {
     headers: { 'Content-Type': 'application/json', ...opts.headers },
@@ -658,7 +620,7 @@ const API = (path, opts = {}) =>
   }).then(r => r.json());
 
 function fmt(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024)    return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes/1024).toFixed(1)} KB`;
   return `${(bytes/1048576).toFixed(1)} MB`;
 }
@@ -699,8 +661,8 @@ function estadoBadge(estado) {
 // ── Drag & drop ───────────────────────────────────────────────────────
 const dropZone = document.getElementById('dropZone');
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop',      e => {
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
   e.preventDefault();
   dropZone.classList.remove('drag-over');
   const f = e.dataTransfer.files[0];
@@ -715,21 +677,42 @@ document.getElementById('btnRemoveFile').addEventListener('click', clearFile);
 document.getElementById('btnReset').addEventListener('click', clearFile);
 
 function setFile(file) {
-  if (!file.name.endsWith('.csv')) {
-    showToast('Solo se aceptan archivos .csv', 'error');
+  const esExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+  const esCsv   = file.name.endsWith('.csv');
+
+  if (!esExcel && !esCsv) {
+    showToast('Solo se aceptan archivos .csv, .xlsx o .xls', 'error');
     return;
   }
-  selectedFile = file;
+
   document.getElementById('filePreview').style.display = 'flex';
   document.getElementById('dropZone').style.display    = 'none';
   document.getElementById('fileName').textContent       = file.name;
   document.getElementById('fileMeta').textContent       = fmt(file.size) + ' · ' + new Date().toLocaleTimeString('es-CO');
-  parseCSVHeaders(file);
+
+  if (esExcel) {
+    showToast('Convirtiendo Excel a CSV…', 'success');
+    const reader = new FileReader();
+    reader.onload = e => {
+      const workbook  = XLSX.read(e.target.result, { type: 'array' });
+      const sheet     = workbook.Sheets[workbook.SheetNames[0]];
+      const csvString = XLSX.utils.sheet_to_csv(sheet);
+      const csvBlob   = new Blob([csvString], { type: 'text/csv' });
+      selectedFile    = new File([csvBlob], file.name.replace(/\.xlsx?$/, '.csv'), { type: 'text/csv' });
+      document.getElementById('fileMeta').textContent =
+        fmt(selectedFile.size) + ' · convertido desde Excel · ' + new Date().toLocaleTimeString('es-CO');
+      parseCSVHeaders(selectedFile);
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    selectedFile = file;
+    parseCSVHeaders(file);
+  }
 }
 
 function clearFile() {
-  selectedFile  = null;
-  columnsValid  = false;
+  selectedFile = null;
+  columnsValid = false;
   document.getElementById('filePreview').style.display  = 'none';
   document.getElementById('dropZone').style.display     = '';
   document.getElementById('columnsCheck').style.display = 'none';
@@ -743,7 +726,7 @@ function parseCSVHeaders(file) {
   const reader = new FileReader();
   reader.onload = e => {
     const firstLine = e.target.result.split('\n')[0] || '';
-    const headers   = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+    const headers   = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
     renderColsCheck(headers);
   };
   reader.readAsText(file);
@@ -754,8 +737,7 @@ function renderColsCheck(headers) {
   const list  = document.getElementById('colsList');
   check.style.display = '';
 
-  // Detectar formato igual que el backend
-  const esFormatoViejo = headers.includes('problematica_cod') || headers.includes('periodo_id');
+  const esFormatoViejo  = headers.includes('problematica_cod') || headers.includes('periodo_id');
   const colsEspecificas = esFormatoViejo ? REQUIRED_COLS_VIEJO : REQUIRED_COLS_NUEVO;
   const todasRequeridas = [...REQUIRED_COLS_COMUN, ...colsEspecificas];
 
@@ -779,8 +761,7 @@ function renderColsCheck(headers) {
 
   columnsValid = allOk;
   updateImportBtn();
-
-  if (!allOk) showToast('El CSV tiene columnas faltantes', 'error');
+  if (!allOk) showToast('El archivo tiene columnas faltantes', 'error');
 }
 
 // ── Períodos ──────────────────────────────────────────────────────────
@@ -825,7 +806,6 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     </svg>
     Procesando…`;
 
-  // Mostrar barra de progreso simulada
   const pw   = document.getElementById('progressWrap');
   const fill = document.getElementById('progressFill');
   const pct  = document.getElementById('progressPct');
@@ -858,14 +838,13 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       document.getElementById('importResult').innerHTML =
         `<span style="color:var(--success);font-weight:600;">✓ ID: ${res.data?.importacion_id ?? res.data?.id ?? '—'}</span>`;
       await loadHistory();
-      // polling estado
       if (res.data?.importacion_id ?? res.data?.id) pollEstado(res.data.importacion_id ?? res.data.id);
     } else {
       showToast(res.error || 'Error en la importación', 'error');
       document.getElementById('importResult').innerHTML =
         `<span style="color:var(--danger);">${res.error}</span>`;
     }
-  } catch (err) {
+  } catch {
     clearInterval(ticker);
     showToast('Error de conexión al servidor', 'error');
   } finally {
@@ -905,7 +884,7 @@ async function loadHistory() {
 
   try {
     const res  = await API('/api/importaciones/');
-    const data = (res.data || []).slice(0,20);
+    const data = (res.data || []).slice(0, 20);
 
     if (skel) skel.remove();
 
@@ -977,12 +956,10 @@ document.getElementById('importModal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
 });
 
-// ── Spin keyframe ──────────────────────────────────────────────────────
 const styleEl = document.createElement('style');
 styleEl.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
 document.head.appendChild(styleEl);
 
-// ── Init ──────────────────────────────────────────────────────────────
 loadPeriodos();
 loadHistory();
 </script>

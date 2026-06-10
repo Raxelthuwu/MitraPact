@@ -733,21 +733,23 @@ class Encuesta:
             cur.execute(
                 f"""
                 SELECT
-                    COUNT(*)                                         AS total,
+                    COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE inclinacion_voto_cod = 1) AS total_simpatizantes,
-                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 2) AS total_indecisos,
-                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 3) AS total_no_simpatizantes,
-                    COUNT(*) FILTER (WHERE intencion_participacion_cod = 2) AS total_no_votantes,
-                    COUNT(*) FILTER (WHERE intencion_participacion_cod = 1) AS total_intension_votar,
-                    COUNT(*) FILTER (WHERE intencion_participacion_cod = 2) AS total_abstencion
+                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 3) AS total_indecisos,
+                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 2) AS total_no_simpatizantes,
+                    COUNT(*) FILTER (WHERE inclinacion_voto_cod = 4) AS total_no_votantes,
+                    COUNT(*) FILTER (WHERE intencion_participacion_cod IN (1,2)) AS total_intension_votar,
+                    COUNT(*) FILTER (WHERE intencion_participacion_cod IN (4,5)) AS total_abstencion
                 FROM {cls.TABLE}
                 WHERE barrio_id = %s
-                  AND fecha >= %s
-                  AND fecha <= %s
+                AND fecha >= %s
+                AND fecha <= %s
                 """,
                 [barrio_id, periodo["fecha_inicio"], periodo["fecha_fin"]],
             )
+
             result = _fetchone(cur)
+
         logger.info("[Encuesta.agregar_por_barrio_y_periodo] Resultado: %s.", result)
         return result or {k: 0 for k in (
             "total", "total_simpatizantes", "total_indecisos",
@@ -901,7 +903,7 @@ class SnapshotTerritorial:
         def pct(part, whole):
             return round(part / whole * 100, 2) if whole else None
 
-        indice = round((ts / total - tns / total) * 100, 4) if total else None
+        indice = round((ts - tns) / total * 100, 4) if total else None
         new_id = str(uuid.uuid4())
 
         with transaction.atomic():

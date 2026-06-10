@@ -36,6 +36,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+ZERO_SHOT_MODEL = 'joeddav/xlm-roberta-large-xnli'
+
 ROOT_URLCONF = 'app.urls'
 
 TEMPLATES = [

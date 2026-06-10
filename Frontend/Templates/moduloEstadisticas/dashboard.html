@@ -131,6 +131,109 @@
   max-width: 200px;
 }
 
+/* ── Botón Recargar topbar ── */
+.btn-recargar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: #7C3AED;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .18s, opacity .18s, transform .1s;
+  box-shadow: 0 2px 8px rgba(124,58,237,.35);
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+.btn-recargar:hover:not(:disabled) {
+  background: #6D28D9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(124,58,237,.45);
+}
+.btn-recargar:disabled {
+  opacity: .7;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-recargar svg { flex-shrink: 0; }
+
+/* ── Overlay procesando ── */
+#overlayProcesando {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  align-items: center;
+  justify-content: center;
+  animation: fadeInOverlay .25s ease;
+}
+#overlayProcesando.visible { display: flex; }
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.overlay-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgba(0,0,0,.3);
+  padding: 36px 40px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+.overlay-spinner {
+  width: 48px; height: 48px;
+  border: 4px solid rgba(124,58,237,.2);
+  border-top-color: #7C3AED;
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+  flex-shrink: 0;
+}
+.overlay-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -.01em;
+}
+.overlay-detail {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  min-height: 20px;
+  transition: opacity .3s;
+}
+.overlay-progress {
+  width: 100%;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.overlay-progress-bar {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #7C3AED, #A78BFA, #7C3AED);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  width: 100%;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
 /* ── Bar chart ── */
 .bar-list { display: flex; flex-direction: column; gap: 11px; }
 .bar-item-header {
@@ -320,19 +423,31 @@
   .dash-kpis { grid-template-columns: 1fr 1fr; }
   .dash-row.cols-3, .dash-row.cols-2 { grid-template-columns: 1fr; }
   .quick-actions { grid-template-columns: 1fr; }
+  .btn-recargar span.btn-label { display: none; }
 }
 </style>
 {% endblock %}
 
 {% block topbar_extra %}
-<div class="periodo-chip">
-  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
-  </svg>
-  <span style="color:var(--text-muted);">Período:</span>
-  <select id="selPeriodoTop">
-    <option value="">Cargando…</option>
-  </select>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <!-- Selector de período -->
+  <div class="periodo-chip">
+    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
+    </svg>
+    <span style="color:var(--text-muted);">Período:</span>
+    <select id="selPeriodoTop">
+      <option value="">Cargando…</option>
+    </select>
+  </div>
+
+  <!-- Botón Recargar prominente -->
+  <button id="btnRecargar" class="btn-recargar" onclick="recargarPeriodo()">
+    <svg id="iconRecargar" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+    </svg>
+    <span class="btn-label" id="lblRecargar">Recargar</span>
+  </button>
 </div>
 {% endblock %}
 
@@ -346,7 +461,7 @@
   <div class="kpi-card"><div class="kpi-icon skeleton" style="width:44px;height:44px;"></div><div class="kpi-info"><div class="skeleton" style="height:12px;width:80px;margin-bottom:8px;"></div><div class="skeleton" style="height:28px;width:60px;"></div></div></div>
 </div>
 
-<!-- ── Fila 1: Afinidad + Participación + Acciones ── -->
+<!-- ── Fila 1: Afinidad + Acciones ── -->
 <div class="dash-row cols-3-2" style="margin-bottom:20px;">
 
   <!-- Distribución de afinidad -->
@@ -371,7 +486,7 @@
     </div>
   </div>
 
-  <!-- Acciones rápidas -->
+  <!-- Acciones rápidas — sin botón Recargar (está en topbar) -->
   <div class="dash-card">
     <div class="dash-card-header">
       <div class="dash-card-title">
@@ -413,17 +528,17 @@
           <div style="font-weight:400;color:var(--text-muted);margin-top:1px;">Analizar dimensiones</div>
         </div>
       </a>
-      <button class="qa-btn" id="btnRegenTodo">
-        <div class="qa-icon" style="background:var(--danger-bg);color:var(--danger);">
+      <a href="{% url 'argumentos-frecuentes-vista' %}" class="qa-btn">
+        <div class="qa-icon" style="background:rgba(124,58,237,.12);color:#7C3AED;">
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/>
           </svg>
         </div>
         <div>
-          <div>Regenerar período</div>
-          <div style="font-weight:400;color:var(--text-muted);margin-top:1px;">Snapshots + caracteriz.</div>
+          <div>Args. frecuentes</div>
+          <div style="font-weight:400;color:var(--text-muted);margin-top:1px;">Semántica territorial</div>
         </div>
-      </button>
+      </a>
     </div>
   </div>
 
@@ -493,7 +608,7 @@
 
 </div>
 
-<!-- ── Fila 3: Mapa de calor barrios + Importaciones recientes ── -->
+<!-- ── Fila 3: Importaciones + Heatmap barrios ── -->
 <div class="dash-row cols-2-3" style="margin-bottom:20px;">
 
   <!-- Importaciones recientes -->
@@ -585,6 +700,18 @@
     </div>
   </div>
 
+</div>
+
+<!-- ── Overlay: Recalculando… ── -->
+<div id="overlayProcesando">
+  <div class="overlay-panel">
+    <div class="overlay-spinner"></div>
+    <div class="overlay-title">Recalculando…</div>
+    <div class="overlay-detail" id="overlayDetalle">Preparando datos del período</div>
+    <div class="overlay-progress">
+      <div class="overlay-progress-bar"></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
@@ -754,7 +881,35 @@ function fmtDate(iso) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Mapa de barrios (id → nombre)  — fuente: moduloEventos
+// Overlay helpers
+// ─────────────────────────────────────────────────────────────────
+function mostrarOverlay(detalle) {
+  document.getElementById('overlayDetalle').textContent = detalle || 'Procesando…';
+  document.getElementById('overlayProcesando').classList.add('visible');
+}
+
+function actualizarOverlay(detalle) {
+  const el = document.getElementById('overlayDetalle');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    el.textContent = detalle;
+    el.style.opacity = '1';
+  }, 200);
+}
+
+function ocultarOverlay() {
+  const overlay = document.getElementById('overlayProcesando');
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity .4s';
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    overlay.style.opacity = '';
+    overlay.style.transition = '';
+  }, 400);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Mapa de barrios
 // ─────────────────────────────────────────────────────────────────
 async function loadBarrios() {
   try {
@@ -790,7 +945,6 @@ async function loadPeriodos() {
       return `<option value="${p.id}">${p.etiqueta}${fechas}</option>`;
     }).join('');
 
-    // Usar el más reciente por defecto
     periodoActual = data[0].id;
     sel.value = periodoActual;
 
@@ -821,7 +975,7 @@ function renderListPeriodos(data) {
         <div class="rank-sub">${p.fecha_inicio ?? '—'} → ${p.fecha_fin ?? '—'}</div>
       </div>
       ${i === 0 ? '<span class="badge badge-accent" style="margin-right:6px;">Activo</span>' : '<span class="badge badge-muted" style="margin-right:6px;">Anterior</span>'}
-      <button onclick="confirmarBorrarPeriodo('${p.id}', '${p.etiqueta.replace(/'/g, "\'")}')"
+      <button onclick="confirmarBorrarPeriodo('${p.id}', '${p.etiqueta.replace(/'/g, "\\'")}')"
         title="Eliminar período y todos sus datos"
         style="background:transparent;border:1.5px solid var(--danger);color:var(--danger);
                border-radius:var(--radius-sm);padding:3px 7px;cursor:pointer;
@@ -839,8 +993,6 @@ function renderListPeriodos(data) {
 
 // ─────────────────────────────────────────────────────────────────
 // Dashboard principal
-// Snapshots primero: loadRankings necesita snapshots.length para
-// decidir si auto-calcular; el resto corre en paralelo después.
 // ─────────────────────────────────────────────────────────────────
 async function loadDashboard() {
   await loadSnapshots();
@@ -852,7 +1004,7 @@ async function loadDashboard() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Snapshots → KPIs + donut + barras + heatmap barrios
+// Snapshots → KPIs + donut + barras + heatmap
 // ─────────────────────────────────────────────────────────────────
 async function loadSnapshots() {
   try {
@@ -1040,17 +1192,11 @@ function renderHeatGrid(snaps) {
   el.innerHTML = sorted.map(s => {
     const idx = parseFloat(s.indice_intervencion) || 0;
     let bg, textColor;
-    if (idx > 20) {
-      bg = 'rgba(16,185,129,.18)'; textColor = '#065F46';
-    } else if (idx > 0) {
-      bg = 'rgba(16,185,129,.08)'; textColor = 'var(--success)';
-    } else if (idx === 0) {
-      bg = 'rgba(245,158,11,.12)'; textColor = '#92400E';
-    } else if (idx > -20) {
-      bg = 'rgba(239,68,68,.08)';  textColor = 'var(--danger)';
-    } else {
-      bg = 'rgba(239,68,68,.18)';  textColor = '#991B1B';
-    }
+    if (idx > 20)       { bg = 'rgba(16,185,129,.18)'; textColor = '#065F46'; }
+    else if (idx > 0)   { bg = 'rgba(16,185,129,.08)'; textColor = 'var(--success)'; }
+    else if (idx === 0) { bg = 'rgba(245,158,11,.12)'; textColor = '#92400E'; }
+    else if (idx > -20) { bg = 'rgba(239,68,68,.08)';  textColor = 'var(--danger)'; }
+    else                { bg = 'rgba(239,68,68,.18)';  textColor = '#991B1B'; }
     return `
       <div class="barrio-heat-cell" style="background:${bg};" title="Índice: ${idx.toFixed(2)}">
         <div class="barrio-heat-name" style="color:var(--text-secondary);">${nb(s.barrio_id)}</div>
@@ -1099,7 +1245,6 @@ function renderRankList(elId, data, color) {
 
 // ─────────────────────────────────────────────────────────────────
 // Rankings problemáticas
-// Auto-calcula si la tabla está vacía pero hay snapshots del período
 // ─────────────────────────────────────────────────────────────────
 async function loadRankings() {
   try {
@@ -1110,8 +1255,6 @@ async function loadRankings() {
     let data = rankRes.data || [];
     const el = document.getElementById('barProblematicas');
 
-    // Si no hay rankings pero sí hay snapshots (encuestas importadas),
-    // calcularlos automáticamente sin que el usuario tenga que pulsar "Regenerar"
     if (!data.length && snapshots.length) {
       el.innerHTML = '<div class="dash-empty"><p>Calculando problemáticas…</p></div>';
       try {
@@ -1130,13 +1273,11 @@ async function loadRankings() {
       return;
     }
 
-    // Catálogo: normalizar código a String para comparación segura
     const cat = {};
     (catRes.data || []).forEach(x => {
       if (x.codigo != null) cat[String(x.codigo)] = x.descripcion ?? `Cód. ${x.codigo}`;
     });
 
-    // Agrupar por problematica_cod sumando frecuencias de todos los barrios
     const grouped = {};
     data.forEach(r => {
       const k    = String(r.problematica_cod ?? '');
@@ -1183,7 +1324,7 @@ async function loadRankings() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Importaciones recientes  — sin polling, solo carga única
+// Importaciones recientes
 // ─────────────────────────────────────────────────────────────────
 async function loadImportaciones() {
   try {
@@ -1215,36 +1356,53 @@ async function loadImportaciones() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Acción: Regenerar todo el período
-// FIX: ahora incluye rankings/calcular-todos/ en el batch
+// Botón Recargar — con overlay de procesando
 // ─────────────────────────────────────────────────────────────────
-document.getElementById('btnRegenTodo').addEventListener('click', async () => {
+async function recargarPeriodo() {
   if (!periodoActual) { showToast('Selecciona un período primero', 'error'); return; }
-  const btn  = document.getElementById('btnRegenTodo');
-  const orig = btn.innerHTML;
+
+  const btn   = document.getElementById('btnRecargar');
+  const lbl   = document.getElementById('lblRecargar');
+  const icon  = document.getElementById('iconRecargar');
+
   btn.disabled = true;
-  btn.querySelector('div:last-child div:first-child').textContent = 'Procesando…';
+  lbl.textContent = 'Procesando';
+  icon.style.animation = 'spin .7s linear infinite';
+
+  mostrarOverlay('Generando snapshots del período…');
 
   try {
-    // Paso 1: generar snapshots primero (rankings los necesitan)
+    // Paso 1
     await API(`/api/periodos/${periodoActual}/snapshots/generar-todos/`, { method: 'POST' });
 
-    // Paso 2: calcular rankings + caracterizaciones + resúmenes en paralelo
+    // Paso 2
+    actualizarOverlay('Calculando rankings de problemáticas…');
+    await API('/api/rankings/calcular-todos/', {
+      method: 'POST',
+      body: JSON.stringify({ periodo_id: periodoActual }),
+    });
+
+    // Paso 3
+    actualizarOverlay('Generando caracterizaciones territoriales…');
     await Promise.all([
-      API(`/api/rankings/calcular-todos/`,
-          { method: 'POST', body: JSON.stringify({ periodo_id: periodoActual }) }),
       API(`/api/periodos/${periodoActual}/caracterizaciones/generar-todos/`, { method: 'POST' }),
       API(`/api/periodos/${periodoActual}/resumenes/generar-todos/`,         { method: 'POST' }),
     ]);
 
-    showToast('Período regenerado correctamente');
+    actualizarOverlay('Actualizando dashboard…');
     await loadDashboard();
-  } catch { showToast('Error al regenerar', 'error'); }
-  finally {
+
+    ocultarOverlay();
+    showToast('Período recalculado correctamente');
+  } catch {
+    ocultarOverlay();
+    showToast('Error al recalcular el período', 'error');
+  } finally {
     btn.disabled = false;
-    btn.innerHTML = orig;
+    lbl.textContent = 'Recargar';
+    icon.style.animation = '';
   }
-});
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Init
@@ -1285,13 +1443,9 @@ async function ejecutarBorrarPeriodo() {
     }
     cerrarModalBorrar();
     showToast('Período eliminado correctamente');
-
-    // Si el período eliminado era el activo, limpiar el dashboard
-    if (_periodoABorrarId === periodoActual) {
-      periodoActual = '';
-    }
+    if (_periodoABorrarId === periodoActual) periodoActual = '';
     await loadPeriodos();
-  } catch (e) {
+  } catch {
     showToast('Error de conexión al eliminar.', 'error');
   } finally {
     btn.disabled = false;
@@ -1307,8 +1461,7 @@ function openModalPeriodo() {
   document.getElementById('inpFechaInicio').value = '';
   document.getElementById('inpFechaFin').value    = '';
   document.getElementById('modalPeriodoError').style.display = 'none';
-  const modal = document.getElementById('modalPeriodo');
-  modal.style.display = 'flex';
+  document.getElementById('modalPeriodo').style.display = 'flex';
   document.getElementById('inpEtiqueta').focus();
 }
 
@@ -1316,7 +1469,6 @@ function closeModalPeriodo() {
   document.getElementById('modalPeriodo').style.display = 'none';
 }
 
-// Cerrar al hacer clic fuera del panel
 document.getElementById('modalPeriodo').addEventListener('click', function(e) {
   if (e.target === this) closeModalPeriodo();
 });
@@ -1327,7 +1479,6 @@ async function guardarPeriodo() {
   const fechaFin    = document.getElementById('inpFechaFin').value;
   const errEl       = document.getElementById('modalPeriodoError');
 
-  // Validación básica
   if (!etiqueta) {
     errEl.textContent = 'La etiqueta es obligatoria.';
     errEl.style.display = 'block';
@@ -1364,9 +1515,8 @@ async function guardarPeriodo() {
 
     closeModalPeriodo();
     showToast('Período creado correctamente');
-    await loadPeriodos();          // recarga lista y selector del topbar
-
-  } catch (e) {
+    await loadPeriodos();
+  } catch {
     errEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
     errEl.style.display = 'block';
   } finally {

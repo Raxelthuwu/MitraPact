@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views
-
 from .views import (
     BarrioListView,
     BarrioDetailView,
@@ -36,7 +35,13 @@ from .views import (
     EstadoMaterialCSVView,
     PromedioEstadoMaterialView,
     AuditoriaView,
-    eventos_vista
+    # Vistas frontend
+    eventos_vista,
+    evento_crear_vista,
+    evento_detalle_vista,
+    evento_editar_vista,
+    territorios_vista,
+    simpatizantes_vista,
 )
 
 urlpatterns = [
@@ -44,11 +49,12 @@ urlpatterns = [
     # =========================================================================
     # FRONTEND
     # =========================================================================
-    path("", views.eventos_vista, name="eventos_frontend"),
-    path("crear/", views.evento_crear_vista, name="evento-crear"),
-    path("<str:evento_id>/detalle/", views.evento_detalle_vista, name="evento-detalle"),
-    path("<str:evento_id>/editar/", views.evento_editar_vista, name="evento-editar"),
-
+    path("", eventos_vista, name="eventos_frontend"),
+    path("crear/", evento_crear_vista, name="evento-crear"),
+    path("<str:evento_id>/detalle/", evento_detalle_vista, name="evento-detalle"),
+    path("<str:evento_id>/editar/", evento_editar_vista, name="evento-editar"),
+    path("territorios/", territorios_vista, name="territorios"),
+    path("simpatizantes/", simpatizantes_vista, name="simpatizantes"),
     # =========================================================================
     # BARRIOS
     # =========================================================================

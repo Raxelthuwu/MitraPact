@@ -8,6 +8,12 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'eventos.css' %}">
+<style>
+#barrioGrid::-webkit-scrollbar { width: 5px; }
+#barrioGrid::-webkit-scrollbar-track { background: transparent; }
+#barrioGrid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+#barrioGrid::-webkit-scrollbar-thumb:hover { background: var(--accent-mid); }
+</style>
 {% endblock %}
 
 {% block topbar_extra %}
@@ -74,19 +80,64 @@
     </div>
 
     <div class="form-grid-2">
+
+      <!-- Panel de barrios -->
       <div class="form-group">
-        <label class="form-label" for="barrioSelect">Barrio <span style="color:var(--danger)">*</span></label>
-        <select class="form-control form-select" id="barrioSelect" onchange="cargarPuntos(this.value)" required>
-          <option value="">Seleccionar barrio…</option>
-        </select>
+        <label class="form-label">
+          Barrio <span style="color:var(--danger)">*</span>
+        </label>
+
+        <!-- Buscador -->
+        <div style="position:relative;margin-bottom:8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+               viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+               style="position:absolute;left:10px;top:50%;transform:translateY(-50%);
+                      color:var(--text-muted);pointer-events:none;">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+          </svg>
+          <input id="barrioSearch" type="text" placeholder="Buscar barrio…"
+            style="width:100%;padding:7px 10px 7px 32px;
+                   border:1.5px solid var(--border);border-radius:var(--radius-md);
+                   background:var(--bg-card);color:var(--text-primary);
+                   font-size:var(--font-size-xs);box-sizing:border-box;outline:none;
+                   transition:border-color var(--transition);"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border)'"
+            oninput="filtrarBarrios(this.value)">
+        </div>
+
+        <!-- Grid scrolleable -->
+        <div id="barrioGrid"
+             style="display:grid;
+                    grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
+                    gap:7px;max-height:200px;overflow-y:auto;
+                    border:1.5px solid var(--border);border-radius:var(--radius-md);
+                    padding:10px;background:var(--bg-base);
+                    scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
+          <div style="grid-column:1/-1;text-align:center;padding:20px;
+                      color:var(--text-muted);font-size:var(--font-size-xs);">
+            Cargando barrios…
+          </div>
+        </div>
+
+        <!-- Valor oculto para validación y envío -->
+        <input type="hidden" id="barrioSelect">
+
+        <!-- Confirmación visual -->
+        <div id="barrioSelLabel"
+             style="margin-top:6px;font-size:11px;min-height:16px;color:var(--text-muted);">
+        </div>
       </div>
 
+      <!-- Punto de interés -->
       <div class="form-group">
         <label class="form-label" for="puntoSelect">Punto de interés</label>
         <select class="form-control form-select" id="puntoSelect" disabled>
           <option value="">Selecciona un barrio primero</option>
         </select>
       </div>
+
     </div>
   </div>
 
@@ -177,15 +228,25 @@
   const API_BASE  = '/eventos/';
   const EVENTO_ID = '{{ evento_id|default:"" }}';
 
+  // ── Estado de barrios ──
+  let _todosLosBarrios   = [];
+  let _barrioSeleccionado = '';
+
+  // ── Toast ──
   function toast(msg, tipo = 'success') {
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
     t.className = `toast ${tipo}`;
     t.textContent = msg;
     c.appendChild(t);
-    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3500);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transition = 'opacity .3s';
+      setTimeout(() => t.remove(), 300);
+    }, 3500);
   }
 
+  // ── Tipos de evento ──
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tipo-check-label').forEach(lbl => {
       lbl.addEventListener('click', function(e) {
@@ -197,6 +258,7 @@
     });
   });
 
+  // ── Duración automática ──
   function calcDuracion() {
     const hi = document.getElementById('horaInicio').value;
     const hf = document.getElementById('horaFin').value;
@@ -206,31 +268,93 @@
     const diff = (hhf * 60 + mhf) - (hhi * 60 + mhi);
     if (diff > 0) {
       document.getElementById('duracion').value = diff;
-      document.getElementById('duracionHint').textContent = `${Math.floor(diff/60)}h ${diff%60}min`;
+      document.getElementById('duracionHint').textContent =
+        `${Math.floor(diff / 60)}h ${diff % 60}min`;
     }
   }
 
+  // ── Barrios: cargar ──
   async function cargarBarrios(seleccionado = '') {
-    const sel = document.getElementById('barrioSelect');
+    _barrioSeleccionado = seleccionado;
     try {
       const r = await fetch(API + 'barrios/');
       const d = await r.json();
-      (d.data || []).forEach(b => {
-        const o = document.createElement('option');
-        o.value = b.id;
-        o.textContent = b.nombre;
-        if (b.id === seleccionado) o.selected = true;
-        sel.appendChild(o);
-      });
+      _todosLosBarrios = d.data || [];
+      renderBarrioGrid(_todosLosBarrios, seleccionado);
       if (seleccionado) cargarPuntos(seleccionado);
-    } catch { toast('Error cargando barrios', 'error'); }
+    } catch {
+      toast('Error cargando barrios', 'error');
+    }
   }
 
+  // ── Barrios: renderizar grid ──
+  function renderBarrioGrid(barrios, seleccionado = '') {
+    const grid = document.getElementById('barrioGrid');
+    if (!barrios.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px;
+        color:var(--text-muted);font-size:var(--font-size-xs);">Sin barrios encontrados</div>`;
+      return;
+    }
+    grid.innerHTML = barrios.map(b => {
+      const activo = String(b.id) === String(seleccionado);
+      return `
+        <div onclick="seleccionarBarrio('${b.id}', '${b.nombre.replace(/'/g, "\\'")}')"
+             data-barrio-id="${b.id}"
+             style="padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;
+                    border:1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'};
+                    background:${activo ? 'var(--accent-light)' : 'var(--bg-card)'};
+                    color:${activo ? 'var(--accent)' : 'var(--text-secondary)'};
+                    font-size:11px;font-weight:${activo ? '700' : '600'};
+                    text-align:center;line-height:1.35;
+                    transition:all var(--transition);user-select:none;"
+             onmouseover="if('${b.id}'!==document.getElementById('barrioSelect').value){
+               this.style.borderColor='var(--accent-mid)';
+               this.style.background='var(--accent-light)';
+               this.style.color='var(--accent)';}"
+             onmouseout="if('${b.id}'!==document.getElementById('barrioSelect').value){
+               this.style.borderColor='var(--border)';
+               this.style.background='var(--bg-card)';
+               this.style.color='var(--text-secondary)';}">
+          ${b.nombre}
+        </div>`;
+    }).join('');
+  }
+
+  // ── Barrios: seleccionar ──
+  function seleccionarBarrio(id, nombre) {
+    _barrioSeleccionado = id;
+    document.getElementById('barrioSelect').value = id;
+    document.getElementById('barrioSelLabel').innerHTML =
+      `<span style="color:var(--accent);font-weight:600;">✓ ${nombre}</span>`;
+
+    document.querySelectorAll('#barrioGrid [data-barrio-id]').forEach(el => {
+      const activo = el.dataset.barrioId === String(id);
+      el.style.border     = `1.5px solid ${activo ? 'var(--accent)' : 'var(--border)'}`;
+      el.style.background = activo ? 'var(--accent-light)' : 'var(--bg-card)';
+      el.style.color      = activo ? 'var(--accent)' : 'var(--text-secondary)';
+      el.style.fontWeight = activo ? '700' : '600';
+    });
+
+    cargarPuntos(id);
+  }
+
+  // ── Barrios: filtrar ──
+  function filtrarBarrios(q) {
+    const filtrados = q.trim()
+      ? _todosLosBarrios.filter(b => b.nombre.toLowerCase().includes(q.toLowerCase()))
+      : _todosLosBarrios;
+    renderBarrioGrid(filtrados, _barrioSeleccionado);
+  }
+
+  // ── Puntos de interés ──
   async function cargarPuntos(barrioId, seleccionado = '') {
     const sel = document.getElementById('puntoSelect');
     sel.disabled = true;
     sel.innerHTML = '<option value="">Cargando…</option>';
-    if (!barrioId) { sel.innerHTML = '<option value="">Selecciona un barrio primero</option>'; return; }
+    if (!barrioId) {
+      sel.innerHTML = '<option value="">Selecciona un barrio primero</option>';
+      return;
+    }
     try {
       const r = await fetch(`${API}puntos/?barrio_id=${barrioId}`);
       const d = await r.json();
@@ -244,9 +368,12 @@
         sel.appendChild(o);
       });
       sel.disabled = false;
-    } catch { sel.innerHTML = '<option value="">Error cargando puntos</option>'; }
+    } catch {
+      sel.innerHTML = '<option value="">Error cargando puntos</option>';
+    }
   }
 
+  // ── Cargar evento existente (edición) ──
   async function cargarEvento() {
     if (!EVENTO_ID) return;
     try {
@@ -258,15 +385,14 @@
       document.getElementById('nombre').value            = ev.nombre || '';
       document.getElementById('descripcion').value       = ev.descripcion || '';
       document.getElementById('fecha').value             = ev.fecha || '';
-      document.getElementById('horaInicio').value        = (ev.hora_inicio || '').slice(0,5);
-      document.getElementById('horaFin').value           = (ev.hora_fin || '').slice(0,5);
+      document.getElementById('horaInicio').value        = (ev.hora_inicio || '').slice(0, 5);
+      document.getElementById('horaFin').value           = (ev.hora_fin || '').slice(0, 5);
       document.getElementById('duracion').value          = ev.duracion_min || '';
       document.getElementById('capacidad').value         = ev.capacidad || '';
       document.getElementById('estadoSelect').value      = ev.estado || 'PLANIFICADO';
       document.getElementById('objetivo').value          = ev.objetivo || '';
       document.getElementById('resultadoEsperado').value = ev.resultado_esperado || '';
 
-      // Conservar el coordinador_id original del evento
       window._coordinadorId = ev.coordinador_id || null;
 
       await cargarBarrios(ev.barrio_id || '');
@@ -281,16 +407,18 @@
           lbl.querySelector('input').checked = true;
         }
       });
-    } catch { toast('Error cargando datos del evento', 'error'); }
+    } catch {
+      toast('Error cargando datos del evento', 'error');
+    }
   }
 
+  // ── Validar ──
   function validar() {
     const campos = [
-      { id: 'nombre',       msg: 'El nombre es obligatorio' },
-      { id: 'fecha',        msg: 'La fecha es obligatoria' },
-      { id: 'horaInicio',   msg: 'La hora de inicio es obligatoria' },
-      { id: 'horaFin',      msg: 'La hora de fin es obligatoria' },
-      { id: 'barrioSelect', msg: 'El barrio es obligatorio' },
+      { id: 'nombre',     msg: 'El nombre es obligatorio' },
+      { id: 'fecha',      msg: 'La fecha es obligatoria' },
+      { id: 'horaInicio', msg: 'La hora de inicio es obligatoria' },
+      { id: 'horaFin',    msg: 'La hora de fin es obligatoria' },
     ];
     for (const c of campos) {
       const el = document.getElementById(c.id);
@@ -302,6 +430,12 @@
       }
       el.classList.remove('is-invalid');
     }
+    if (!document.getElementById('barrioSelect').value) {
+      document.getElementById('barrioGrid').style.borderColor = 'var(--danger)';
+      toast('El barrio es obligatorio', 'error');
+      return false;
+    }
+    document.getElementById('barrioGrid').style.borderColor = 'var(--border)';
     if (!document.querySelectorAll('.tipo-check-label.checked').length) {
       toast('Selecciona al menos un tipo de evento', 'error');
       return false;
@@ -309,6 +443,7 @@
     return true;
   }
 
+  // ── Guardar ──
   async function guardar() {
     if (!validar()) return;
 
@@ -332,7 +467,7 @@
       resultado_esperado: document.getElementById('resultadoEsperado').value.trim(),
       barrio_id:          document.getElementById('barrioSelect').value,
       coordinador_id:     window._coordinadorId || null,
-      tipos:              tipos,   // ← los tipos van directo en el payload del evento
+      tipos,
     };
 
     try {
@@ -352,14 +487,10 @@
           body: JSON.stringify(payload),
         });
         const d = await r.json();
-        console.log('[guardar] respuesta crear evento:', d);
         if (!r.ok || !d.ok) throw new Error(d.error || 'Error creando evento');
-        // d.data puede ser el objeto completo o solo el id
         eventoId = (d.data && typeof d.data === 'object') ? d.data.id : d.data;
-        console.log('[guardar] eventoId extraído:', eventoId);
       }
 
-      // Punto de interés
       const puntoId = document.getElementById('puntoSelect').value;
       if (puntoId) {
         const rP = await fetch(`${API}${eventoId}/puntos/`);
@@ -380,10 +511,15 @@
     } catch (err) {
       toast('Error al guardar: ' + err.message, 'error');
       btn.disabled = false;
-      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="15" height="15"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>${EVENTO_ID ? 'Guardar cambios' : 'Crear evento'}`;
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="2" stroke="currentColor" width="15" height="15">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+        </svg>${EVENTO_ID ? 'Guardar cambios' : 'Crear evento'}`;
     }
   }
 
+  // ── Coordinador por defecto (creación) ──
   async function cargarCoordinadorId() {
     try {
       const r = await fetch(API + 'coordinadores/');
@@ -393,6 +529,7 @@
     } catch { /* no bloqueante */ }
   }
 
+  // ── Init ──
   if (EVENTO_ID) {
     cargarEvento();
   } else {
