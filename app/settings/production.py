@@ -58,3 +58,7 @@ CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR', '/data/chroma_db')
 logging.info(f"Conexión semántica producción: Directorio de persistencia para ChromaDB mapeado en: '{CHROMA_PERSIST_DIR}'")
 
 logging.info("Todas las variables del entorno de producción se han verificado e inicializado.")
+
+# base.py  Y  development.py
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE    = True

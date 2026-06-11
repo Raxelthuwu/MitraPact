@@ -20,9 +20,18 @@ else:
 DEBUG = True
 logging.info(f"Modo DEBUG establecido en: {DEBUG}")
 
+
+
+
 # ALLOWED_HOSTS
 ALLOWED_HOSTS = ['*']
 logging.info("ALLOWED_HOSTS configurado para aceptar todos los hosts (LAN local).")
+
+
+# base.py  Y  development.py
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE    = True
+
 
 # Base de datos
 db_name = os.environ.get('PGDATABASE', 'No definido')
@@ -30,6 +39,9 @@ db_user = os.environ.get('PGUSER', 'No definido')
 db_host = os.environ.get('PGHOST', 'No definido')
 db_port = os.environ.get('PGPORT', '5432')
 logging.info(f"Intentando estructurar conexión a PostgreSQL -> Servidor: {db_host}:{db_port} | Base de Datos: {db_name} | Usuario: {db_user}")
+
+
+
 
 DATABASES = {
     'default': {

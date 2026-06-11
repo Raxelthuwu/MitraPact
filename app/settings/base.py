@@ -36,6 +36,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# base.py  Y  development.py
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE    = True
+
 
 ZERO_SHOT_MODEL = 'joeddav/xlm-roberta-large-xnli'
 
