@@ -20,17 +20,15 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
     # PÚBLICOS
     # -------------------------------------------------------------------------
 
-
-
-
     async def buscarPorPalabras(
         self,
         texto: str,
-        nResultados: int = 20
+        nResultados: int = 20,
+        documento: str = None,
     ) -> dict:
-        logger.info(f"[ConsultaSemanticaService] Búsqueda por palabras: '{texto}'")
+        logger.info(f"[ConsultaSemanticaService] Búsqueda por palabras: '{texto}' | documento: '{documento}'")
 
-        fragmentos = await Fragmento.buscarPorTextoGlobal(texto, nResultados)
+        fragmentos = await Fragmento.buscarPorTextoGlobal(texto, nResultados, documento)
 
         logger.info(f"[ConsultaSemanticaService] {len(fragmentos)} fragmentos encontrados.")
         return {'fragmentos': fragmentos, 'total': len(fragmentos)}
@@ -77,25 +75,22 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
             if distancia > settings.SEMANTIC_RELATED_THRESHOLD:
                 continue
 
-            # Obtener fragmento con nombre de documento en un solo query
             fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
             if not fragmento:
                 continue
 
-            # Cachear documento para el bloque de documentos únicos
             docId = fragmento.get('documento_id')
             if docId not in _cacheDoc:
                 _cacheDoc[docId] = await Documento.obtenerPorId(docId)
 
             scoreVectorial = round(max(0.0, 1 - (distancia / 2)), 3)
-            # Dividir en párrafos y quedar con el más relevante léxicamente
             parrafos = self._partirEnParrafos(
                 fragmento.get('contenido', ''),
                 consultaTokens
             )
 
             if parrafos:
-                mejorParrafo = parrafos[0]  # ya vienen ordenados por scoreLexico desc
+                mejorParrafo = parrafos[0]
                 parrafosFinales.append({
                     **fragmento,
                     'contenido':      mejorParrafo['texto'],
@@ -157,7 +152,6 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
             f"[ConsultaSemanticaService] Argumentos para problematica_cod: {problematicaCod}"
         )
 
-        # Usar el método que ya tiene el JOIN correcto
         argumentos = await Argumento.buscarPorProblematicaConDescripcion(problematicaCod)
 
         if not argumentos:
@@ -167,7 +161,6 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
             )
             return []
 
-        # Limitar y enriquecer con documentos vinculados
         resultado = []
         for argumento in argumentos[:nResultados]:
             argumentoId = argumento.get('id')
@@ -192,7 +185,6 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
             f"[ConsultaSemanticaService] Actualizando argumento_id: {argumento_id}"
         )
 
-        # Ahora sí pasa tema y problematicaCod — el modelo los acepta
         resultado = await Argumento.actualizar(
             argumentoId     = argumento_id,
             tema            = tema,
@@ -288,27 +280,27 @@ class ConsultaSemanticaService(IConsultaSemanticaService):
             })
 
         return sorted(parrafos, key=lambda x: x['scoreLexico'], reverse=True)
-    
+
     async def _recuperarFragmentos(self, vectorIds: list[str]) -> list[dict]:
-            """Implementación requerida por la interfaz."""
-            fragmentos = []
-            for vectorId in vectorIds:
-                fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
-                if fragmento:
-                    fragmentos.append(fragmento)
-            return fragmentos
+        """Implementación requerida por la interfaz."""
+        fragmentos = []
+        for vectorId in vectorIds:
+            fragmento = await Fragmento.obtenerPorVectorIdConNombre(vectorId)
+            if fragmento:
+                fragmentos.append(fragmento)
+        return fragmentos
 
     async def _recuperarDocumentosDeFragmentos(self, fragmentos: list[dict]) -> list[dict]:
-            """Implementación requerida por la interfaz."""
-            documentoIds = []
-            for fragmento in fragmentos:
-                docId = fragmento.get('documento_id')
-                if docId and docId not in documentoIds:
-                    documentoIds.append(docId)
+        """Implementación requerida por la interfaz."""
+        documentoIds = []
+        for fragmento in fragmentos:
+            docId = fragmento.get('documento_id')
+            if docId and docId not in documentoIds:
+                documentoIds.append(docId)
 
-            documentos = []
-            for docId in documentoIds:
-                doc = await Documento.obtenerPorId(docId)
-                if doc:
-                    documentos.append(doc)
-            return documentos
+        documentos = []
+        for docId in documentoIds:
+            doc = await Documento.obtenerPorId(docId)
+            if doc:
+                documentos.append(doc)
+        return documentos

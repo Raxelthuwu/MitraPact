@@ -106,13 +106,15 @@ class ArgumentoDetailView(View):
             return _safe_json_response(
                 {'error': 'Error interno al actualizar el argumento.'}, status=500
             )
-        
+
+
 @method_decorator(csrf_exempt, name='dispatch')
 class BusquedaPalabrasView(View):
     async def get(self, request):
         try:
             texto       = request.GET.get('texto', '').strip()
             nResultados = int(request.GET.get('nResultados', '20'))
+            documento   = request.GET.get('documento', '').strip() or None  # ← NUEVO
 
             if not texto or len(texto) < 2:
                 return _safe_json_response(
@@ -120,7 +122,7 @@ class BusquedaPalabrasView(View):
                     status=400
                 )
 
-            resultado = await _consulta_svc.buscarPorPalabras(texto, nResultados)
+            resultado = await _consulta_svc.buscarPorPalabras(texto, nResultados, documento)  # ← pasa documento
             return _safe_json_response(resultado)
 
         except Exception as e:

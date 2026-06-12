@@ -4,11 +4,18 @@
 {% block nav_busqueda %}active{% endblock %}
 {% block page_title %}Búsqueda Semántica{% endblock %}
 {% block page_subtitle %}Consulta por lenguaje natural, problemática o palabras{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'eventos.css' %}">
 <style>
 @keyframes spin   { to { transform: rotate(360deg); } }
 @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── Overlay ─── */
 #uiOverlay {
   display:none; position:fixed; inset:0; z-index:9999;
   background:rgba(244,246,251,.78); backdrop-filter:blur(4px);
@@ -22,6 +29,23 @@
   color:var(--text-secondary); font-weight:500;
 }
 .spin { animation:spin .75s linear infinite; color:var(--accent); }
+
+/* ─── Hint banner ─── */
+.hint-banner {
+  display:flex; align-items:flex-start; gap:10px;
+  background:#eef2ff; border:1px solid #c7d2fe;
+  border-radius:12px; padding:12px 16px;
+  font-size:0.85rem; color:#4338ca; line-height:1.5;
+  margin-bottom:4px;
+}
+.hint-banner svg { flex-shrink:0; margin-top:2px; }
+.hint-banner b { font-weight:700; }
+.hint-banner .hint-example {
+  display:block; margin-top:4px;
+  color:#6366f1; font-style:italic;
+}
+
+/* ─── Mode tabs ─── */
 .modo-tabs {
   display:flex; background:var(--bg-card);
   border:1px solid var(--border); border-radius:var(--radius-md);
@@ -37,6 +61,8 @@
 .modo-tab:hover { color:var(--text-primary); background:var(--border-light); }
 .modo-tab.active { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(109,40,217,.28); }
 .modo-tab svg { width:14px; height:14px; flex-shrink:0; }
+
+/* ─── Panels ─── */
 .sem-panel {
   background:var(--bg-card); border:1px solid var(--border);
   border-radius:var(--radius-md); box-shadow:var(--shadow-card); overflow:hidden;
@@ -75,6 +101,8 @@
   font-size:11px; color:var(--text-secondary); box-shadow:0 1px 0 var(--border);
 }
 .sem-shortcut { display:flex; align-items:center; gap:5px; font-size:var(--font-size-xs); color:var(--text-muted); }
+
+/* ─── Filters row ─── */
 .sem-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .filter-chip {
   display:flex; align-items:center; gap:8px; padding:7px 14px;
@@ -89,6 +117,125 @@
   border:none; outline:none; background:transparent; font-family:inherit;
   font-size:var(--font-size-sm); color:var(--text-primary); cursor:pointer; min-width:80px;
 }
+
+/* ══════════════════════════════════════════════
+   FILTRO DE DOCUMENTO — rediseño limpio
+   Un bloque tipo "campo de formulario" discreto
+   que vive arriba del panel de búsqueda.
+   ══════════════════════════════════════════════ */
+.doc-filter-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.doc-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-muted);
+  padding-left: 2px;
+}
+.doc-filter-label svg { width: 11px; height: 11px; flex-shrink: 0; }
+.doc-filter-field {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: border-color .18s, box-shadow .18s;
+}
+.doc-filter-field:focus-within,
+.doc-filter-field.has-value {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109,40,217,.07);
+}
+.doc-filter-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-light);
+  background: var(--bg-app);
+  align-self: stretch;
+}
+.doc-filter-icon svg { width: 14px; height: 14px; }
+.doc-filter-field.has-value .doc-filter-icon { color: var(--accent); }
+.doc-filter-select-wrap {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+.doc-filter-select-wrap select {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 11px 32px 11px 14px;
+}
+.doc-filter-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+.doc-filter-clear {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border-light);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  align-self: stretch;
+  transition: color .15s, background .15s;
+}
+.doc-filter-clear:hover { color: #ef4444; background: #fef2f2; }
+.doc-filter-field.has-value .doc-filter-clear { display: flex; }
+
+/* Pill "Filtro activo" junto al label */
+.doc-filter-active-pill {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border-radius: 99px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  margin-left: 4px;
+}
+.doc-filter-field.has-value ~ .doc-filter-label .doc-filter-active-pill,
+.doc-filter-wrap.has-value .doc-filter-active-pill { display: inline-flex; }
+
+/* ─── Problemática ─── */
 .prob-select {
   width:100%; border:none; outline:none; background:transparent;
   font-family:inherit; font-size:var(--font-size-md); color:var(--text-primary);
@@ -103,20 +250,26 @@
   color:var(--accent); background:var(--accent-light);
   border-radius:99px; padding:3px 10px;
 }
+
+/* ─── Results ─── */
 .results-bar {
   display:flex; align-items:center; justify-content:space-between;
   margin-bottom:14px; flex-wrap:wrap; gap:8px;
 }
 .results-title { font-family:var(--font-display); font-size:var(--font-size-sm); font-weight:700; color:var(--text-primary); }
 .results-query { color:var(--accent); font-style:italic; font-weight:400; }
+
+/* ─── Fragment cards ─── */
 .frag-card {
-  background:var(--bg-card); border:1px solid var(--border);
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent);
   border-radius:var(--radius-md); margin-bottom:10px; overflow:hidden;
   box-shadow:var(--shadow-card);
-  transition:box-shadow var(--transition), border-color var(--transition);
+  transition:box-shadow var(--transition), transform var(--transition);
   animation:fadeUp .2s ease both;
 }
-.frag-card:hover { box-shadow:var(--shadow-hover); border-color:#d1d5db; }
+.frag-card:hover { box-shadow:var(--shadow-hover); transform:translateY(-2px); }
 .frag-card-head {
   display:flex; align-items:center; justify-content:space-between;
   padding:11px 16px; gap:10px; flex-wrap:wrap;
@@ -131,7 +284,8 @@
 .frag-pag { color:var(--text-muted); font-weight:400; font-size:var(--font-size-xs); }
 .score-badge {
   display:inline-flex; align-items:center; gap:6px;
-  padding:3px 10px; border-radius:99px; font-size:var(--font-size-xs); font-weight:700;
+  padding:3px 10px; border-radius:99px;
+  font-size:var(--font-size-xs); font-weight:700;
 }
 .score-badge.high { background:var(--success-bg); color:#065F46; }
 .score-badge.mid  { background:var(--warning-bg); color:#92400E; }
@@ -143,6 +297,8 @@
 .frag-text {
   font-size:var(--font-size-sm); color:var(--text-secondary);
   line-height:1.8; margin:0 0 12px;
+  background:rgba(0,0,0,0.02); padding:10px 14px; border-radius:6px;
+  font-style:italic;
   overflow:hidden; display:-webkit-box;
   -webkit-line-clamp:4; -webkit-box-orient:vertical;
 }
@@ -155,16 +311,20 @@
 .sem-match:hover { background:rgba(109,40,217,.2); }
 .word-match { background:#fef08a; border-radius:2px; padding:0 1px; font-weight:600; color:#713f12; }
 .frag-foot {
-  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  display:flex; align-items:center; gap:8px;
   padding-top:10px; border-top:1px solid var(--border-light);
 }
+
+/* ─── Argument cards ─── */
 .arg-card {
   background:var(--bg-card); border:1px solid var(--border);
+  border-left:4px solid var(--accent);
   border-radius:var(--radius-md); margin-bottom:10px;
   box-shadow:var(--shadow-card); overflow:hidden;
-  transition:box-shadow var(--transition); animation:fadeUp .2s ease both;
+  transition:box-shadow var(--transition), transform var(--transition);
+  animation:fadeUp .2s ease both;
 }
-.arg-card:hover { box-shadow:var(--shadow-hover); }
+.arg-card:hover { box-shadow:var(--shadow-hover); transform:translateY(-2px); }
 .arg-card-head {
   display:flex; align-items:center; gap:10px; padding:10px 16px;
   background:var(--bg-app); border-bottom:1px solid var(--border-light);
@@ -185,6 +345,8 @@
 }
 .tipo-pill.purple { background:var(--accent-light); color:var(--accent); }
 .tipo-pill.green  { background:var(--success-bg); color:#065F46; }
+
+/* ─── Info cards ─── */
 .info-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; }
 .info-card {
   background:var(--bg-card); border:1px solid var(--border);
@@ -195,6 +357,8 @@
 .info-icon svg { width:16px; height:16px; }
 .info-card-title { font-size:var(--font-size-xs); font-weight:700; color:var(--text-primary); margin-bottom:3px; }
 .info-card-desc  { font-size:var(--font-size-xs); color:var(--text-muted); line-height:1.5; }
+
+/* ─── Score legend ─── */
 .score-legend {
   display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   padding:8px 14px; background:var(--bg-card); border:1px solid var(--border);
@@ -202,16 +366,36 @@
 }
 .score-legend-item { display:flex; align-items:center; gap:5px; font-size:var(--font-size-xs); color:var(--text-muted); }
 .score-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+/* ─── Skeleton ─── */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 12px;
+}
 </style>
 {% endblock %}
 
 {% block content %}
+
 <div id="uiOverlay">
   <div class="overlay-box">
     <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
     </svg>
     Buscando…
+  </div>
+</div>
+
+<div class="hint-banner">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" width="18" height="18">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"/>
+  </svg>
+  <div>
+    <b>Este buscador entiende preguntas completas, no palabras sueltas.</b>
+    Escribe lo que quieres saber como si le preguntaras a una persona.
+    <span class="hint-example">Ej: "¿Qué propuestas hay sobre seguridad en los barrios del sur?"</span>
   </div>
 </div>
 
@@ -233,13 +417,43 @@
   <div class="score-legend" id="scoreLegend" style="display:none;">
     <span style="font-size:var(--font-size-xs);font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Similitud</span>
     <span class="score-legend-item"><span class="score-dot" style="background:var(--success);"></span>&ge; 70% alta</span>
-    <span class="score-legend-item"><span class="score-dot" style="background:var(--warning);"></span>40&ndash;70% media</span>
+    <span class="score-legend-item"><span class="score-dot" style="background:var(--warning);"></span>40–70% media</span>
     <span class="score-legend-item"><span class="score-dot" style="background:var(--danger);"></span>&lt; 40% baja</span>
   </div>
 </div>
 
-<!-- MODO NATURAL -->
+<!-- ══════════════════════ MODO NATURAL ══════════════════════ -->
 <div id="secNatural">
+
+  <!-- Filtro de documento -->
+  <div class="doc-filter-wrap" id="docWrapNatural">
+    <div class="doc-filter-label">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+      </svg>
+      Filtrar por documento
+      <span class="doc-filter-active-pill">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="9" height="9"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+        Activo
+      </span>
+    </div>
+    <div class="doc-filter-field" id="docFieldNatural">
+      <div class="doc-filter-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/>
+        </svg>
+      </div>
+      <div class="doc-filter-select-wrap">
+        <select id="selDocumento" onchange="onDocFilter('selDocumento','docFieldNatural','docWrapNatural')">
+          <option value="">Todos los documentos</option>
+        </select>
+      </div>
+      <button class="doc-filter-clear" title="Quitar filtro"
+              onclick="clearDocFilter('selDocumento','docFieldNatural','docWrapNatural')">✕</button>
+    </div>
+  </div>
+
+  <!-- Panel de consulta -->
   <div class="sem-panel">
     <div class="sem-panel-head">
       <div class="sem-panel-label">
@@ -249,48 +463,41 @@
     </div>
     <div class="sem-panel-body">
       <textarea id="inputConsulta" class="sem-textarea"
-        placeholder="Ej: &#xBF;Cu&#xE1;les son las propuestas sobre seguridad en los barrios del sur?"
-        onkeydown="if(event.key==='Enter'&amp;&amp;!event.shiftKey){event.preventDefault();buscar();}"></textarea>
+        placeholder="Ej: ¿Cuáles son las propuestas sobre seguridad en los barrios del sur?"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();buscar();}"></textarea>
     </div>
     <div class="sem-panel-foot">
       <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
         <span class="sem-shortcut"><span class="kbd">Enter</span> buscar</span>
-        <span class="sem-shortcut"><span class="kbd">Shift+Enter</span> nueva l&#xED;nea</span>
+        <span class="sem-shortcut"><span class="kbd">Shift+Enter</span> nueva línea</span>
       </div>
-      <button class="btn btn-primary" onclick="buscar()" id="btnBuscar">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
-        Buscar
-      </button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="filter-chip" style="box-shadow:none;border:none;background:transparent;padding:0;">
+          <label>Resultados</label>
+          <select id="selN">
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="buscar()" id="btnBuscar">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+          Buscar
+        </button>
+      </div>
     </div>
   </div>
-  <div class="sem-filters">
-    <div class="filter-chip">
-      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
-      <label>Documento</label>
-      <select id="selDocumento" class="filter-select" style="max-width:220px;" onchange="onDocumentoChange()">
-        <option value="">Todos</option>
-      </select>
-      <button id="btnLimpiarDoc" onclick="limpiarDocumento()" style="display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;padding:0;line-height:1;">&#x2715;</button>
-    </div>
-    <div class="filter-chip">
-      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--text-muted)" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/></svg>
-      <label>Resultados</label>
-      <select id="selN" class="filter-select">
-        <option value="3">3</option>
-        <option value="5" selected>5</option>
-        <option value="10">10</option>
-        <option value="20">20</option>
-      </select>
-    </div>
-  </div>
+
+  <!-- Info cards -->
   <div class="info-grid">
     <div class="info-card">
       <div class="info-icon" style="background:var(--accent-light);">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--accent)"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>
       </div>
       <div>
-        <div class="info-card-title">C&#xF3;mo funciona</div>
-        <div class="info-card-desc">Escribe una pregunta completa. Las palabras subrayadas en morado son t&#xE9;rminos que el motor asoci&#xF3; sem&#xE1;nticamente.</div>
+        <div class="info-card-title">Cómo funciona</div>
+        <div class="info-card-desc">Escribe una pregunta completa. Las palabras subrayadas en morado son términos que el motor asoció semánticamente.</div>
       </div>
     </div>
     <div class="info-card">
@@ -299,7 +506,7 @@
       </div>
       <div>
         <div class="info-card-title">Limitaciones</div>
-        <div class="info-card-desc">Solo busca en documentos indexados. No interpreta fechas ni contexto hist&#xF3;rico externo.</div>
+        <div class="info-card-desc">Solo busca en documentos indexados. No interpreta fechas ni contexto histórico externo.</div>
       </div>
     </div>
     <div class="info-card">
@@ -307,33 +514,33 @@
         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="var(--success)"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
       </div>
       <div>
-        <div class="info-card-title">Para qu&#xE9; sirve</div>
-        <div class="info-card-desc">Identificar posiciones ciudadanas y cruzar argumentos con propuestas de campa&#xF1;a.</div>
+        <div class="info-card-title">Para qué sirve</div>
+        <div class="info-card-desc">Identificar posiciones ciudadanas y cruzar argumentos con propuestas de campaña.</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MODO PROBLEMÁTICA -->
+<!-- ══════════════════════ MODO PROBLEMÁTICA ══════════════════════ -->
 <div id="secProblematica" style="display:none;">
   <div class="sem-panel">
     <div class="sem-panel-head">
       <div class="sem-panel-label">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-        Selecciona una problem&#xE1;tica
+        Selecciona una problemática
       </div>
       <span id="probCountBadge" class="prob-count" style="display:none;"></span>
     </div>
     <div class="sem-panel-body">
       <select id="selProblematica" class="prob-select">
-        <option value="">Cargando problem&#xE1;ticas&#x2026;</option>
+        <option value="">Cargando problemáticas…</option>
       </select>
       <div id="probInfo" style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:8px;min-height:16px;"></div>
     </div>
     <div class="sem-panel-foot" style="justify-content:flex-end;">
       <div class="filter-chip" style="box-shadow:none;border:none;background:transparent;padding-right:0;">
         <label>Resultados</label>
-        <select id="selNProb" class="filter-select">
+        <select id="selNProb">
           <option value="3">3</option>
           <option value="5" selected>5</option>
           <option value="10">10</option>
@@ -348,13 +555,43 @@
   </div>
 </div>
 
-<!-- MODO POR PALABRAS -->
+<!-- ══════════════════════ MODO POR PALABRAS ══════════════════════ -->
 <div id="secPalabras" style="display:none;">
+
+  <!-- Filtro de documento para palabras -->
+  <div class="doc-filter-wrap" id="docWrapPalabras">
+    <div class="doc-filter-label">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+      </svg>
+      Filtrar por documento
+      <span class="doc-filter-active-pill">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" width="9" height="9"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+        Activo
+      </span>
+    </div>
+    <div class="doc-filter-field" id="docFieldPalabras">
+      <div class="doc-filter-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/>
+        </svg>
+      </div>
+      <div class="doc-filter-select-wrap">
+        <select id="selDocumentoPalabras" onchange="onDocFilter('selDocumentoPalabras','docFieldPalabras','docWrapPalabras')">
+          <option value="">Todos los documentos</option>
+        </select>
+      </div>
+      <button class="doc-filter-clear" title="Quitar filtro"
+              onclick="clearDocFilter('selDocumentoPalabras','docFieldPalabras','docWrapPalabras')">✕</button>
+    </div>
+  </div>
+
+  <!-- Panel de búsqueda por palabras -->
   <div class="sem-panel">
     <div class="sem-panel-head">
       <div class="sem-panel-label">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"/></svg>
-        Buscar por palabras
+        Palabra o frase exacta
       </div>
     </div>
     <div class="sem-panel-body">
@@ -369,7 +606,7 @@
       <div style="display:flex;align-items:center;gap:10px;">
         <div class="filter-chip" style="box-shadow:none;border:none;background:transparent;padding:0;">
           <label>Resultados</label>
-          <select id="selNPalabras" class="filter-select">
+          <select id="selNPalabras">
             <option value="10">10</option>
             <option value="20" selected>20</option>
             <option value="50">50</option>
@@ -384,7 +621,7 @@
   </div>
 </div>
 
-<!-- RESULTADOS -->
+<!-- ══════════════════════ RESULTADOS ══════════════════════ -->
 <div id="contenedorResultados" style="display:none;">
   <div class="results-bar">
     <div class="results-title" id="lblResultados"></div>
@@ -401,7 +638,7 @@
     <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
   </svg>
   <h3>Haz tu primera consulta</h3>
-  <p id="emptyMsg">Escribe en lenguaje natural o selecciona una problem&#xE1;tica</p>
+  <p id="emptyMsg">Escribe en lenguaje natural o selecciona una problemática</p>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
@@ -412,7 +649,7 @@
   const API_CONSULTA = '/semantica/consulta/api/';
   const API_PALABRAS = '/semantica/busqueda/palabras/';
 
-  let _modo = 'natural';
+  let _modo     = 'natural';
   let _buscando = false;
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -424,12 +661,17 @@
     try {
       const res  = await fetch('/semantica/busqueda/documentos/');
       const data = await res.json();
-      const sel  = document.getElementById('selDocumento');
+      const sels = [
+        document.getElementById('selDocumento'),
+        document.getElementById('selDocumentoPalabras'),
+      ];
       (data.documentos || []).forEach(d => {
-        const op = document.createElement('option');
-        op.value = d.nombre;
-        op.textContent = d.nombre.length > 55 ? d.nombre.slice(0, 55) + '\u2026' : d.nombre;
-        sel.appendChild(op);
+        sels.forEach(sel => {
+          const op = document.createElement('option');
+          op.value = d.nombre;
+          op.textContent = d.nombre.length > 55 ? d.nombre.slice(0, 55) + '\u2026' : d.nombre;
+          sel.appendChild(op);
+        });
       });
     } catch(e) { console.error('[cargarDocumentos]', e); }
   }
@@ -444,13 +686,13 @@
       sel.innerHTML = '<option value="">\u2014 Selecciona una problem\u00e1tica \u2014</option>';
       items.forEach(p => {
         const op = document.createElement('option');
-        op.value = p.codigo;
+        op.value         = p.codigo;
         op.dataset.total = p.total_argumentos || 0;
         op.textContent   = p.descripcion;
         sel.appendChild(op);
       });
       if (items.length) {
-        badge.textContent = `${items.length} disponibles`;
+        badge.textContent   = `${items.length} disponibles`;
         badge.style.display = 'inline-flex';
       } else {
         sel.innerHTML = '<option value="">Sin problem\u00e1ticas registradas</option>';
@@ -472,12 +714,11 @@
 
   function setModo(modo) {
     _modo = modo;
-    const modos = ['natural', 'problematica', 'palabras'];
-    modos.forEach(m => {
-      const tabId = 'tab' + m.charAt(0).toUpperCase() + m.slice(1);
-      const secId = 'sec' + m.charAt(0).toUpperCase() + m.slice(1);
-      document.getElementById(tabId).className = m === modo ? 'modo-tab active' : 'modo-tab';
-      document.getElementById(secId).style.display = m === modo ? 'block' : 'none';
+    ['natural', 'problematica', 'palabras'].forEach(m => {
+      const tab = document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1));
+      const sec = document.getElementById('sec' + m.charAt(0).toUpperCase() + m.slice(1));
+      tab.className = m === modo ? 'modo-tab active' : 'modo-tab';
+      sec.style.display = m === modo ? 'block' : 'none';
     });
     limpiarResultados();
     const msgs = {
@@ -486,16 +727,7 @@
       palabras:     'Escribe una palabra o frase exacta para buscar en los documentos',
     };
     document.getElementById('emptyMsg').textContent = msgs[modo];
-    if (modo === 'palabras') document.getElementById('scoreLegend').style.display = 'none';
-  }
-
-  function onDocumentoChange() {
-    document.getElementById('btnLimpiarDoc').style.display =
-      document.getElementById('selDocumento').value ? 'inline-block' : 'none';
-  }
-  function limpiarDocumento() {
-    document.getElementById('selDocumento').value = '';
-    onDocumentoChange();
+    if (modo !== 'natural') document.getElementById('scoreLegend').style.display = 'none';
   }
 
   function bloquearUI() {
@@ -511,39 +743,40 @@
     if (_buscando) return;
     _buscando = true;
 
+    /* ── MODO NATURAL ── */
     if (_modo === 'natural') {
       const texto = document.getElementById('inputConsulta').value.trim();
       if (!texto) { _buscando = false; document.getElementById('inputConsulta').focus(); return; }
-      const btn = document.getElementById('btnBuscar');
-      const spinSvg = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
-      btn.innerHTML = spinSvg + ' Buscando\u2026';
+      const btn     = document.getElementById('btnBuscar');
+      btn.innerHTML = spinIcon() + ' Buscando\u2026';
       ocultarResultados(); bloquearUI();
-      const n = document.getElementById('selN').value;
+      const n         = document.getElementById('selN').value;
       const documento = document.getElementById('selDocumento').value;
       try {
         let fragmentos;
         if (documento) {
           const res  = await fetch(`/semantica/busqueda/documentos/?consulta=${encodeURIComponent(texto)}&nResultados=${n}&documento=${encodeURIComponent(documento)}`);
           const data = await res.json();
-          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.similitud ?? f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento', tokens_similares: f.tokens_similares || []}));
+          fragmentos = (data.fragmentos || []).map(f => norm(f));
         } else {
           const res  = await fetch(`${API_CONSULTA}?consulta=${encodeURIComponent(texto)}&nResultados=${n}`);
           const data = await res.json();
           if (!res.ok) { toast(data.error || 'Error en la consulta.', 'error'); throw new Error(); }
-          fragmentos = (data.fragmentos || []).map(f => ({...f, score: f.score ?? null, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento', tokens_similares: f.tokens_similares || []}));
+          fragmentos = (data.fragmentos || []).map(f => norm(f));
         }
         renderFragmentos(fragmentos, texto, documento);
         document.getElementById('scoreLegend').style.display = 'flex';
       } catch { toast('Error de conexi\u00f3n.', 'error'); }
       finally {
         desbloquearUI();
-        btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Buscar';
+        btn.innerHTML = searchIcon() + ' Buscar';
         _buscando = false;
       }
 
+    /* ── MODO PROBLEMÁTICA ── */
     } else if (_modo === 'problematica') {
-      const sel = document.getElementById('selProblematica');
-      const cod = sel.value;
+      const sel   = document.getElementById('selProblematica');
+      const cod   = sel.value;
       if (!cod) { _buscando = false; sel.focus(); toast('Selecciona una problem\u00e1tica primero.', 'error'); return; }
       const label = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.trim() : `Problem\u00e1tica ${cod}`;
       const btn   = document.getElementById('btnBuscarProb');
@@ -558,10 +791,11 @@
       } catch(e) { toast('Error de conexi\u00f3n.', 'error'); }
       finally {
         desbloquearUI();
-        btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Ver argumentos';
+        btn.innerHTML = searchIcon() + ' Ver argumentos';
         _buscando = false;
       }
 
+    /* ── MODO PALABRAS ── */
     } else {
       const texto = document.getElementById('inputPalabras').value.trim();
       if (!texto || texto.length < 2) {
@@ -570,30 +804,63 @@
         toast('Escribe al menos 2 caracteres.', 'error');
         return;
       }
-      const btn = document.getElementById('btnBuscarPalabras');
-      const spinSvg = '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
-      btn.innerHTML = spinSvg + ' Buscando\u2026';
+      const btn     = document.getElementById('btnBuscarPalabras');
+      btn.innerHTML = spinIcon() + ' Buscando\u2026';
       ocultarResultados(); bloquearUI();
-      const n = document.getElementById('selNPalabras').value;
+      const n         = document.getElementById('selNPalabras').value;
+      const documento = document.getElementById('selDocumentoPalabras').value;
       try {
-        const res  = await fetch(`${API_PALABRAS}?texto=${encodeURIComponent(texto)}&nResultados=${n}`);
+        let url = `${API_PALABRAS}?texto=${encodeURIComponent(texto)}&nResultados=${n}`;
+        if (documento) url += `&documento=${encodeURIComponent(documento)}`;
+        const res  = await fetch(url);
         const data = await res.json();
         if (!res.ok) { toast(data.error || 'Error en la b\u00fasqueda.', 'error'); throw new Error(); }
-        const fragmentos = (data.fragmentos || []).map(f => ({...f, nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento'}));
-        renderFragmentosPalabras(fragmentos, texto);
+        const fragmentos = (data.fragmentos || []).map(f => ({
+          ...f,
+          nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
+        }));
+        renderFragmentosPalabras(fragmentos, texto, documento);
       } catch(e) { toast('Error de conexi\u00f3n.', 'error'); }
       finally {
         desbloquearUI();
-        btn.innerHTML = '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg> Buscar';
+        btn.innerHTML = searchIcon() + ' Buscar';
         _buscando = false;
       }
     }
   }
 
+  /* ── Helpers ── */
+  function norm(f) {
+    return {
+      ...f,
+      score: f.score ?? f.similitud ?? null,
+      nombre_documento: f.documento_nombre ?? f.nombre_documento ?? 'Documento',
+      tokens_similares: f.tokens_similares || [],
+    };
+  }
+
+  function onDocFilter(selId, fieldId, wrapId) {
+    const val = document.getElementById(selId).value;
+    document.getElementById(fieldId).classList.toggle('has-value', !!val);
+    document.getElementById(wrapId).classList.toggle('has-value', !!val);
+  }
+  function clearDocFilter(selId, fieldId, wrapId) {
+    document.getElementById(selId).value = '';
+    document.getElementById(fieldId).classList.remove('has-value');
+    document.getElementById(wrapId).classList.remove('has-value');
+  }
+
+  function spinIcon() {
+    return '<svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>';
+  }
+  function searchIcon() {
+    return '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>';
+  }
+
   function destacarTerminos(texto, consulta, tokenesSimilares) {
     if (!texto) return '';
     const terminosConsulta = consulta
-      ? consulta.toLowerCase().split(/\s+/).filter(w => w.length >= 4).map(w => w.replace(/[^a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1]/gi, ''))
+      ? consulta.toLowerCase().split(/\s+/).filter(w => w.length >= 4).map(w => w.replace(/[^a-záéíóúüñ]/gi, ''))
       : [];
     const extras = Array.isArray(tokenesSimilares) ? tokenesSimilares : [];
     const todos  = [...new Set([...terminosConsulta, ...extras])].filter(Boolean);
@@ -619,7 +886,7 @@
         <div class="frag-doc-name">
           <svg fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
           ${escapeHtml(f.nombre_documento || 'Documento')}
-          ${f.pagina != null ? `<span class="frag-pag">&middot; p\u00e1g. ${f.pagina}</span>` : ''}
+          ${f.pagina != null ? `<span class="frag-pag">&middot; pág. ${f.pagina}</span>` : ''}
         </div>
         ${score != null ? `
         <div class="score-bar-wrap">
@@ -632,30 +899,34 @@
         <div class="frag-foot">
           <button class="btn btn-ghost btn-sm" onclick="expandirFrag('ft-${i}',this)">
             <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
-            Ver m\u00e1s
+            Ver más
           </button>
-          ${f.pagina != null ? `<a class="btn btn-ghost btn-sm" style="color:var(--accent);" href="/semantica/fragmentos/?nombre=${encodeURIComponent(f.nombre_documento||'')}&pagina=${f.pagina}">Ver en contexto &rarr;</a>` : '<span></span>'}
         </div>
       </div>
     </div>`;
   }
 
   function renderFragmentos(items, consulta, documento) {
-    const scope = documento ? ` &middot; <span style="color:var(--text-muted);font-weight:400;font-style:normal;">"${documento.length > 35 ? documento.slice(0,35)+'\u2026' : documento}"</span>` : '';
+    const scope = documento
+      ? ` &middot; <span style="color:var(--text-muted);font-weight:400;font-style:normal;">"${documento.length > 35 ? documento.slice(0,35)+'\u2026' : documento}"</span>`
+      : '';
     document.getElementById('lblResultados').innerHTML =
       `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">&middot; &ldquo;${escapeHtml(consulta)}&rdquo;</span>${scope}`;
     if (!items.length) { mostrarVacio('Sin resultados para esta consulta.'); return; }
     mostrarResultados(items.map((f, i) => {
-      const score = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
+      const score      = f.score != null ? Math.max(0, Math.round(f.score * 100)) : null;
       const scoreClass = score == null ? '' : score >= 70 ? 'high' : score >= 40 ? 'mid' : 'low';
       const scoreColor = score == null ? '' : score >= 70 ? 'var(--success)' : score >= 40 ? 'var(--warning)' : 'var(--danger)';
       return fragCardHtml(f, i, destacarTerminos(f.contenido || '', consulta, f.tokens_similares), score, scoreClass, scoreColor);
     }).join(''));
   }
 
-  function renderFragmentosPalabras(items, busqueda) {
+  function renderFragmentosPalabras(items, busqueda, documento) {
+    const scope = documento
+      ? ` &middot; <span style="color:var(--text-muted);font-weight:400;font-style:normal;">"${documento.length > 35 ? documento.slice(0,35)+'\u2026' : documento}"</span>`
+      : '';
     document.getElementById('lblResultados').innerHTML =
-      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">&middot; &ldquo;${escapeHtml(busqueda)}&rdquo;</span>`;
+      `<span>${items.length} fragmento${items.length !== 1 ? 's' : ''}</span> <span class="results-query">&middot; &ldquo;${escapeHtml(busqueda)}&rdquo;</span>${scope}`;
     if (!items.length) { mostrarVacio('No se encontraron fragmentos con esa palabra o frase.'); return; }
     mostrarResultados(items.map((f, i) => fragCardHtml(f, i, destacarPalabras(f.contenido || '', busqueda), null, '', '')).join(''));
   }
@@ -673,9 +944,9 @@
         <div class="arg-card-head">
           <div class="arg-num-badge">${i + 1}</div>
           <div class="arg-meta">
-            ${a.tema ? `<span class="tipo-pill purple">${escapeHtml(a.tema)}</span>` : ''}
+            ${a.tema                     ? `<span class="tipo-pill purple">${escapeHtml(a.tema)}</span>` : ''}
             ${a.problematica_descripcion ? `<span class="tipo-pill purple">${escapeHtml(a.problematica_descripcion)}</span>` : ''}
-            ${a.frecuencia != null ? `<span class="tipo-pill green">&times; ${a.frecuencia} menciones</span>` : ''}
+            ${a.frecuencia != null       ? `<span class="tipo-pill green">&times; ${a.frecuencia} menciones</span>` : ''}
             ${docs}
           </div>
         </div>
@@ -689,18 +960,18 @@
     const exp = el.classList.contains('expanded');
     el.classList.toggle('expanded', !exp);
     btn.innerHTML = exp
-      ? '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg> Ver m\u00e1s'
+      ? '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg> Ver más'
       : '<svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="12" height="12"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg> Ver menos';
   }
 
   function mostrarResultados(html) {
-    document.getElementById('estadoVacio').style.display = 'none';
+    document.getElementById('estadoVacio').style.display          = 'none';
     document.getElementById('contenedorResultados').style.display = 'block';
-    document.getElementById('listaResultados').innerHTML = html;
+    document.getElementById('listaResultados').innerHTML          = html;
   }
   function ocultarResultados() {
     document.getElementById('contenedorResultados').style.display = 'none';
-    document.getElementById('estadoVacio').style.display = 'none';
+    document.getElementById('estadoVacio').style.display          = 'none';
   }
   function mostrarVacio(msg) {
     document.getElementById('contenedorResultados').style.display = 'none';
@@ -709,23 +980,26 @@
     el.querySelector('p').textContent = msg;
   }
   function limpiarResultados() {
-    const inp = document.getElementById('inputConsulta');
-    if (inp) inp.value = '';
-    const inp2 = document.getElementById('inputPalabras');
-    if (inp2) inp2.value = '';
+    ['inputConsulta', 'inputPalabras'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
     document.getElementById('scoreLegend').style.display = 'none';
     ocultarResultados();
     document.getElementById('estadoVacio').style.display = 'flex';
   }
 
   function toast(msg, tipo) {
-    tipo = tipo || 'success';
     const c = document.getElementById('toastContainer');
     const t = document.createElement('div');
-    t.className = 'toast ' + tipo;
+    t.className   = 'toast ' + (tipo || 'success');
     t.textContent = msg;
     c.appendChild(t);
-    setTimeout(function() { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(function(){t.remove();},300); }, 3500);
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transition = 'opacity .3s';
+      setTimeout(() => t.remove(), 300);
+    }, 3500);
   }
 </script>
 {% endblock %}

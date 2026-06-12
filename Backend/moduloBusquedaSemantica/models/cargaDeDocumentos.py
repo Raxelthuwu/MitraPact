@@ -183,10 +183,19 @@ class Fragmento:
             logger.error(f"[Fragmento] Error al insertar: {e}")
             raise
 
-
     @staticmethod
-    async def buscarPorTextoGlobal(texto: str, limite: int = 20) -> list[dict]:
-        logger.info(f"[Fragmento] Búsqueda global por texto: '{texto}'")
+    async def buscarPorTextoGlobal(texto: str, limite: int = 20, documento: str = None) -> list[dict]:
+        logger.info(f"[Fragmento] Búsqueda global por texto: '{texto}' | documento: '{documento}'")
+
+        where = "WHERE f.contenido ILIKE %s"
+        params = [f"%{texto}%"]
+
+        if documento:
+            where += " AND d.nombre ILIKE %s"
+            params.append(f"%{documento}%")
+
+        params.append(limite)
+
         sql = f"""
             SELECT
                 f.id,
@@ -197,18 +206,15 @@ class Fragmento:
                 d.nombre AS documento_nombre
             FROM {db.fragmento} f
             JOIN {db.documento} d ON d.id = f.documento_id
-            WHERE f.contenido ILIKE %s
+            {where}
             ORDER BY d.nombre ASC, f.pagina ASC
             LIMIT %s
         """
         try:
-            return await _query(sql, [f"%{texto}%", limite], fetchall=True)
+            return await _query(sql, params, fetchall=True)
         except Exception as e:
             logger.error(f"[Fragmento] Error en buscarPorTextoGlobal: {e}")
-            raise   
-
-
-
+            raise
 
     @staticmethod
     async def insertarBatch(fragmentos: list[dict]) -> list[dict]:
@@ -311,7 +317,6 @@ class Fragmento:
             logger.error(f"[Fragmento] Error en obtenerPorVectorId: {e}")
             raise
 
-
     @staticmethod
     async def obtenerPorVectorIdConNombre(vectorId: str) -> dict | None:
         """
@@ -357,12 +362,12 @@ class Fragmento:
                 continue
             parrafos.append({
                 **fragmento,
-                'contenido':      p,         # sobreescribe con el párrafo específico
+                'contenido':      p,
                 'parrafo_indice': i,
-                'contenido_full': contenido, # conserva el original por si se necesita
+                'contenido_full': contenido,
             })
 
-        return parrafos if parrafos else [fragmento]  # fallback al fragmento completo
+        return parrafos if parrafos else [fragmento]
 
     @staticmethod
     async def buscarPorPagina(documentoId: str, pagina: int) -> dict | None:
