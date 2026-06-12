@@ -14,7 +14,7 @@ import atexit
 import shutil
 
 # ── Constantes ────────────────────────────────────────────────────────
-PUERTO        = 8443          # Puerto HTTPS estándar alternativo
+PUERTO        = 8443
 FIREWALL_NAME = "PactoHistorico LAN"
 ASGI_APP      = "app.asgi:application"
 CERT_DIR      = os.path.join(os.path.expanduser("~"), ".pactohistorico_certs")
@@ -112,33 +112,25 @@ def cerrar_puerto():
 # ── Certificados HTTPS ────────────────────────────────────────────────
 
 def _buscar_mkcert():
-    """Devuelve la ruta a mkcert.exe si está disponible, o None."""
-    # 1. En el PATH del sistema
     ruta = shutil.which("mkcert")
     if ruta:
         return ruta
 
-    # 2. Rutas conocidas donde winget deja mkcert (machine y user scope)
     program_files   = os.environ.get("ProgramFiles",      r"C:\Program Files")
     program_files86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
     local_app       = os.environ.get("LOCALAPPDATA", "")
     userprofile     = os.environ.get("USERPROFILE",  "")
 
     candidatos = [
-        # winget --scope machine (Program Files)
         os.path.join(program_files,   "mkcert", "mkcert.exe"),
         os.path.join(program_files86, "mkcert", "mkcert.exe"),
         os.path.join(program_files,   "FiloSottile", "mkcert", "mkcert.exe"),
-        # winget --scope user (LocalAppData)
         os.path.join(local_app, "Microsoft", "WinGet", "Packages",
                      "FiloSottile.mkcert_Microsoft.Winget.Source_8wekyb3d8bbwe",
                      "mkcert.exe"),
         os.path.join(local_app, "Programs", "mkcert", "mkcert.exe"),
-        # scoop
         os.path.join(userprofile, "scoop", "shims", "mkcert.exe"),
-        # chocolatey
         r"C:\ProgramData\chocolatey\bin\mkcert.exe",
-        # instalación manual en System32
         r"C:\Windows\System32\mkcert.exe",
     ]
 
@@ -146,7 +138,6 @@ def _buscar_mkcert():
         if os.path.exists(c):
             return c
 
-    # 3. Búsqueda en Program Files por si el nombre de carpeta varía
     for base in [program_files, program_files86]:
         if os.path.isdir(base):
             try:
@@ -160,11 +151,6 @@ def _buscar_mkcert():
     return None
 
 def _instalar_mkcert():
-    """
-    Instala mkcert vía winget con --scope machine para que quede
-    en Program Files y sea encontrable. Si falla, reintenta con --scope user.
-    Devuelve True si tuvo éxito.
-    """
     info("Intentando instalar mkcert con winget (--scope machine)...")
     try:
         resultado = subprocess.run(
@@ -177,7 +163,6 @@ def _instalar_mkcert():
             ok("mkcert instalado correctamente con winget")
             return True
 
-        # Fallback: scope user si machine falla por permisos
         info("Reintentando con --scope user...")
         resultado2 = subprocess.run(
             ["winget", "install", "--id", "FiloSottile.mkcert",
@@ -196,7 +181,6 @@ def _instalar_mkcert():
         return False
 
 def _refrescar_path():
-    """Actualiza el PATH en el proceso actual tras instalar mkcert."""
     try:
         resultado = subprocess.run(
             ["powershell", "-Command",
@@ -210,16 +194,10 @@ def _refrescar_path():
         pass
 
 def obtener_o_crear_certificados(ips_todas):
-    """
-    Garantiza que existan cert + key válidos para todas las IPs actuales.
-    Si faltan o las IPs cambiaron, los regenera.
-    Devuelve (cert_path, key_path).
-    """
     os.makedirs(CERT_DIR, exist_ok=True)
 
     mkcert = _buscar_mkcert()
 
-    # ── Intentar instalar si no está ─────────────────────────────────
     if not mkcert:
         warn("mkcert no encontrado en el sistema.")
         instalado = _instalar_mkcert()
@@ -227,7 +205,6 @@ def obtener_o_crear_certificados(ips_todas):
             _refrescar_path()
             mkcert = _buscar_mkcert()
 
-    # ── Si sigue sin encontrarse, instrucciones manuales ─────────────
     if not mkcert:
         print()
         print(f"  {C.BOLD}{C.YELLOW}┌─────────────────────────────────────────────────┐{C.RESET}")
@@ -241,11 +218,9 @@ def obtener_o_crear_certificados(ips_todas):
         input("  Presioná Enter para salir...")
         sys.exit(1)
 
-    # ── Decidir si regenerar certificados ────────────────────────────
     necesita_generar = not (os.path.exists(CERT_FILE) and os.path.exists(KEY_FILE))
 
     if not necesita_generar and ips_todas:
-        # Verificar que el cert cubra las IPs actuales (lectura simple del SAN)
         try:
             resultado = subprocess.run(
                 ["powershell", "-Command",
@@ -260,17 +235,12 @@ def obtener_o_crear_certificados(ips_todas):
                     info(f"IP {ip} no cubierta por el certificado actual — regenerando.")
                     break
         except:
-            necesita_generar = True  # Si no podemos verificar, regeneramos por seguridad
+            necesita_generar = True
 
     if necesita_generar:
         info("Generando certificado HTTPS para LAN...")
-
-        # Instalar la CA local (solo la primera vez, requiere admin)
         subprocess.run([mkcert, "-install"], capture_output=True)
-
-        # Hosts que cubrirá el cert
         hosts = ["localhost", "127.0.0.1", "::1"] + list(ips_todas)
-
         resultado = subprocess.run(
             [mkcert,
              "-cert-file", CERT_FILE,
@@ -278,12 +248,10 @@ def obtener_o_crear_certificados(ips_todas):
             capture_output=True, text=True,
             cwd=CERT_DIR
         )
-
         if resultado.returncode != 0:
             err("Error generando el certificado:")
             print(resultado.stderr)
             sys.exit(1)
-
         ok(f"Certificado generado para: {', '.join(hosts)}")
     else:
         ok("Certificado HTTPS existente y válido — reutilizando")
@@ -341,17 +309,36 @@ def abrir_navegador():
     except:
         pass
 
-# ── Fase 1: UAC + preguntar rutas + relanzar con venv ─────────────────
+# ── Preguntas de inicio ───────────────────────────────────────────────
+
+def preguntar_entorno():
+    print()
+    print(f"  {C.BOLD}¿En qué entorno querés iniciar?{C.RESET}")
+    print()
+    print(f"  {C.BOLD}{C.GREEN}  [1] Producción{C.RESET}   — Base de datos local.")
+    print(f"  {C.CYAN}              Sin debug, configuración estable.{C.RESET}")
+    print()
+    print(f"  {C.BOLD}{C.YELLOW}  [2] Desarrollo{C.RESET}   — Base de datos Railway.")
+    print(f"  {C.CYAN}              Debug activo, apunta a la BD en la nube.{C.RESET}")
+    print()
+    while True:
+        opcion = input("  Opción [1/2]: ").strip()
+        if opcion == "1":
+            ok("Entorno: Producción (BD local)")
+            return "app.settings.production"
+        elif opcion == "2":
+            ok("Entorno: Desarrollo (BD Railway)")
+            return "app.settings.development"
+        else:
+            warn("Escribí 1 o 2.")
+
 def preguntar_modo():
-    """Pregunta al usuario si arranca en modo Uso o Desarrollo. Devuelve 'uso' o 'desarrollo'."""
     print()
     print(f"  {C.BOLD}¿En qué modo querés iniciar el servidor?{C.RESET}")
     print()
-    print(f"  {C.BOLD}{C.GREEN}  [1] Uso{C.RESET}          — Para sesiones normales de trabajo.")
-    print(f"  {C.CYAN}              Sin recarga automática, más estable.{C.RESET}")
+    print(f"  {C.BOLD}{C.GREEN}  [1] Uso{C.RESET}          — Sin recarga automática, más estable.")
     print()
-    print(f"  {C.BOLD}{C.YELLOW}  [2] Desarrollo{C.RESET}   — Para programar. Recarga automática")
-    print(f"  {C.CYAN}              al guardar archivos.{C.RESET}")
+    print(f"  {C.BOLD}{C.YELLOW}  [2] Desarrollo{C.RESET}   — Recarga automática al guardar archivos.")
     print()
     while True:
         opcion = input("  Opción [1/2]: ").strip()
@@ -364,6 +351,7 @@ def preguntar_modo():
         else:
             warn("Escribí 1 o 2.")
 
+# ── Fase 1: UAC + preguntar configuración + relanzar con venv ─────────
 def fase_uac():
     os.system("color")
     header("PactoHistórico · Servidor LAN")
@@ -377,50 +365,55 @@ def fase_uac():
         )
         sys.exit(0)
 
-    header("1 · Modo de inicio")
+    header("1 · Entorno")
+    settings_module = preguntar_entorno()
+
+    header("2 · Modo de inicio")
     modo = preguntar_modo()
 
-    header("2 · Entorno virtual")
+    header("3 · Entorno virtual")
     python_venv = resolver_ruta_venv()
 
-    header("3 · Ruta del proyecto")
+    header("4 · Ruta del proyecto")
     ruta_proyecto = resolver_ruta_proyecto()
 
     script = os.path.abspath(__file__)
     subprocess.Popen(
         ["cmd.exe", "/k",
          python_venv, script, "--fase-server",
-         ruta_proyecto, python_venv, modo]
+         ruta_proyecto, python_venv, modo, settings_module]
     )
     sys.exit(0)
 
 # ── Fase 2: servidor + ventana de control separada ────────────────────
-def fase_server(ruta_proyecto, python_venv, modo="uso"):
+def fase_server(ruta_proyecto, python_venv, modo="uso", settings_module="app.settings.production"):
     os.system("color")
     os.chdir(ruta_proyecto)
 
-    etiqueta_modo = "Desarrollo  (recarga automática activa)" if modo == "desarrollo" else "Uso"
+    etiqueta_entorno = "Producción (BD local)" if "production" in settings_module else "Desarrollo (BD Railway)"
+    etiqueta_modo    = "Desarrollo  (recarga automática activa)" if modo == "desarrollo" else "Uso"
+
     header("PactoHistórico · Servidor LAN (HTTPS)")
     ok(f"Proyecto:  {ruta_proyecto}")
     ok(f"Python:    {python_venv}")
+    ok(f"Entorno:   {etiqueta_entorno}")
     ok(f"Modo:      {etiqueta_modo}")
+    ok(f"Settings:  {settings_module}")
 
-    header("3 · Dependencias")
+    header("2 · Dependencias")
     instalar_dependencias(python_venv, ruta_proyecto)
 
-    header("4 · Firewall")
+    header("3 · Firewall")
     abrir_puerto()
 
-    header("5 · Red LAN")
+    header("4 · Red LAN")
     wifi, hotspot = obtener_ips_lan()
     ips_todas = wifi + hotspot
 
-    # ── Certificados ─────────────────────────────────────────────────
-    header("6 · Certificado HTTPS")
+    header("5 · Certificado HTTPS")
     cert_file, key_file = obtener_o_crear_certificados(ips_todas)
 
-    # ── Mostrar URLs ──────────────────────────────────────────────────
-    header("7 · Direcciones de acceso")
+    header("6 · Direcciones de acceso")
 
     if wifi:
         print(f"\n  {C.BOLD}{C.GREEN}── Conectados al mismo WiFi/router ─────────{C.RESET}")
@@ -441,7 +434,6 @@ def fase_server(ruta_proyecto, python_venv, modo="uso"):
     print()
     info(f"Tu acceso local: {C.BOLD}https://127.0.0.1:{PUERTO}/login/{C.RESET}")
 
-    # ── Aviso sobre la advertencia del navegador ──────────────────────
     print()
     print(f"  {C.BOLD}{C.CYAN}┌─────────────────────────────────────────────────────┐{C.RESET}")
     print(f"  {C.BOLD}{C.CYAN}│  Los otros dispositivos verán una advertencia de    │{C.RESET}")
@@ -450,9 +442,15 @@ def fase_server(ruta_proyecto, python_venv, modo="uso"):
     print(f"  {C.BOLD}{C.CYAN}│  Solo se hace una vez por dispositivo.              │{C.RESET}")
     print(f"  {C.BOLD}{C.CYAN}└─────────────────────────────────────────────────────┘{C.RESET}")
 
-    header("8 · Iniciando servidor HTTPS")
+    header("7 · Iniciando servidor HTTPS")
     info("Uvicorn HTTPS se abrirá en una ventana separada.")
     info("Escribe 'apagar' aquí para detener el servidor.\n")
+
+    # ── Entorno para el proceso hijo ──────────────────────────────────
+    # DJANGO_SETTINGS_MODULE se inyecta en el entorno del proceso uvicorn
+    # para que Django arranque con los settings correctos.
+    env = os.environ.copy()
+    env["DJANGO_SETTINGS_MODULE"] = settings_module
 
     venv_dir     = os.path.dirname(os.path.dirname(python_venv))
     uvicorn_path = os.path.join(venv_dir, "Scripts", "uvicorn.exe")
@@ -473,10 +471,10 @@ def fase_server(ruta_proyecto, python_venv, modo="uso"):
     if modo == "desarrollo":
         cmd_server.append("--reload")
 
-    # Uvicorn en ventana separada
     proceso = subprocess.Popen(
         ["cmd.exe", "/k"] + cmd_server,
         cwd=ruta_proyecto,
+        env=env,
         creationflags=subprocess.CREATE_NEW_CONSOLE
     )
 
@@ -485,7 +483,6 @@ def fase_server(ruta_proyecto, python_venv, modo="uso"):
 
     threading.Thread(target=abrir_navegador, daemon=True).start()
 
-    # ── Ventana de control ────────────────────────────────────────────
     print(f"  {C.BOLD}{C.YELLOW}┌─────────────────────────────────────────┐{C.RESET}")
     print(f"  {C.BOLD}{C.YELLOW}│  Escribe 'apagar' para detener el       │{C.RESET}")
     print(f"  {C.BOLD}{C.YELLOW}│  servidor y cerrar el puerto.           │{C.RESET}")
@@ -520,10 +517,11 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     if "--fase-server" in args:
-        idx           = args.index("--fase-server")
-        ruta_proyecto = args[idx + 1]
-        python_venv   = args[idx + 2]
-        modo          = args[idx + 3] if len(args) > idx + 3 else "uso"
-        fase_server(ruta_proyecto, python_venv, modo)
+        idx             = args.index("--fase-server")
+        ruta_proyecto   = args[idx + 1]
+        python_venv     = args[idx + 2]
+        modo            = args[idx + 3] if len(args) > idx + 3 else "uso"
+        settings_module = args[idx + 4] if len(args) > idx + 4 else "app.settings.production"
+        fase_server(ruta_proyecto, python_venv, modo, settings_module)
     else:
         fase_uac()

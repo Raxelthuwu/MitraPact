@@ -8,33 +8,55 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - [Django Settings] %(message)s'
 )
-logging.info("Cargando configuraciones críticas para el entorno de PRODUCCIÓN...")
+logging.info("Cargando configuración de PRODUCCIÓN (servidor local)...")
 
-# Variables de entorno
-load_dotenv()
+# =============================================================================
+# VARIABLES DE ENTORNO
+# Carga explícitamente .env.production desde la raíz del proyecto.
+# =============================================================================
+env_path = BASE_DIR / '.env.production'
+if not env_path.exists():
+    raise ImproperlyConfigured(
+        f"No se encontró el archivo de entorno de producción en: '{env_path}'. "
+        "Asegúrate de crear .env.production antes de arrancar en producción."
+    )
+load_dotenv(dotenv_path=env_path)
+logging.info(f"Variables de entorno cargadas desde: '{env_path}'")
 
-# Debug
+# =============================================================================
+# DEBUG — siempre False en producción
+# =============================================================================
 DEBUG = False
-logging.warning(f"Modo DEBUG establecido en: {DEBUG}. El entorno está protegido contra exposición de trazas de error.")
+logging.warning(f"DEBUG={DEBUG}. Trazas de error no expuestas al cliente.")
 
-# Secret Key (obligatoria en producción)
+# =============================================================================
+# SECRET KEY — obligatoria, no tiene fallback
+# =============================================================================
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    logging.critical("FALTA CRÍTICA: La variable 'SECRET_KEY' no está definida en el entorno de producción.")
-    raise ImproperlyConfigured("La variable 'SECRET_KEY' es estrictamente obligatoria en producción.")
-logging.info("SECRET_KEY cargada exitosamente desde las variables de entorno del sistema.")
+    logging.critical("FALTA CRÍTICA: 'SECRET_KEY' no definida en .env.production.")
+    raise ImproperlyConfigured("'SECRET_KEY' es obligatoria en producción.")
+logging.info("SECRET_KEY cargada correctamente.")
 
-# ALLOWED_HOSTS
-ALLOWED_HOSTS = ['*']
-logging.info("ALLOWED_HOSTS configurado para aceptar todos los hosts (LAN local).")
+# =============================================================================
+# ALLOWED HOSTS
+# En producción local se limita a la IP/hostname real del servidor.
+# Ajusta según tu red LAN o dominio interno.
+# =============================================================================
+_allowed = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',')]
+logging.info(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
-# Base de datos
+# =============================================================================
+# BASE DE DATOS — PostgreSQL local
+# sslmode=disable porque PostgreSQL local no tiene SSL por defecto.
+# Si configuras SSL en tu PG local, cambia PGSSLMODE=require en .env.production.
+# =============================================================================
 db_name = os.environ.get('PGDATABASE', 'No definido')
-db_user = os.environ.get('PGUSER', 'No definido')
-db_host = os.environ.get('PGHOST', 'No definido')
-db_port = os.environ.get('PGPORT', '5432')
-logging.info(f"Configurando conexión de datos principal -> PostgreSQL en {db_host}:{db_port} | Base de Datos: {db_name} | Usuario: {db_user}")
-logging.info("Aplicando políticas de seguridad de red en base de datos: SSL MODE = 'require'")
+db_user = os.environ.get('PGUSER',     'No definido')
+db_host = os.environ.get('PGHOST',     'No definido')
+db_port = os.environ.get('PGPORT',     '5432')
+logging.info(f"PostgreSQL local -> {db_host}:{db_port} | BD: {db_name} | Usuario: {db_user}")
 
 DATABASES = {
     'default': {
@@ -42,23 +64,39 @@ DATABASES = {
         'NAME':         os.environ.get('PGDATABASE'),
         'USER':         os.environ.get('PGUSER'),
         'PASSWORD':     os.environ.get('PGPASSWORD'),
-        'HOST':         os.environ.get('PGHOST'),
+        'HOST':         os.environ.get('PGHOST', 'localhost'),
         'PORT':         os.environ.get('PGPORT', '5432'),
         'CONN_MAX_AGE': 600,
         'OPTIONS': {
-            'sslmode': 'require',
-            'options': '-c search_path=gestion_eventos,estadistico_territorial,busqueda_semantica,public'       
+            # PostgreSQL local no requiere SSL.
+            # Cambia a 'require' si habilitas SSL en tu instancia local.
+            'sslmode': os.environ.get('PGSSLMODE', 'disable'),
+            'options': '-c search_path=gestion_eventos,estadistico_territorial,busqueda_semantica,public',
         },
     }
 }
-logging.info("Diccionario DATABASES para PostgreSQL mapeado con éxito.")
+logging.info("DATABASES configurado para PostgreSQL local.")
 
-# Módulo semántico (ChromaDB) 
-CHROMA_PERSIST_DIR = os.environ.get('CHROMA_PERSIST_DIR', '/data/chroma_db')
-logging.info(f"Conexión semántica producción: Directorio de persistencia para ChromaDB mapeado en: '{CHROMA_PERSIST_DIR}'")
+# =============================================================================
+# CHROMADB — ruta absoluta en el servidor local
+# En .env.production define CHROMA_PERSIST_DIR con la ruta real del servidor.
+# Si no está definida, cae al default de base.py (BASE_DIR/chroma_db).
+# =============================================================================
+_chroma = os.environ.get('CHROMA_PERSIST_DIR')
+if _chroma:
+    CHROMA_PERSIST_DIR = _chroma
+    logging.info(f"ChromaDB producción: '{CHROMA_PERSIST_DIR}'")
+else:
+    logging.warning(
+        f"CHROMA_PERSIST_DIR no definida en .env.production. "
+        f"Usando directorio base: '{CHROMA_PERSIST_DIR}'"
+    )
 
-logging.info("Todas las variables del entorno de producción se han verificado e inicializado.")
+# =============================================================================
+# SEGURIDAD ADICIONAL EN PRODUCCIÓN
+# =============================================================================
+SECURE_BROWSER_XSS_FILTER   = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS             = 'DENY'
 
-# base.py  Y  development.py
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE    = True
+logging.info("Configuración de PRODUCCIÓN lista.")

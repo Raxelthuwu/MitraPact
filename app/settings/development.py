@@ -7,41 +7,56 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - [Django Settings] %(message)s'
 )
-logging.info("Cargando configuraciones específicas para el entorno local (Development)...")
+logging.info("Cargando configuración de DESARROLLO (Railway)...")
 
-# Variables de entorno
-env_loaded = load_dotenv()
-if env_loaded:
-    logging.info("Archivo '.env' detectado y cargado correctamente en las variables de entorno.")
+# =============================================================================
+# VARIABLES DE ENTORNO
+# En Railway las variables se inyectan directamente en el entorno del contenedor,
+# por lo que load_dotenv() simplemente no encuentra archivo y no falla.
+# Localmente puedes tener un .env.development para simular Railway.
+# =============================================================================
+env_path = BASE_DIR / '.env.development'
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+    logging.info(f"Archivo '.env.development' cargado desde: '{env_path}'")
 else:
-    logging.warning("No se encontró un archivo '.env' o no se pudo cargar. Se utilizarán las variables del sistema actual.")
+    logging.info("Sin .env.development local — usando variables inyectadas por Railway.")
 
-# Debug
+# =============================================================================
+# DEBUG
+# =============================================================================
 DEBUG = True
-logging.info(f"Modo DEBUG establecido en: {DEBUG}")
+logging.info(f"DEBUG={DEBUG}")
 
+# =============================================================================
+# SECRET KEY
+# En desarrollo se permite un fallback inseguro para no bloquear el arranque.
+# En Railway define SECRET_KEY como variable de entorno igualmente.
+# =============================================================================
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-dev-leat#y$cce&6tir1_1qjuno&(i8y1rs9ntkw#t8%z@a3!fdq9('
+)
+logging.info("SECRET_KEY cargada (fallback inseguro activo si no está en el entorno).")
 
-
-
-# ALLOWED_HOSTS
+# =============================================================================
+# ALLOWED HOSTS
+# Railway expone un dominio público; '*' simplifica el desarrollo.
+# =============================================================================
 ALLOWED_HOSTS = ['*']
-logging.info("ALLOWED_HOSTS configurado para aceptar todos los hosts (LAN local).")
+logging.info("ALLOWED_HOSTS: '*' (desarrollo)")
 
-
-# base.py  Y  development.py
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE    = True
-
-
-# Base de datos
+# =============================================================================
+# BASE DE DATOS — PostgreSQL en Railway
+# Railway inyecta automáticamente las variables PGDATABASE, PGUSER, etc.
+# cuando enlazas un plugin de PostgreSQL al servicio.
+# sslmode=require porque Railway sí requiere SSL.
+# =============================================================================
 db_name = os.environ.get('PGDATABASE', 'No definido')
-db_user = os.environ.get('PGUSER', 'No definido')
-db_host = os.environ.get('PGHOST', 'No definido')
-db_port = os.environ.get('PGPORT', '5432')
-logging.info(f"Intentando estructurar conexión a PostgreSQL -> Servidor: {db_host}:{db_port} | Base de Datos: {db_name} | Usuario: {db_user}")
-
-
-
+db_user = os.environ.get('PGUSER',     'No definido')
+db_host = os.environ.get('PGHOST',     'No definido')
+db_port = os.environ.get('PGPORT',     '5432')
+logging.info(f"PostgreSQL Railway -> {db_host}:{db_port} | BD: {db_name} | Usuario: {db_user}")
 
 DATABASES = {
     'default': {
@@ -51,11 +66,27 @@ DATABASES = {
         'PASSWORD':     os.environ.get('PGPASSWORD'),
         'HOST':         os.environ.get('PGHOST'),
         'PORT':         os.environ.get('PGPORT', '5432'),
-        'CONN_MAX_AGE': 600,
+        'CONN_MAX_AGE': 60,  # Más bajo que producción; Railway puede reciclar conexiones
         'OPTIONS': {
             'sslmode': 'require',
-            'options': '-c search_path=gestion_eventos,estadistico_territorial,busqueda_semantica,public'       
+            'options': '-c search_path=gestion_eventos,estadistico_territorial,busqueda_semantica,public',
         },
     }
 }
-logging.info("Diccionario DATABASES para PostgreSQL mapeado con éxito.")
+logging.info("DATABASES configurado para PostgreSQL en Railway.")
+
+# =============================================================================
+# CHROMADB — en Railway usa directorio temporal o volumen montado.
+# Define CHROMA_PERSIST_DIR en las variables de Railway si necesitas persistencia.
+# =============================================================================
+_chroma = os.environ.get('CHROMA_PERSIST_DIR')
+if _chroma:
+    CHROMA_PERSIST_DIR = _chroma
+    logging.info(f"ChromaDB desarrollo: '{CHROMA_PERSIST_DIR}'")
+else:
+    logging.warning(
+        f"CHROMA_PERSIST_DIR no definida. "
+        f"Usando directorio base: '{CHROMA_PERSIST_DIR}' (no persiste entre deploys en Railway)."
+    )
+
+logging.info("Configuración de DESARROLLO lista.")

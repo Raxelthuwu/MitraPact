@@ -1,18 +1,29 @@
 import logging
 from pathlib import Path
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - [Django Settings] %(message)s'
+)
+logging.info("Cargando configuración base compartida...")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [Django Settings] %(message)s')
-
-logging.info("Cargando archivo de configuración settings.py...")
-
+# =============================================================================
+# RUTAS
+# =============================================================================
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-logging.info(f"BASE_DIR detectado en el sistema: '{BASE_DIR}'")
+logging.info(f"BASE_DIR: '{BASE_DIR}'")
 
-SECRET_KEY = 'django-insecure-leat#y$cce&6tir1_1qjuno&(i8y1rs9ntkw#t8%z@a3!fdq9('
+# =============================================================================
+# SEGURIDAD BASE
+# Cada entorno sobreescribe SECRET_KEY y DEBUG en su propio archivo.
+# Este valor solo existe para que Django no explote si se importa base.py solo.
+# =============================================================================
+SECRET_KEY = 'django-insecure-base-placeholder-sobreescribir-en-cada-entorno'
+DEBUG = False
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
-
+# =============================================================================
+# APLICACIONES
+# =============================================================================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -26,6 +37,9 @@ INSTALLED_APPS = [
     'Backend.moduloEstadisticas',
 ]
 
+# =============================================================================
+# MIDDLEWARE
+# =============================================================================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -36,15 +50,24 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# base.py  Y  development.py
+# =============================================================================
+# SESIONES Y COOKIES
+# Secure=True en ambos entornos; en desarrollo Railway también corre HTTPS.
+# =============================================================================
+SESSION_ENGINE       = 'django.contrib.sessions.backends.signed_cookies'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE    = True
 
+# =============================================================================
+# URLS Y WSGI/ASGI
+# =============================================================================
+ROOT_URLCONF     = 'app.urls'
+WSGI_APPLICATION = 'app.wsgi.application'
+ASGI_APPLICATION = 'app.asgi.application'
 
-ZERO_SHOT_MODEL = 'joeddav/xlm-roberta-large-xnli'
-
-ROOT_URLCONF = 'app.urls'
-
+# =============================================================================
+# TEMPLATES
+# =============================================================================
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -60,9 +83,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'app.wsgi.application'
-ASGI_APPLICATION = 'app.asgi.application'
-
+# =============================================================================
+# VALIDADORES DE CONTRASEÑA
+# =============================================================================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -70,47 +93,58 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# =============================================================================
+# INTERNACIONALIZACIÓN
+# =============================================================================
 LANGUAGE_CODE = 'es-co'
-TIME_ZONE = 'America/Bogota'
-USE_I18N = True
-USE_TZ = True
-logging.info(f"Configuración regional establecida: Idioma={LANGUAGE_CODE} | Zona Horaria={TIME_ZONE}")
+TIME_ZONE     = 'America/Bogota'
+USE_I18N      = True
+USE_TZ        = True
+logging.info(f"Regional: idioma={LANGUAGE_CODE} | zona={TIME_ZONE}")
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+# =============================================================================
+# ARCHIVOS ESTÁTICOS Y MEDIA
+# =============================================================================
+STATIC_URL       = '/static/'
+STATIC_ROOT      = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'Frontend' / 'Styles']
+MEDIA_URL        = 'media/'
+MEDIA_ROOT       = BASE_DIR / 'media'
+logging.info("Rutas de estáticos y media enlazadas.")
 
-STATICFILES_DIRS = [
-    BASE_DIR / 'Frontend' / 'Styles',
-]
-
-
-MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-logging.info(f"Rutas de archivos estáticos y multimedia enlazadas en BASE_DIR.")
-
+# =============================================================================
+# MODELO POR DEFECTO
+# =============================================================================
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Chromadb (módulo semántico) 
+# =============================================================================
+# MÓDULO SEMÁNTICO — ChromaDB
+# Cada entorno sobreescribe CHROMA_PERSIST_DIR si necesita una ruta distinta.
+# =============================================================================
 CHROMA_PERSIST_DIR = BASE_DIR / 'chroma_db'
-logging.info(f"Conexión semántica: Directorio de persistencia de ChromaDB asignado en: '{CHROMA_PERSIST_DIR}'")
+logging.info(f"ChromaDB base: '{CHROMA_PERSIST_DIR}'")
 
-# Sentence Transformers 
+# =============================================================================
+# MODELOS IA (compartidos entre entornos)
+# =============================================================================
+ZERO_SHOT_MODEL            = 'joeddav/xlm-roberta-large-xnli'
 SENTENCE_TRANSFORMER_MODEL = 'paraphrase-multilingual-MiniLM-L12-v2'
-logging.info(f"Modelo IA: SentenceTransformer configurado con el modelo de lenguaje: '{SENTENCE_TRANSFORMER_MODEL}'")
+logging.info(f"Modelos IA: zero-shot='{ZERO_SHOT_MODEL}' | embeddings='{SENTENCE_TRANSFORMER_MODEL}'")
 
-# Umbrales de similitud semántica
-# Valores prácticos: < 0.5 excelente, < 0.8 aceptable
-SEMANTIC_MATCH_THRESHOLD          = 0.45
-SEMANTIC_RELATED_THRESHOLD        = 0.80   # era 0.60 con >= invertido
-SEMANTIC_FRAGMENT_MATCH_THRESHOLD = 0.60
-PARAGRAPH_MIN_LENGTH = 80
-# PDFs subidos para indexación documental 
+# =============================================================================
+# UMBRALES DE SIMILITUD SEMÁNTICA
+# < 0.5 excelente coincidencia | < 0.8 aceptable
+# =============================================================================
+SEMANTIC_MATCH_THRESHOLD          = 0.25
+SEMANTIC_RELATED_THRESHOLD        = 0.55
+SEMANTIC_FRAGMENT_MATCH_THRESHOLD = 0.35
+PARAGRAPH_MIN_LENGTH              = 40
+
+# =============================================================================
+# DIRECTORIOS DE INGESTA
+# =============================================================================
 DOCUMENTOS_PDF_DIR = MEDIA_ROOT / 'documentos'
-logging.info(f"Almacenamiento: Directorio para indexación de PDFs definido en: '{DOCUMENTOS_PDF_DIR}'")
+CSV_IMPORT_DIR     = MEDIA_ROOT / 'csv_imports'
+logging.info(f"PDFs: '{DOCUMENTOS_PDF_DIR}' | CSVs: '{CSV_IMPORT_DIR}'")
 
-#  CSV imports 
-CSV_IMPORT_DIR = MEDIA_ROOT / 'csv_imports'
-logging.info(f"Almacenamiento: Directorio para importación de archivos CSV definido en: '{CSV_IMPORT_DIR}'")
-
-logging.info("Estructura de variables de configuración cargada correctamente.")
-
+logging.info("Configuración base cargada correctamente.")
