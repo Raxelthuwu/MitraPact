@@ -198,10 +198,7 @@
     <div class="card">
       <div class="card-header">
         <span class="card-title">Estado del Material</span>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-ghost btn-sm" onclick="openModal('modalCSV')">Cargar CSV</button>
-          <button class="btn btn-outline btn-sm" onclick="openModal('modalEstado')">+ Registro</button>
-        </div>
+        <button class="btn btn-outline btn-sm" onclick="openModal('modalEstado')">+ Registro</button>
       </div>
       <div class="card-body" id="estadoMaterialContent">
         <div class="loading-row"><div class="spinner"></div> Cargando…</div>
@@ -353,29 +350,6 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalEstado')">Cancelar</button>
       <button class="btn btn-primary" onclick="registrarEstado()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Cargar CSV -->
-<div class="modal-overlay" id="modalCSV">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Cargar CSV de Estado</span>
-      <button class="modal-close" onclick="closeModal('modalCSV')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p class="text-sm text-secondary" style="margin-bottom:14px;">
-        El CSV debe tener las columnas: <strong>evento_id</strong>, <strong>estado</strong> (1-5) y <strong>notas</strong>.
-      </p>
-      <div class="form-group">
-        <label class="form-label">Archivo CSV</label>
-        <input class="form-control" type="file" id="csvFile" accept=".csv">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalCSV')">Cancelar</button>
-      <button class="btn btn-primary" onclick="cargarCSV()">Cargar</button>
     </div>
   </div>
 </div>
@@ -897,21 +871,6 @@
       toast('Estado registrado');
       renderEstadoMaterial();
     } catch { toast('Error', 'error'); }
-  }
-
-  async function cargarCSV() {
-    const archivo = document.getElementById('csvFile').files[0];
-    if (!archivo) { toast('Selecciona un archivo CSV', 'error'); return; }
-    const fd = new FormData();
-    fd.append('archivo', archivo);
-    try {
-      const r = await fetch(`${API}material/estado/csv/`, { method:'POST', body: fd });
-      const d = await r.json();
-      if (!d.ok) throw new Error(d.error);
-      closeModal('modalCSV');
-      toast(`CSV cargado: ${d.data} registros insertados`);
-      renderEstadoMaterial();
-    } catch (e) { toast('Error: ' + e.message, 'error'); }
   }
 
   // ── Participación externa ───────────────────────────────

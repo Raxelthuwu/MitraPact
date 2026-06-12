@@ -254,6 +254,9 @@ class SimpatizanteService(ISimpatizanteService):
             mesa_votacion=payload["mesa_votacion"],
             opinion_politica=payload.get("opinion_politica"),
             barrio_id=payload.get("barrio_id"),
+            email=payload.get("email"),
+            direccion=payload.get("direccion"),
+            organizacion=payload.get("organizacion"),
         )
         result = _serialize(await sync_to_async(Simpatizante.get_by_id)(simpatizante_id))
         logger.info("[SimpatizanteService] crear_simpatizante: creado simpatizante_id=%s", simpatizante_id)

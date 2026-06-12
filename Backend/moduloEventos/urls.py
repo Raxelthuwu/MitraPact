@@ -35,6 +35,7 @@ from .views import (
     EstadoMaterialCSVView,
     PromedioEstadoMaterialView,
     AuditoriaView,
+    
     # Vistas frontend
     eventos_vista,
     evento_crear_vista,
@@ -42,6 +43,7 @@ from .views import (
     evento_editar_vista,
     territorios_vista,
     simpatizantes_vista,
+    importacion_simpatizantes,
 )
 
 urlpatterns = [
@@ -79,7 +81,7 @@ urlpatterns = [
     # =========================================================================
     path("api/simpatizantes/", SimpatizanteListView.as_view(), name="simpatizante-list"),
     path("api/simpatizantes/<str:simpatizante_id>/", SimpatizanteDetailView.as_view(), name="simpatizante-detail"),
-
+    path('importacion/', importacion_simpatizantes, name='importacion-simpatizantes'),
     # =========================================================================
     # HORARIOS
     # =========================================================================
