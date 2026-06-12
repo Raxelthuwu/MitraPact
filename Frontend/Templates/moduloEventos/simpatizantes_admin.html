@@ -207,12 +207,8 @@
   .row-actions {
     display: flex;
     gap: 4px;
-    opacity: 0;
-    transition: opacity var(--transition);
     justify-content: center;
   }
-
-  .simp-table tbody tr:hover .row-actions { opacity: 1; }
 
   .btn-icon {
     background: transparent;
@@ -467,6 +463,10 @@
         <option value="INDECISO">Indeciso</option>
         <option value="OPOSITOR">Opositor</option>
       </select>
+      <a href="/eventos/importacion/" class="btn btn-secondary btn-sm">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+        Importar CSV / Excel
+      </a>
       <button class="btn btn-primary btn-sm" onclick="abrirModalNuevo()">
         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/></svg>
         Nuevo simpatizante
@@ -496,12 +496,9 @@
         <thead>
           <tr>
             <th>Nombre</th>
-            <th>Cédula</th>
+            <th>Organización</th>
             <th>Teléfono</th>
-            <th>Edad</th>
-            <th>Ocupación</th>
-            <th>Barrio</th>
-            <th>Opinión política</th>
+            <th>Email</th>
             <th class="th-center">Acciones</th>
           </tr>
         </thead>
@@ -578,13 +575,30 @@
         </div>
 
         <div class="form-group">
+          <label class="form-label" for="fEmail">Correo electrónico</label>
+          <input type="email" class="form-control" id="fEmail" placeholder="Ej. hola@gmail.com">
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label" for="fDireccion">Dirección</label>
+          <input type="text" class="form-control" id="fDireccion" placeholder="Ej. Cra 18 #10a-20">
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label" for="fOrganizacion">Organización</label>
+          <input type="text" class="form-control" id="fOrganizacion" placeholder="Ej. Partido Democrático">
+        </div>
+
+        <div class="form-group">
           <label class="form-label" for="fEdad">Edad <span style="color:var(--danger)">*</span></label>
           <input type="number" class="form-control" id="fEdad" placeholder="Ej. 35" min="18" max="100">
         </div>
 
         <div class="form-group">
           <label class="form-label" for="fOcupacion">Ocupación <span style="color:var(--danger)">*</span></label>
-          <input type="text" class="form-control" id="fOcupacion" placeholder="Ej. Docente">
+          <select class="form-control form-select" id="fOcupacion">
+            <option value="">Seleccionar ocupación… *</option>
+          </select>
         </div>
 
         <div class="form-group">
@@ -658,9 +672,10 @@
 const API       = '/eventos/api/';
 const PAGE_SIZE = 20;
 
-let todos       = [];   // todos los simpatizantes cargados
-let filtrados   = [];   // resultado del filtro actual
-let barrios     = [];   // lista de barrios para selects
+let todos       = [];
+let filtrados   = [];
+let barrios     = [];
+let ocupaciones = [];
 let paginaActual = 1;
 let modoForm    = 'crear';
 let editId      = null;
@@ -705,7 +720,29 @@ function nombreBarrio(barrio_id) {
 // ── Carga inicial ──────────────────────────────────────────────────────────
 
 async function inicializar() {
-  await Promise.all([cargarBarrios(), cargarSimpatizantes()]);
+  await Promise.all([cargarBarrios(), cargarOcupaciones(), cargarSimpatizantes()]);
+}
+
+async function cargarOcupaciones() {
+  try {
+    const r = await fetch('/estadisticas/api/catalogos/ocupaciones/');
+    const d = await r.json();
+    ocupaciones = d.data || [];
+    poblarSelectOcupaciones();
+  } catch { /* no bloqueante */ }
+}
+
+function poblarSelectOcupaciones() {
+  const sel = document.getElementById('fOcupacion');
+  const valorActual = sel.value;
+  sel.innerHTML = '<option value="">Seleccionar ocupación… *</option>';
+  ocupaciones.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.descripcion;
+    opt.textContent = o.descripcion;
+    sel.appendChild(opt);
+  });
+  if (valorActual) sel.value = valorActual;
 }
 
 async function cargarBarrios() {
@@ -743,14 +780,22 @@ function poblarSelectBarriosForm(selId = null) {
 async function cargarSimpatizantes() {
   try {
     const r = await fetch(API + 'simpatizantes/');
+    if (!r.ok) throw new Error(`Error del servidor (${r.status})`);
     const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Respuesta inesperada del servidor');
     todos = d.data || [];
     aplicarFiltros();
     actualizarKPIs();
   } catch(e) {
-    toast('Error al cargar simpatizantes', false);
+    toast(e.message || 'Error al cargar simpatizantes', false);
     document.getElementById('tableBody').innerHTML =
-      `<tr><td colspan="8" style="padding:32px;text-align:center;color:var(--danger)">Error al cargar datos</td></tr>`;
+      `<tr><td colspan="5" style="padding:40px;text-align:center;">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--danger);"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.008v.008H12v-.008Z"/></svg>
+          <h3 style="color:var(--danger);">Error al cargar datos</h3>
+          <p>${e.message || 'No se pudo conectar con el servidor. Recarga la página.'}</p>
+        </div>
+      </td></tr>`;
   }
 }
 
@@ -801,7 +846,7 @@ function renderTabla() {
   const tbody = document.getElementById('tableBody');
 
   if (!pagina.length) {
-    tbody.innerHTML = `<tr><td colspan="8">
+    tbody.innerHTML = `<tr><td colspan="5">
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
         <h3>Sin simpatizantes</h3>
@@ -813,31 +858,29 @@ function renderTabla() {
   }
 
   tbody.innerHTML = pagina.map(s => `
-    <tr onclick="verDetalle('${s.id}')">
+    <tr>
       <td>
         <div class="td-name">
           <div class="avatar">${iniciales(s.nombre)}</div>
           <div class="td-name-info">
             <span class="td-name-primary">${s.nombre}</span>
-            <span class="td-name-secondary">${s.edad ? s.edad + ' años' : '—'}</span>
+            <span class="td-name-secondary">${s.cedula || '—'}</span>
           </div>
         </div>
       </td>
-      <td style="font-family:monospace;font-size:var(--font-size-xs)">${s.cedula || '—'}</td>
+      <td>${s.organizacion || '—'}</td>
       <td>${s.telefono || '—'}</td>
-      <td class="td-center">${s.edad || '—'}</td>
-      <td>${s.ocupacion || '—'}</td>
-      <td>${nombreBarrio(s.barrio_id)}</td>
-      <td>${opinionBadge(s.opinion_politica)}</td>
+      <td>${s.email || '—'}</td>
       <td class="td-center">
         <div class="row-actions">
-          <button class="btn-icon view" title="Ver detalle" onclick="event.stopPropagation();verDetalle('${s.id}')">
+          <button class="btn-icon view" title="Ver detalle" onclick="verDetalle('${s.id}')">
             <svg viewBox="0 0 16 16" fill="currentColor"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/></svg>
+            Detalle
           </button>
-          <button class="btn-icon edit" title="Editar" onclick="event.stopPropagation();abrirModalEditar('${s.id}')">
+          <button class="btn-icon edit" title="Editar" onclick="abrirModalEditar('${s.id}')">
             <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>
           </button>
-          <button class="btn-icon del" title="Eliminar" onclick="event.stopPropagation();pedirEliminar('${s.id}','${s.nombre.replace(/'/g,"\\'")}')">
+          <button class="btn-icon del" title="Eliminar" onclick="pedirEliminar('${s.id}','${s.nombre.replace(/'/g,"\\'")}')">
             <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
           </button>
         </div>
@@ -876,10 +919,11 @@ function irPagina(n) { paginaActual = n; renderTabla(); }
 // ── Modal formulario ───────────────────────────────────────────────────────
 
 function limpiarForm() {
-  ['fNombre','fCedula','fTelefono','fEdad','fOcupacion',
+  ['fNombre','fCedula','fTelefono','fEmail','fDireccion','fOrganizacion','fEdad',
    'fLugarVotacion','fPuestoVotacion','fMesaVotacion'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('fOcupacion').value = '';
   document.getElementById('fOpinion').value = '';
   poblarSelectBarriosForm();
 }
@@ -906,6 +950,11 @@ function abrirModalEditar(id) {
   document.getElementById('fPuestoVotacion').value = s.puesto_votacion || '';
   document.getElementById('fMesaVotacion').value   = s.mesa_votacion || '';
   document.getElementById('fOpinion').value        = s.opinion_politica || '';
+  document.getElementById('fEmail').value          = s.email || '';
+  document.getElementById('fDireccion').value      = s.direccion || '';
+  document.getElementById('fOrganizacion').value   = s.organizacion || '';
+  poblarSelectOcupaciones();
+  document.getElementById('fOcupacion').value      = s.ocupacion || '';
   poblarSelectBarriosForm(s.barrio_id);
   abrirModal('modalForm');
   setTimeout(() => document.getElementById('fNombre').focus(), 150);
@@ -921,7 +970,10 @@ async function guardarSimpatizante() {
   const puesto_votacion= document.getElementById('fPuestoVotacion').value.trim();
   const mesa_votacion  = document.getElementById('fMesaVotacion').value.trim();
   const opinion_politica = document.getElementById('fOpinion').value || null;
-  const barrio_id      = document.getElementById('fBarrio').value || null;
+  const barrio_id        = document.getElementById('fBarrio').value || null;
+  const email            = document.getElementById('fEmail').value.trim() || null;
+  const direccion        = document.getElementById('fDireccion').value.trim() || null;
+  const organizacion     = document.getElementById('fOrganizacion').value.trim() || null;
 
   const requeridos = [
     [nombre,         'El nombre es obligatorio'],
@@ -941,6 +993,7 @@ async function guardarSimpatizante() {
     nombre, cedula, telefono: telefono || null, edad,
     ocupacion, lugar_votacion, puesto_votacion, mesa_votacion,
     opinion_politica, barrio_id,
+    email, direccion, organizacion,
   };
 
   const btn = document.getElementById('btnGuardarForm');
@@ -987,10 +1040,13 @@ function verDetalle(id) {
 
   const campos = [
     { seccion: 'Datos personales' },
-    { label: 'Teléfono',    value: s.telefono || '—' },
-    { label: 'Edad',        value: s.edad ? `${s.edad} años` : '—' },
-    { label: 'Ocupación',   value: s.ocupacion || '—' },
-    { label: 'Barrio',      value: nombreBarrio(s.barrio_id) },
+    { label: 'Teléfono',      value: s.telefono || '—' },
+    { label: 'Email',         value: s.email || '—' },
+    { label: 'Dirección',     value: s.direccion || '—' },
+    { label: 'Organización',  value: s.organizacion || '—' },
+    { label: 'Edad',          value: s.edad ? `${s.edad} años` : '—' },
+    { label: 'Ocupación',     value: s.ocupacion || '—' },
+    { label: 'Barrio',        value: nombreBarrio(s.barrio_id) },
     { label: 'Opinión',     value: s.opinion_politica || '—', badge: true },
     { seccion: 'Información electoral' },
     { label: 'Lugar de votación',  value: s.lugar_votacion || '—' },

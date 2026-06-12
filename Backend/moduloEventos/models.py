@@ -291,7 +291,8 @@ class Simpatizante:
             cur.execute(
                 f"""SELECT id, nombre, cedula, telefono, edad, ocupacion,
                            lugar_votacion, puesto_votacion, mesa_votacion,
-                           opinion_politica, barrio_id
+                           opinion_politica, barrio_id,
+                           email, direccion, organizacion
                     FROM {db.simpatizante} ORDER BY nombre"""
             )
             return _fetchall(cur)
@@ -302,7 +303,8 @@ class Simpatizante:
             cur.execute(
                 f"""SELECT id, nombre, cedula, telefono, edad, ocupacion,
                            lugar_votacion, puesto_votacion, mesa_votacion,
-                           opinion_politica, barrio_id
+                           opinion_politica, barrio_id,
+                           email, direccion, organizacion
                     FROM {db.simpatizante} WHERE id = %s""",
                 [simpatizante_id],
             )
@@ -314,7 +316,8 @@ class Simpatizante:
             cur.execute(
                 f"""SELECT id, nombre, cedula, telefono, edad, ocupacion,
                            lugar_votacion, puesto_votacion, mesa_votacion,
-                           opinion_politica, barrio_id
+                           opinion_politica, barrio_id,
+                           email, direccion, organizacion
                     FROM {db.simpatizante} WHERE barrio_id = %s ORDER BY nombre""",
                 [barrio_id],
             )
@@ -332,17 +335,22 @@ class Simpatizante:
         mesa_votacion: str,
         opinion_politica: Optional[str],
         barrio_id: Optional[str],
+        email: Optional[str] = None,
+        direccion: Optional[str] = None,
+        organizacion: Optional[str] = None,
     ) -> str:
         with connection.cursor() as cur:
             cur.execute(
                 f"""INSERT INTO {db.simpatizante}
                     (nombre, cedula, telefono, edad, ocupacion,
                      lugar_votacion, puesto_votacion, mesa_votacion,
-                     opinion_politica, barrio_id)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                     opinion_politica, barrio_id,
+                     email, direccion, organizacion)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
                 [nombre, cedula, telefono, edad, ocupacion,
                  lugar_votacion, puesto_votacion, mesa_votacion,
-                 opinion_politica, barrio_id],
+                 opinion_politica, barrio_id,
+                 email, direccion, organizacion],
             )
             return str(cur.fetchone()[0])
 
@@ -352,6 +360,7 @@ class Simpatizante:
             "nombre", "cedula", "telefono", "edad", "ocupacion",
             "lugar_votacion", "puesto_votacion", "mesa_votacion",
             "opinion_politica", "barrio_id",
+            "email", "direccion", "organizacion",
         }
         fields = {k: v for k, v in payload.items() if k in allowed}
         if not fields:

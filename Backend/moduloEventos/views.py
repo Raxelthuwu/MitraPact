@@ -60,6 +60,10 @@ def territorios_vista(request):
 def simpatizantes_vista(request):
     return render(request, 'moduloEventos/simpatizantes_admin.html')
 
+@login_requerido
+def importacion_simpatizantes(request):
+    return render(request, 'moduloEventos/simpatizantes_importacion.html')
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Instancias de servicios (singleton ligero — sin estado mutable)
 # ─────────────────────────────────────────────────────────────────────────────
