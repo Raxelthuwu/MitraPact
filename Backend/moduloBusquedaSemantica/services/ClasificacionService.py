@@ -69,10 +69,11 @@ class ClasificacionService(IClasificacionService):
 
         self._conexion = await asyncpg.connect(
             host     = settings.DATABASES['default']['HOST'],
-            port     = settings.DATABASES['default']['PORT'],
+            port     = int(settings.DATABASES['default']['PORT']),
             database = settings.DATABASES['default']['NAME'],
             user     = settings.DATABASES['default']['USER'],
             password = settings.DATABASES['default']['PASSWORD'],
+            ssl      = False,
         )
 
         await self._conexion.add_listener('encuesta_insertada', self._onNotify)
@@ -426,7 +427,7 @@ class ClasificacionService(IClasificacionService):
                         'argumento_id':     str(argumento['id']),
                         'problematica_cod': problematicaCod,
                         'es_semilla':       False,
-                        'tema':             tema, 
+                        'tema':             tema,
                     }],
                 )
             except Exception as e:

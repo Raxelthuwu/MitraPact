@@ -20,7 +20,7 @@ if not env_path.exists():
         f"No se encontró el archivo de entorno de producción en: '{env_path}'. "
         "Asegúrate de crear .env.production antes de arrancar en producción."
     )
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=env_path, override=True)
 logging.info(f"Variables de entorno cargadas desde: '{env_path}'")
 
 # =============================================================================
