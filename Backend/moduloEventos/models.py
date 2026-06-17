@@ -5,7 +5,6 @@ from django.db import connection
 import sys
 import os
 
-# Esto añade la carpeta raíz (MITRAPACT) al path de Python si no lo está ya
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from app import db
@@ -76,7 +75,6 @@ class Barrio:
         with connection.cursor() as cur:
             cur.execute(f"DELETE FROM {db.barrio} WHERE id = %s", [barrio_id])
             return cur.rowcount > 0
-
 
 
 # =============================================================================
@@ -210,13 +208,6 @@ class EventoPuntoInteres:
             return cur.rowcount
 
 
-
-
-
-
-
-
-
 # =============================================================================
 # COORDINADOR
 # =============================================================================
@@ -289,11 +280,17 @@ class Simpatizante:
     def get_all() -> List[Dict[str, Any]]:
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT id, nombre, cedula, telefono, edad, ocupacion,
-                           lugar_votacion, puesto_votacion, mesa_votacion,
-                           opinion_politica, barrio_id,
-                           email, direccion, organizacion
-                    FROM {db.simpatizante} ORDER BY nombre"""
+                f"""
+                SELECT s.id, s.nombre, s.cedula, s.telefono, s.edad,
+                       s.ocupacion_cod,
+                       o.descripcion AS ocupacion,
+                       s.lugar_votacion, s.puesto_votacion, s.mesa_votacion,
+                       s.opinion_politica, s.barrio_id,
+                       s.email, s.direccion, s.organizacion
+                FROM {db.simpatizante} s
+                LEFT JOIN {db.catalogo_ocupacion} o ON o.codigo = s.ocupacion_cod
+                ORDER BY s.nombre
+                """
             )
             return _fetchall(cur)
 
@@ -301,11 +298,17 @@ class Simpatizante:
     def get_by_id(simpatizante_id: str) -> Optional[Dict[str, Any]]:
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT id, nombre, cedula, telefono, edad, ocupacion,
-                           lugar_votacion, puesto_votacion, mesa_votacion,
-                           opinion_politica, barrio_id,
-                           email, direccion, organizacion
-                    FROM {db.simpatizante} WHERE id = %s""",
+                f"""
+                SELECT s.id, s.nombre, s.cedula, s.telefono, s.edad,
+                       s.ocupacion_cod,
+                       o.descripcion AS ocupacion,
+                       s.lugar_votacion, s.puesto_votacion, s.mesa_votacion,
+                       s.opinion_politica, s.barrio_id,
+                       s.email, s.direccion, s.organizacion
+                FROM {db.simpatizante} s
+                LEFT JOIN {db.catalogo_ocupacion} o ON o.codigo = s.ocupacion_cod
+                WHERE s.id = %s
+                """,
                 [simpatizante_id],
             )
             return _fetchone(cur)
@@ -314,11 +317,18 @@ class Simpatizante:
     def get_by_barrio(barrio_id: str) -> List[Dict[str, Any]]:
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT id, nombre, cedula, telefono, edad, ocupacion,
-                           lugar_votacion, puesto_votacion, mesa_votacion,
-                           opinion_politica, barrio_id,
-                           email, direccion, organizacion
-                    FROM {db.simpatizante} WHERE barrio_id = %s ORDER BY nombre""",
+                f"""
+                SELECT s.id, s.nombre, s.cedula, s.telefono, s.edad,
+                       s.ocupacion_cod,
+                       o.descripcion AS ocupacion,
+                       s.lugar_votacion, s.puesto_votacion, s.mesa_votacion,
+                       s.opinion_politica, s.barrio_id,
+                       s.email, s.direccion, s.organizacion
+                FROM {db.simpatizante} s
+                LEFT JOIN {db.catalogo_ocupacion} o ON o.codigo = s.ocupacion_cod
+                WHERE s.barrio_id = %s
+                ORDER BY s.nombre
+                """,
                 [barrio_id],
             )
             return _fetchall(cur)
@@ -329,7 +339,7 @@ class Simpatizante:
         cedula: str,
         telefono: Optional[str],
         edad: int,
-        ocupacion: str,
+        ocupacion_cod: Optional[int],
         lugar_votacion: str,
         puesto_votacion: str,
         mesa_votacion: str,
@@ -342,12 +352,12 @@ class Simpatizante:
         with connection.cursor() as cur:
             cur.execute(
                 f"""INSERT INTO {db.simpatizante}
-                    (nombre, cedula, telefono, edad, ocupacion,
+                    (nombre, cedula, telefono, edad, ocupacion_cod,
                      lugar_votacion, puesto_votacion, mesa_votacion,
                      opinion_politica, barrio_id,
                      email, direccion, organizacion)
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
-                [nombre, cedula, telefono, edad, ocupacion,
+                [nombre, cedula, telefono, edad, ocupacion_cod,
                  lugar_votacion, puesto_votacion, mesa_votacion,
                  opinion_politica, barrio_id,
                  email, direccion, organizacion],
@@ -357,7 +367,7 @@ class Simpatizante:
     @staticmethod
     def update(simpatizante_id: str, payload: Dict[str, Any]) -> bool:
         allowed = {
-            "nombre", "cedula", "telefono", "edad", "ocupacion",
+            "nombre", "cedula", "telefono", "edad", "ocupacion_cod",
             "lugar_votacion", "puesto_votacion", "mesa_votacion",
             "opinion_politica", "barrio_id",
             "email", "direccion", "organizacion",
@@ -434,17 +444,24 @@ class HorarioDisponible:
         """
         Devuelve simpatizantes cuyo horario registrado es compatible
         con la fecha/hora del evento (RF-EV-06, RF-EV-22).
+        JOIN al catálogo para exponer el nombre de la ocupación.
         """
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT s.id, s.nombre, s.cedula, s.ocupacion, s.barrio_id,
-                           h.dia_semana, h.hora_inicio, h.hora_fin
-                    FROM {db.horario_disponible} h
-                    JOIN {db.simpatizante} s ON s.id = h.simpatizante_id
-                    WHERE h.dia_semana = %s
-                      AND h.hora_inicio <= %s
-                      AND h.hora_fin   >= %s
-                    ORDER BY s.nombre""",
+                f"""
+                SELECT s.id, s.nombre, s.cedula,
+                       s.ocupacion_cod,
+                       o.descripcion AS ocupacion,
+                       s.barrio_id,
+                       h.dia_semana, h.hora_inicio, h.hora_fin
+                FROM {db.horario_disponible} h
+                JOIN {db.simpatizante} s ON s.id = h.simpatizante_id
+                LEFT JOIN {db.catalogo_ocupacion} o ON o.codigo = s.ocupacion_cod
+                WHERE h.dia_semana = %s
+                  AND h.hora_inicio <= %s
+                  AND h.hora_fin   >= %s
+                ORDER BY s.nombre
+                """,
                 [dia_semana, hora_inicio, hora_fin],
             )
             return _fetchall(cur)
@@ -491,8 +508,8 @@ class Evento:
         duracion_min: Optional[int],
         objetivo: Optional[str],
         resultado_esperado: Optional[str],
-        resultado_obtenido: Optional[str]=None,
-        capacidad: int=0,
+        resultado_obtenido: Optional[str] = None,
+        capacidad: int = 0,
         estado: str = "PLANIFICADO",
         coordinador_id: str = None,
         barrio_id: Optional[str] = None,
@@ -518,7 +535,6 @@ class Evento:
             "resultado_obtenido", "capacidad", "estado",
             "coordinador_id", "barrio_id",
         }
-        # FIX: excluir None para no pisar valores existentes (ej. coordinador_id)
         fields = {k: v for k, v in payload.items() if k in allowed and v is not None}
         if not fields:
             return False
@@ -596,13 +612,18 @@ class Asignacion:
     def get_by_evento(evento_id: str) -> List[Dict[str, Any]]:
         with connection.cursor() as cur:
             cur.execute(
-                f"""SELECT a.id, a.evento_id, a.simpatizante_id, a.rol,
-                           a.metodo, a.asistio,
-                           s.nombre AS simpatizante_nombre,
-                           s.ocupacion AS simpatizante_ocupacion
-                    FROM {db.asignacion} a
-                    JOIN {db.simpatizante} s ON s.id = a.simpatizante_id
-                    WHERE a.evento_id = %s ORDER BY s.nombre""",
+                f"""
+                SELECT a.id, a.evento_id, a.simpatizante_id, a.rol,
+                       a.metodo, a.asistio,
+                       s.nombre AS simpatizante_nombre,
+                       s.ocupacion_cod AS simpatizante_ocupacion_cod,
+                       o.descripcion  AS simpatizante_ocupacion
+                FROM {db.asignacion} a
+                JOIN {db.simpatizante} s ON s.id = a.simpatizante_id
+                LEFT JOIN {db.catalogo_ocupacion} o ON o.codigo = s.ocupacion_cod
+                WHERE a.evento_id = %s
+                ORDER BY s.nombre
+                """,
                 [evento_id],
             )
             return _fetchall(cur)
@@ -668,7 +689,7 @@ class Asignacion:
                 [evento_id, simpatizante_id],
             )
             return cur.fetchone() is not None
-    
+
     @staticmethod
     def get_barrios_recientes_simpatizante(
         simpatizante_id: str,
@@ -691,6 +712,7 @@ class Asignacion:
             )
             return _fetchall(cur)
 
+
 # =============================================================================
 # COBERTURA
 # =============================================================================
@@ -699,60 +721,97 @@ class Cobertura:
 
     @staticmethod
     def get_by_evento(evento_id: str) -> List[Dict[str, Any]]:
-        # FIX: calcula asignados en tiempo real con JOIN
+        """
+        Calcula asignados en tiempo real contando las asignaciones cuyo
+        simpatizante tiene el mismo ocupacion_cod que el requerido en cobertura.
+        JOIN al catálogo para mostrar el nombre de la ocupación.
+        """
         with connection.cursor() as cur:
             cur.execute(
                 f"""
                 SELECT
                     c.id,
                     c.evento_id,
-                    c.ocupacion,
+                    c.ocupacion_cod,
+                    o.descripcion AS ocupacion,
                     c.requeridos,
                     COUNT(a.id) AS asignados
                 FROM {db.cobertura} c
+                LEFT JOIN {db.catalogo_ocupacion} o
+                    ON o.codigo = c.ocupacion_cod
                 LEFT JOIN {db.asignacion} a
                     ON a.evento_id = c.evento_id
                 LEFT JOIN {db.simpatizante} s
                     ON s.id = a.simpatizante_id
-                   AND LOWER(TRIM(s.ocupacion)) = LOWER(TRIM(c.ocupacion))
+                   AND s.ocupacion_cod = c.ocupacion_cod
                 WHERE c.evento_id = %s
-                GROUP BY c.id, c.evento_id, c.ocupacion, c.requeridos
-                ORDER BY c.ocupacion
+                GROUP BY c.id, c.evento_id, c.ocupacion_cod, o.descripcion, c.requeridos
+                ORDER BY o.descripcion
                 """,
                 [evento_id],
             )
             return _fetchall(cur)
 
     @staticmethod
-    def create(evento_id: str, ocupacion: str, requeridos: int) -> str:
+    def get_by_evento_by_id(cobertura_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtiene una cobertura por su id con JOIN al catálogo.
+        Usado por CoberturaService.actualizar_cobertura tras el UPDATE.
+        """
         with connection.cursor() as cur:
             cur.execute(
-                f"""INSERT INTO {db.cobertura} (evento_id, ocupacion, requeridos)
+                f"""
+                SELECT
+                    c.id,
+                    c.evento_id,
+                    c.ocupacion_cod,
+                    o.descripcion AS ocupacion,
+                    c.requeridos
+                FROM {db.cobertura} c
+                LEFT JOIN {db.catalogo_ocupacion} o
+                    ON o.codigo = c.ocupacion_cod
+                WHERE c.id = %s
+                """,
+                [cobertura_id],
+            )
+            return _fetchone(cur)
+
+    @staticmethod
+    def create(evento_id: str, ocupacion_cod: int, requeridos: int) -> str:
+        with connection.cursor() as cur:
+            cur.execute(
+                f"""INSERT INTO {db.cobertura} (evento_id, ocupacion_cod, requeridos)
                     VALUES (%s, %s, %s) RETURNING id""",
-                [evento_id, ocupacion, requeridos],
+                [evento_id, ocupacion_cod, requeridos],
             )
             return str(cur.fetchone()[0])
 
     @staticmethod
-    def update(cobertura_id: str, ocupacion: str, requeridos: int, asignados: int) -> bool:
+    def update(cobertura_id: str, ocupacion_cod: int, requeridos: int, asignados: int) -> bool:
         with connection.cursor() as cur:
             cur.execute(
                 f"""UPDATE {db.cobertura}
-                    SET ocupacion = %s, requeridos = %s, asignados = %s
+                    SET ocupacion_cod = %s, requeridos = %s
                     WHERE id = %s""",
-                [ocupacion, requeridos, asignados, cobertura_id],
+                [ocupacion_cod, requeridos, cobertura_id],
             )
             return cur.rowcount > 0
 
     @staticmethod
-    def incrementar_asignados(evento_id: str, ocupacion: str) -> None:
-        with connection.cursor() as cur:
-            cur.execute(
-                f"""UPDATE {db.cobertura}
-                    SET asignados = asignados + 1
-                    WHERE evento_id = %s AND ocupacion = %s""",
-                [evento_id, ocupacion],
-            )
+    def incrementar_asignados(evento_id: str, ocupacion_cod: int) -> None:
+        """
+        No-op: los asignados se calculan en tiempo real en get_by_evento.
+        Se mantiene para compatibilidad con service.py.
+        """
+        pass
+
+    @staticmethod
+    def decrementar_asignados(evento_id: str, ocupacion_cod: int) -> None:
+        """
+        No-op: los asignados se calculan en tiempo real en get_by_evento.
+        Se mantiene para compatibilidad con service.py (remover_asignacion).
+        """
+        pass
 
     @staticmethod
     def delete(cobertura_id: str) -> bool:
@@ -900,10 +959,6 @@ class EstadoMaterial:
 
     @staticmethod
     def promedio_estado_numerico(evento_id: str) -> Optional[float]:
-        """
-        RF-EV-22 — Promedio numérico del estado del material observado.
-        Solo aplica cuando el estado está almacenado como valor numérico (1-5).
-        """
         with connection.cursor() as cur:
             cur.execute(
                 f"""SELECT AVG(CAST(estado AS NUMERIC))
@@ -917,10 +972,6 @@ class EstadoMaterial:
 
     @staticmethod
     def bulk_create_from_csv(rows: List[Dict[str, Any]]) -> int:
-        """
-        RF-EV-21 — Inserción masiva desde CSV.
-        Cada row debe tener: evento_id, estado, notas.
-        """
         inserted = 0
         with connection.cursor() as cur:
             for row in rows:

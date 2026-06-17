@@ -503,7 +503,7 @@
           </tr>
         </thead>
         <tbody id="tableBody">
-          <tr><td colspan="8" style="padding:40px;text-align:center;color:var(--text-muted)">
+          <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text-muted)">
             <svg style="width:32px;height:32px;opacity:.3;display:block;margin:0 auto 10px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
             Cargando simpatizantes…
           </td></tr>
@@ -595,6 +595,7 @@
         </div>
 
         <div class="form-group">
+          <!-- fOcupacion: value = ocupacion_cod (integer), label = descripcion -->
           <label class="form-label" for="fOcupacion">Ocupación <span style="color:var(--danger)">*</span></label>
           <select class="form-control form-select" id="fOcupacion">
             <option value="">Seleccionar ocupación… *</option>
@@ -672,15 +673,15 @@
 const API       = '/eventos/api/';
 const PAGE_SIZE = 20;
 
-let todos       = [];
-let filtrados   = [];
-let barrios     = [];
-let ocupaciones = [];
+let todos        = [];
+let filtrados    = [];
+let barrios      = [];
+let ocupaciones  = [];   // [{codigo: int, descripcion: str}, ...]
 let paginaActual = 1;
-let modoForm    = 'crear';
-let editId      = null;
-let deleteId    = null;
-let detailId    = null;
+let modoForm     = 'crear';
+let editId       = null;
+let deleteId     = null;
+let detailId     = null;
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 
@@ -717,6 +718,13 @@ function nombreBarrio(barrio_id) {
   return b ? b.nombre : '—';
 }
 
+// Dado un ocupacion_cod, devuelve la descripción para mostrar en UI
+function descripcionOcupacion(cod) {
+  if (!cod && cod !== 0) return '—';
+  const o = ocupaciones.find(x => String(x.codigo) === String(cod));
+  return o ? o.descripcion : `Cód. ${cod}`;
+}
+
 // ── Carga inicial ──────────────────────────────────────────────────────────
 
 async function inicializar() {
@@ -727,22 +735,21 @@ async function cargarOcupaciones() {
   try {
     const r = await fetch('/estadisticas/api/catalogos/ocupaciones/');
     const d = await r.json();
-    ocupaciones = d.data || [];
+    ocupaciones = d.data || [];  // [{codigo, descripcion}, ...]
     poblarSelectOcupaciones();
   } catch { /* no bloqueante */ }
 }
 
-function poblarSelectOcupaciones() {
+function poblarSelectOcupaciones(codSeleccionado = null) {
   const sel = document.getElementById('fOcupacion');
-  const valorActual = sel.value;
   sel.innerHTML = '<option value="">Seleccionar ocupación… *</option>';
   ocupaciones.forEach(o => {
     const opt = document.createElement('option');
-    opt.value = o.descripcion;
-    opt.textContent = o.descripcion;
+    opt.value = o.codigo;              // ← valor entero (ocupacion_cod)
+    opt.textContent = o.descripcion;   // ← texto visible
+    if (String(o.codigo) === String(codSeleccionado)) opt.selected = true;
     sel.appendChild(opt);
   });
-  if (valorActual) sel.value = valorActual;
 }
 
 async function cargarBarrios() {
@@ -750,7 +757,6 @@ async function cargarBarrios() {
     const r = await fetch(API + 'barrios/');
     const d = await r.json();
     barrios = d.data || [];
-    // poblar filtro
     const filtro = document.getElementById('filtroBarrio');
     barrios.forEach(b => {
       const opt = document.createElement('option');
@@ -758,7 +764,6 @@ async function cargarBarrios() {
       opt.textContent = b.nombre;
       filtro.appendChild(opt);
     });
-    // poblar select del formulario
     poblarSelectBarriosForm();
   } catch(e) {
     toast('Error al cargar barrios', false);
@@ -834,10 +839,10 @@ function actualizarKPIs() {
 // ── Render tabla ───────────────────────────────────────────────────────────
 
 function renderTabla() {
-  const total   = filtrados.length;
-  const inicio  = (paginaActual - 1) * PAGE_SIZE;
-  const fin     = Math.min(inicio + PAGE_SIZE, total);
-  const pagina  = filtrados.slice(inicio, fin);
+  const total  = filtrados.length;
+  const inicio = (paginaActual - 1) * PAGE_SIZE;
+  const fin    = Math.min(inicio + PAGE_SIZE, total);
+  const pagina = filtrados.slice(inicio, fin);
 
   document.getElementById('tableCount').textContent = total;
   document.getElementById('footerInfo').textContent =
@@ -899,18 +904,15 @@ function renderPaginacion(total) {
   if (totalPags <= 1) { el.innerHTML = ''; return; }
 
   let html = '';
-  const prev = paginaActual > 1;
-  const next = paginaActual < totalPags;
-
-  html += `<button class="page-btn" ${!prev?'disabled':''} onclick="irPagina(${paginaActual-1})">‹</button>`;
+  html += `<button class="page-btn" ${paginaActual === 1 ? 'disabled' : ''} onclick="irPagina(${paginaActual - 1})">‹</button>`;
   for (let i = 1; i <= totalPags; i++) {
     if (i === 1 || i === totalPags || Math.abs(i - paginaActual) <= 1) {
-      html += `<button class="page-btn${i===paginaActual?' active':''}" onclick="irPagina(${i})">${i}</button>`;
+      html += `<button class="page-btn${i === paginaActual ? ' active' : ''}" onclick="irPagina(${i})">${i}</button>`;
     } else if (Math.abs(i - paginaActual) === 2) {
       html += `<span style="padding:0 4px;color:var(--text-muted)">…</span>`;
     }
   }
-  html += `<button class="page-btn" ${!next?'disabled':''} onclick="irPagina(${paginaActual+1})">›</button>`;
+  html += `<button class="page-btn" ${paginaActual === totalPags ? 'disabled' : ''} onclick="irPagina(${paginaActual + 1})">›</button>`;
   el.innerHTML = html;
 }
 
@@ -923,8 +925,8 @@ function limpiarForm() {
    'fLugarVotacion','fPuestoVotacion','fMesaVotacion'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('fOcupacion').value = '';
   document.getElementById('fOpinion').value = '';
+  poblarSelectOcupaciones();          // resetea el select sin preselección
   poblarSelectBarriosForm();
 }
 
@@ -941,11 +943,11 @@ function abrirModalEditar(id) {
   if (!s) return;
   modoForm = 'editar'; editId = id;
   document.getElementById('modalFormTitulo').textContent = 'Editar simpatizante';
+
   document.getElementById('fNombre').value         = s.nombre || '';
   document.getElementById('fCedula').value         = s.cedula || '';
   document.getElementById('fTelefono').value       = s.telefono || '';
   document.getElementById('fEdad').value           = s.edad || '';
-  document.getElementById('fOcupacion').value      = s.ocupacion || '';
   document.getElementById('fLugarVotacion').value  = s.lugar_votacion || '';
   document.getElementById('fPuestoVotacion').value = s.puesto_votacion || '';
   document.getElementById('fMesaVotacion').value   = s.mesa_votacion || '';
@@ -953,22 +955,24 @@ function abrirModalEditar(id) {
   document.getElementById('fEmail').value          = s.email || '';
   document.getElementById('fDireccion').value      = s.direccion || '';
   document.getElementById('fOrganizacion').value   = s.organizacion || '';
-  poblarSelectOcupaciones();
-  document.getElementById('fOcupacion').value      = s.ocupacion || '';
+
+  // Poblar select con ocupacion_cod como valor seleccionado
+  poblarSelectOcupaciones(s.ocupacion_cod);
   poblarSelectBarriosForm(s.barrio_id);
+
   abrirModal('modalForm');
   setTimeout(() => document.getElementById('fNombre').focus(), 150);
 }
 
 async function guardarSimpatizante() {
-  const nombre         = document.getElementById('fNombre').value.trim();
-  const cedula         = document.getElementById('fCedula').value.trim();
-  const telefono       = document.getElementById('fTelefono').value.trim();
-  const edad           = parseInt(document.getElementById('fEdad').value);
-  const ocupacion      = document.getElementById('fOcupacion').value.trim();
-  const lugar_votacion = document.getElementById('fLugarVotacion').value.trim();
-  const puesto_votacion= document.getElementById('fPuestoVotacion').value.trim();
-  const mesa_votacion  = document.getElementById('fMesaVotacion').value.trim();
+  const nombre          = document.getElementById('fNombre').value.trim();
+  const cedula          = document.getElementById('fCedula').value.trim();
+  const telefono        = document.getElementById('fTelefono').value.trim();
+  const edad            = parseInt(document.getElementById('fEdad').value);
+  const ocupacion_cod   = parseInt(document.getElementById('fOcupacion').value);  // ← integer
+  const lugar_votacion  = document.getElementById('fLugarVotacion').value.trim();
+  const puesto_votacion = document.getElementById('fPuestoVotacion').value.trim();
+  const mesa_votacion   = document.getElementById('fMesaVotacion').value.trim();
   const opinion_politica = document.getElementById('fOpinion').value || null;
   const barrio_id        = document.getElementById('fBarrio').value || null;
   const email            = document.getElementById('fEmail').value.trim() || null;
@@ -976,13 +980,13 @@ async function guardarSimpatizante() {
   const organizacion     = document.getElementById('fOrganizacion').value.trim() || null;
 
   const requeridos = [
-    [nombre,         'El nombre es obligatorio'],
-    [cedula,         'La cédula es obligatoria'],
-    [!isNaN(edad),   'La edad es obligatoria'],
-    [ocupacion,      'La ocupación es obligatoria'],
-    [lugar_votacion, 'El lugar de votación es obligatorio'],
-    [puesto_votacion,'El puesto de votación es obligatorio'],
-    [mesa_votacion,  'La mesa de votación es obligatoria'],
+    [nombre,              'El nombre es obligatorio'],
+    [cedula,              'La cédula es obligatoria'],
+    [!isNaN(edad),        'La edad es obligatoria'],
+    [!isNaN(ocupacion_cod), 'La ocupación es obligatoria'],
+    [lugar_votacion,      'El lugar de votación es obligatorio'],
+    [puesto_votacion,     'El puesto de votación es obligatorio'],
+    [mesa_votacion,       'La mesa de votación es obligatoria'],
   ];
 
   for (const [cond, msg] of requeridos) {
@@ -990,8 +994,11 @@ async function guardarSimpatizante() {
   }
 
   const payload = {
-    nombre, cedula, telefono: telefono || null, edad,
-    ocupacion, lugar_votacion, puesto_votacion, mesa_votacion,
+    nombre, cedula,
+    telefono:        telefono || null,
+    edad,
+    ocupacion_cod,          // ← integer al backend
+    lugar_votacion, puesto_votacion, mesa_votacion,
     opinion_politica, barrio_id,
     email, direccion, organizacion,
   };
@@ -1040,14 +1047,15 @@ function verDetalle(id) {
 
   const campos = [
     { seccion: 'Datos personales' },
-    { label: 'Teléfono',      value: s.telefono || '—' },
-    { label: 'Email',         value: s.email || '—' },
-    { label: 'Dirección',     value: s.direccion || '—' },
-    { label: 'Organización',  value: s.organizacion || '—' },
-    { label: 'Edad',          value: s.edad ? `${s.edad} años` : '—' },
-    { label: 'Ocupación',     value: s.ocupacion || '—' },
-    { label: 'Barrio',        value: nombreBarrio(s.barrio_id) },
-    { label: 'Opinión',     value: s.opinion_politica || '—', badge: true },
+    { label: 'Teléfono',     value: s.telefono || '—' },
+    { label: 'Email',        value: s.email || '—' },
+    { label: 'Dirección',    value: s.direccion || '—' },
+    { label: 'Organización', value: s.organizacion || '—' },
+    { label: 'Edad',         value: s.edad ? `${s.edad} años` : '—' },
+    // s.ocupacion = descripción via JOIN desde el model; ocupacion_cod = código
+    { label: 'Ocupación',    value: s.ocupacion || descripcionOcupacion(s.ocupacion_cod) },
+    { label: 'Barrio',       value: nombreBarrio(s.barrio_id) },
+    { label: 'Opinión',      value: s.opinion_politica || '—', badge: true },
     { seccion: 'Información electoral' },
     { label: 'Lugar de votación',  value: s.lugar_votacion || '—' },
     { label: 'Puesto de votación', value: s.puesto_votacion || '—' },
@@ -1059,7 +1067,9 @@ function verDetalle(id) {
     if (c.seccion) {
       html += `<div class="detail-section-title">${c.seccion}</div>`;
     } else {
-      const val = c.badge ? opinionBadge(c.value) : `<span class="detail-value">${c.value}</span>`;
+      const val = c.badge
+        ? opinionBadge(c.value)
+        : `<span class="detail-value">${c.value}</span>`;
       html += `<div class="detail-field">
         <span class="detail-label">${c.label}</span>
         ${val}
@@ -1078,10 +1088,13 @@ function cerrarDetalle() {
   detailId = null;
 }
 
+// ── BUG FIX: guardar el id antes de cerrar el panel,
+//    porque cerrarDetalle() pone detailId = null.
 function editarDesdeDetalle() {
   if (!detailId) return;
+  const idParaEditar = detailId;   // ← capturar antes de cerrar
   cerrarDetalle();
-  abrirModalEditar(detailId);
+  abrirModalEditar(idParaEditar);
 }
 
 function eliminarDesdeDetalle() {

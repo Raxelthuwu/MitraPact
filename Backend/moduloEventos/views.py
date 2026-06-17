@@ -662,10 +662,10 @@ class CoberturaListView(View):
 
     async def post(self, request, evento_id):
         data = _body(request)
-        logger.debug("[CoberturaListView] POST registrar_cobertura evento_id=%s ocupacion=%s requeridos=%s", evento_id, data.get("ocupacion"), data.get("requeridos"))
+        logger.debug("[CoberturaListView] POST registrar_cobertura evento_id=%s ocupacion_cod=%s requeridos=%s", evento_id, data.get("ocupacion_cod"), data.get("requeridos"))
         async def _():
             return _ok(
-                await _cobertura_svc.registrar_cobertura(evento_id, data["ocupacion"], int(data["requeridos"])), 201
+                await _cobertura_svc.registrar_cobertura(evento_id, data["ocupacion_cod"], int(data["requeridos"])), 201
             )
         return await _handle(_)
 
@@ -681,7 +681,7 @@ class CoberturaDetailView(View):
             return _ok(
                 await _cobertura_svc.actualizar_cobertura(
                     cobertura_id,
-                    data["ocupacion"],
+                    data["ocupacion_cod"],
                     int(data["requeridos"]),
                     int(data.get("asignados", 0)),
                 )

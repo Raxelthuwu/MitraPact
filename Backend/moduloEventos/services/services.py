@@ -248,7 +248,7 @@ class SimpatizanteService(ISimpatizanteService):
             cedula=payload["cedula"],
             telefono=payload.get("telefono"),
             edad=payload["edad"],
-            ocupacion=payload["ocupacion"],
+            ocupacion_cod=payload.get("ocupacion_cod"),   # int o None
             lugar_votacion=payload["lugar_votacion"],
             puesto_votacion=payload["puesto_votacion"],
             mesa_votacion=payload["mesa_votacion"],
@@ -258,6 +258,7 @@ class SimpatizanteService(ISimpatizanteService):
             direccion=payload.get("direccion"),
             organizacion=payload.get("organizacion"),
         )
+        # get_by_id ya hace JOIN -> devuelve ocupacion_cod + ocupacion (descripcion)
         result = _serialize(await sync_to_async(Simpatizante.get_by_id)(simpatizante_id))
         logger.info("[SimpatizanteService] crear_simpatizante: creado simpatizante_id=%s", simpatizante_id)
         return result
@@ -267,6 +268,7 @@ class SimpatizanteService(ISimpatizanteService):
     ) -> Optional[Dict[str, Any]]:
         logger.debug("[SimpatizanteService] actualizar_simpatizante: simpatizante_id=%s campos=%s", simpatizante_id, list(payload.keys()))
         await sync_to_async(Simpatizante.update)(simpatizante_id, payload)
+        # get_by_id ya hace JOIN -> devuelve ocupacion_cod + ocupacion (descripcion)
         result = _serialize(await sync_to_async(Simpatizante.get_by_id)(simpatizante_id))
         logger.info("[SimpatizanteService] actualizar_simpatizante: actualizado simpatizante_id=%s", simpatizante_id)
         return result
@@ -336,7 +338,7 @@ class HorarioDisponibleService(IHorarioDisponibleService):
 
 
 # =============================================================================
-# EVENTO  (RF-EV-01 al RF-EV-05)
+# EVENTO
 # =============================================================================
 
 class EventoService(IEventoService):
@@ -359,7 +361,6 @@ class EventoService(IEventoService):
         logger.info("[EventoService] obtener_evento: encontrado evento_id=%s con %d tipos", evento_id, len(ev["tipos"]))
         return ev
 
-     
     async def crear_evento(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         tipos = payload.pop("tipos", [])
         logger.debug("[EventoService] crear_evento: nombre='%s' coordinador_id=%s tipos=%s", payload.get("nombre"), payload.get("coordinador_id"), tipos)
@@ -385,7 +386,6 @@ class EventoService(IEventoService):
         logger.info("[EventoService] crear_evento: creado evento_id=%s", evento_id)
         return result
 
-     
     async def actualizar_evento(
         self, evento_id: str, payload: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
@@ -459,7 +459,6 @@ class EventoPuntoInteresService(IEventoPuntoInteresService):
         logger.info("[EventoPuntoInteresService] remover_punto: id=%s eliminado=%s", evento_punto_interes_id, result)
         return result
 
-     
     async def reemplazar_puntos(
         self, evento_id: str, punto_interes_ids: List[str]
     ) -> List[Dict[str, Any]]:
@@ -473,18 +472,18 @@ class EventoPuntoInteresService(IEventoPuntoInteresService):
 
 
 # =============================================================================
-# ASIGNACIÓN  (RF-EV-07 al RF-EV-14, RF-EV-23)
+# ASIGNACIÓN
 # =============================================================================
 
 class AsignacionService(IAsignacionService):
 
     async def listar_asignaciones(self, evento_id: str) -> List[Dict[str, Any]]:
         logger.debug("[AsignacionService] listar_asignaciones: evento_id=%s", evento_id)
+        # get_by_evento ya hace JOIN -> devuelve simpatizante_ocupacion_cod + simpatizante_ocupacion
         result = _serialize_list(await sync_to_async(Asignacion.get_by_evento)(evento_id))
         logger.info("[AsignacionService] listar_asignaciones: %d asignaciones para evento_id=%s", len(result), evento_id)
         return result
 
-     
     async def asignar_manual(
         self,
         evento_id: str,
@@ -496,15 +495,11 @@ class AsignacionService(IAsignacionService):
             logger.warning("[AsignacionService] asignar_manual: simpatizante_id=%s ya está asignado a evento_id=%s", simpatizante_id, evento_id)
             raise ValueError("El simpatizante ya está asignado a este evento.")
         asignacion_id = await sync_to_async(Asignacion.create)(evento_id, simpatizante_id, rol, "MANUAL")
-        simpatizante = await sync_to_async(Simpatizante.get_by_id)(simpatizante_id)
-        if simpatizante:
-            await sync_to_async(Cobertura.incrementar_asignados)(evento_id, simpatizante["ocupacion"])
-            logger.debug("[AsignacionService] asignar_manual: cobertura incrementada para ocupacion='%s'", simpatizante["ocupacion"])
-        result = _serialize(await sync_to_async(Asignacion.get_by_id)(asignacion_id))
         logger.info("[AsignacionService] asignar_manual: asignacion_id=%s creada (MANUAL)", asignacion_id)
+        # get_by_id devuelve la asignación base; los asignados de cobertura son COUNT en vivo
+        result = _serialize(await sync_to_async(Asignacion.get_by_id)(asignacion_id))
         return result
 
-     
     async def asignar_automatico(
         self,
         evento_id: str,
@@ -562,7 +557,7 @@ class AsignacionService(IAsignacionService):
                     sin_conflicto.append(c)
                 else:
                     logger.info(
-                        "[AsignacionService] asignar_automatico: simpatizante_id=%s omitido por participación territorial reciente en barrio",
+                        "[AsignacionService] asignar_automatico: simpatizante_id=%s omitido por participación territorial reciente",
                         c["id"],
                     )
             candidatos = sin_conflicto
@@ -577,16 +572,17 @@ class AsignacionService(IAsignacionService):
         logger.debug("[AsignacionService] asignar_automatico: %d candidatos tras excluir ya asignados", len(candidatos))
 
         # Ordenar por ocupación si se usa cobertura
+        # get_by_evento devuelve ocupacion_cod -> compatible con candidatos que también tienen ocupacion_cod
         if criterios.get("usar_ocupacion", True):
             coberturas = {
-                c["ocupacion"]: c["requeridos"]
+                c["ocupacion_cod"]: c["requeridos"]
                 for c in await sync_to_async(Cobertura.get_by_evento)(evento_id)
             }
             candidatos.sort(
-                key=lambda c: coberturas.get(c["ocupacion"], 0),
+                key=lambda c: coberturas.get(c["ocupacion_cod"], 0),
                 reverse=True,
             )
-            logger.debug("[AsignacionService] asignar_automatico: candidatos ordenados por ocupación")
+            logger.debug("[AsignacionService] asignar_automatico: candidatos ordenados por ocupacion_cod")
 
         # Asignar hasta completar capacidad del evento
         capacidad = evento.get("capacidad", 0)
@@ -598,7 +594,6 @@ class AsignacionService(IAsignacionService):
             asignacion_id = await sync_to_async(Asignacion.create)(
                 evento_id, str(candidato["id"]), None, "AUTOMATICO"
             )
-            await sync_to_async(Cobertura.incrementar_asignados)(evento_id, candidato["ocupacion"])
             asignados.append(_serialize(await sync_to_async(Asignacion.get_by_id)(asignacion_id)))
             logger.debug("[AsignacionService] asignar_automatico: asignado simpatizante_id=%s (asignacion_id=%s)", candidato["id"], asignacion_id)
 
@@ -616,16 +611,8 @@ class AsignacionService(IAsignacionService):
 
     async def remover_asignacion(self, asignacion_id: str) -> bool:
         logger.debug("[AsignacionService] remover_asignacion: asignacion_id=%s", asignacion_id)
-        
-        # Obtener la asignación ANTES de borrarla para saber la ocupación
-        asignacion = await sync_to_async(Asignacion.get_by_id)(asignacion_id)
-        if asignacion:
-            simpatizante = await sync_to_async(Simpatizante.get_by_id)(str(asignacion["simpatizante_id"]))
-            if simpatizante:
-                await sync_to_async(Cobertura.decrementar_asignados)(
-                    str(asignacion["evento_id"]), simpatizante["ocupacion"]
-                )
-
+        # Los asignados de cobertura se calculan en tiempo real (COUNT en vivo en get_by_evento),
+        # por lo que no hay contador que decrementar — se borra directamente.
         result = await sync_to_async(Asignacion.delete)(asignacion_id)
         logger.info("[AsignacionService] remover_asignacion: asignacion_id=%s eliminado=%s", asignacion_id, result)
         return result
@@ -642,10 +629,7 @@ class AsignacionService(IAsignacionService):
     async def verificar_participacion_territorial(
         self, simpatizante_id: str, evento_id: str
     ) -> Dict[str, Any]:
-        """
-        RF-EV-23 — Advierte si hay participación reciente en el mismo barrio.
-        Usa get_barrios_recientes_simpatizante (sector fue eliminado del esquema).
-        """
+        """RF-EV-23 — Advierte si hay participación reciente en el mismo barrio."""
         logger.debug("[AsignacionService] verificar_participacion_territorial: simpatizante_id=%s evento_id=%s", simpatizante_id, evento_id)
         evento = await sync_to_async(Evento.get_by_id)(evento_id)
         if not evento:
@@ -669,39 +653,42 @@ class AsignacionService(IAsignacionService):
 
 
 # =============================================================================
-# COBERTURA  (RF-EV-11)
+# COBERTURA
 # =============================================================================
 
 class CoberturaService(ICoberturaService):
 
     async def listar_cobertura(self, evento_id: str) -> List[Dict[str, Any]]:
         logger.debug("[CoberturaService] listar_cobertura: evento_id=%s", evento_id)
+        # get_by_evento devuelve: id, evento_id, ocupacion_cod, ocupacion (descripcion), requeridos, asignados (COUNT)
         result = _serialize_list(await sync_to_async(Cobertura.get_by_evento)(evento_id))
         logger.info("[CoberturaService] listar_cobertura: %d registros para evento_id=%s", len(result), evento_id)
         return result
 
     async def registrar_cobertura(
-        self, evento_id: str, ocupacion: str, requeridos: int
+        self, evento_id: str, ocupacion_cod: int, requeridos: int
     ) -> Dict[str, Any]:
-        logger.debug("[CoberturaService] registrar_cobertura: evento_id=%s ocupacion='%s' requeridos=%d", evento_id, ocupacion, requeridos)
-        cobertura_id = await sync_to_async(Cobertura.create)(evento_id, ocupacion, requeridos)
-        rows = _serialize_list(await sync_to_async(Cobertura.get_by_evento)(evento_id))
-        result = next(r for r in rows if r["id"] == cobertura_id)
+        logger.debug("[CoberturaService] registrar_cobertura: evento_id=%s ocupacion_cod=%s requeridos=%d", evento_id, ocupacion_cod, requeridos)
+        cobertura_id = await sync_to_async(Cobertura.create)(evento_id, ocupacion_cod, requeridos)
+        # get_by_evento_by_id devuelve el row con JOIN -> ocupacion_cod + ocupacion (descripcion)
+        result = _serialize(await sync_to_async(Cobertura.get_by_evento_by_id)(cobertura_id))
         logger.info("[CoberturaService] registrar_cobertura: creada cobertura_id=%s", cobertura_id)
         return result
 
     async def actualizar_cobertura(
         self,
         cobertura_id: str,
-        ocupacion: str,
+        ocupacion_cod: int,
         requeridos: int,
-        asignados: int,
+        asignados: int,  # recibido del payload pero no se persiste (COUNT en vivo)
     ) -> Optional[Dict[str, Any]]:
         logger.debug(
-            "[CoberturaService] actualizar_cobertura: cobertura_id=%s ocupacion='%s' requeridos=%d asignados=%d",
-            cobertura_id, ocupacion, requeridos, asignados,
+            "[CoberturaService] actualizar_cobertura: cobertura_id=%s ocupacion_cod=%s requeridos=%d",
+            cobertura_id, ocupacion_cod, requeridos,
         )
-        await sync_to_async(Cobertura.update)(cobertura_id, ocupacion, requeridos, asignados)
+        # FIX: update solo toca ocupacion_cod y requeridos; asignados es COUNT en tiempo real
+        await sync_to_async(Cobertura.update)(cobertura_id, ocupacion_cod, requeridos)
+        # get_by_evento_by_id devuelve el row con JOIN -> ocupacion_cod + ocupacion (descripcion)
         result = _serialize(await sync_to_async(Cobertura.get_by_evento_by_id)(cobertura_id))
         logger.info("[CoberturaService] actualizar_cobertura: actualizada cobertura_id=%s", cobertura_id)
         return result
@@ -714,7 +701,7 @@ class CoberturaService(ICoberturaService):
 
 
 # =============================================================================
-# OBSERVACIÓN  (RF-EV-12, RF-EV-13)
+# OBSERVACIÓN
 # =============================================================================
 
 class ObservacionService(IObservacionService):
@@ -748,7 +735,7 @@ class ObservacionService(IObservacionService):
 
 
 # =============================================================================
-# PARTICIPACIÓN EXTERNA  (RF-EV-18)
+# PARTICIPACIÓN EXTERNA
 # =============================================================================
 
 class ParticipacionExternaService(IParticipacionExternaService):
@@ -791,7 +778,7 @@ class ParticipacionExternaService(IParticipacionExternaService):
 
 
 # =============================================================================
-# MATERIAL PUBLICITARIO  (RF-EV-19)
+# MATERIAL PUBLICITARIO
 # =============================================================================
 
 class MaterialPublicitarioService(IMaterialPublicitarioService):
@@ -831,7 +818,7 @@ class MaterialPublicitarioService(IMaterialPublicitarioService):
 
 
 # =============================================================================
-# ESTADO MATERIAL  (RF-EV-20, RF-EV-21, RF-EV-22)
+# ESTADO MATERIAL
 # =============================================================================
 
 class EstadoMaterialService(IEstadoMaterialService):
@@ -858,12 +845,8 @@ class EstadoMaterialService(IEstadoMaterialService):
         logger.info("[EstadoMaterialService] registrar_estado: creado estado_id=%s estado='%s'", estado_id, estado_upper)
         return result
 
-     
     async def cargar_desde_csv(self, archivo_csv: Any) -> Dict[str, Any]:
-        """
-        RF-EV-21 — Procesa un archivo CSV con columnas:
-        numero_evento (evento_id UUID), estado (1-5), notas.
-        """
+        """RF-EV-21 — Procesa un archivo CSV con columnas: numero_evento, estado (1-5), notas."""
         logger.debug("[EstadoMaterialService] cargar_desde_csv: iniciando carga de CSV")
         if hasattr(archivo_csv, "read"):
             contenido = archivo_csv.read()
@@ -897,7 +880,6 @@ class EstadoMaterialService(IEstadoMaterialService):
                 errores.append(f"Fila {i}: {exc}")
                 logger.warning("[EstadoMaterialService] cargar_desde_csv: error en fila %d -> %s", i, exc)
 
-        logger.debug("[EstadoMaterialService] cargar_desde_csv: %d filas válidas, %d errores", len(filas_ok), len(errores))
         insertados = await sync_to_async(EstadoMaterial.bulk_create_from_csv)(filas_ok)
         logger.info("[EstadoMaterialService] cargar_desde_csv: %d registros insertados, %d errores", insertados, len(errores))
         return {

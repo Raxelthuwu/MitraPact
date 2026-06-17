@@ -167,6 +167,42 @@
   .col-row.err { color: var(--danger); }
   .col-row.opt { color: var(--text-muted); }
 
+  /* ── Preview table (inline file preview) ── */
+  .preview-wrap {
+    margin: 0 24px 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: none;
+  }
+  .preview-header {
+    padding: 9px 14px; background: var(--border-light);
+    font-size: var(--font-size-xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .preview-scroll { overflow-x: auto; max-height: 220px; overflow-y: auto; }
+  .preview-table {
+    width: max-content; min-width: 100%;
+    border-collapse: collapse; font-size: 11.5px;
+  }
+  .preview-table th {
+    position: sticky; top: 0; background: var(--bg-card);
+    padding: 7px 12px; text-align: left; font-weight: 700;
+    color: var(--text-muted); border-bottom: 2px solid var(--border);
+    white-space: nowrap; z-index: 1;
+  }
+  .preview-table th.required-col { color: var(--accent); }
+  .preview-table th.optional-col { color: var(--text-muted); font-style: italic; }
+  .preview-table td {
+    padding: 6px 12px; border-bottom: 1px solid var(--border-light);
+    white-space: nowrap; color: var(--text-primary);
+  }
+  .preview-table tr:last-child td { border-bottom: none; }
+  .preview-table tr:hover td { background: var(--border-light); }
+  .preview-table td.null-cell { color: var(--text-muted); font-style: italic; font-size: 10px; }
+  .preview-empty { padding: 28px; text-align: center; color: var(--text-muted); font-size: var(--font-size-sm); }
+
   /* ── Actions ── */
   .import-actions {
     padding: 0 24px 24px;
@@ -215,7 +251,7 @@
   }
   .col-card-desc { font-size: var(--font-size-xs); color: var(--text-muted); flex: 1; }
 
-  /* ── Preview table ── */
+  /* ── Sample table (formato esperado) ── */
   .sample-wrap { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
   .sample-header {
     padding: 9px 14px; background: var(--border-light);
@@ -438,7 +474,7 @@
         <div class="drop-zone-sub" style="margin-top:6px;">Archivos .csv, .xlsx, .xls · Máx. 10 MB</div>
       </div>
 
-      <!-- File preview -->
+      <!-- File preview bar -->
       <div class="file-preview" id="filePreview" style="display:none;">
         <div class="file-preview-icon">
           <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
@@ -462,8 +498,25 @@
         <div id="colsList"></div>
       </div>
 
-      <!-- Result summary (post-import) -->
-      <div class="result-summary" id="resultSummary" style="display:none;">
+      <!-- Vista previa de filas del archivo subido -->
+      <div class="preview-wrap" id="previewWrap">
+        <div class="preview-header">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25M3.375 19.5a1.125 1.125 0 0 1-1.125-1.125V6.375a1.125 1.125 0 0 1 1.125-1.125h17.25c.621 0 1.125.504 1.125 1.125v12A1.125 1.125 0 0 1 20.625 19.5Z"/>
+          </svg>
+          Vista previa — primeras 30 filas
+        </div>
+        <div class="preview-scroll">
+          <p class="preview-empty" id="previewEmpty" style="display:none;">Sin datos para mostrar.</p>
+          <table class="preview-table" id="previewTable" style="display:none;">
+            <thead><tr id="previewHead"></tr></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Resumen post-importación -->
+      <div class="result-summary" id="resultSummary">
         <div class="result-stat">
           <div class="result-stat-num" id="rTotal">0</div>
           <div class="result-stat-label">Total filas</div>
@@ -507,6 +560,19 @@
 
       <div class="format-card-body">
 
+        <!-- Aviso ocupacion_cod -->
+        <div style="display:flex;align-items:flex-start;gap:10px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px;">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#92400E" style="flex-shrink:0;margin-top:1px;">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+          </svg>
+          <span style="font-size:var(--font-size-xs);color:#92400E;line-height:1.6;">
+            <strong>El campo <code style="font-size:11px;background:#FDE68A;padding:1px 4px;border-radius:3px;">ocupacion_cod</code> debe ser el código numérico</strong>
+            del catálogo de ocupaciones. Consulta la tabla
+            <code style="font-size:11px;">estadistico_territorial.catalogo_ocupacion</code>
+            y tabula los códigos en tu Excel antes de subir el archivo.
+          </span>
+        </div>
+
         <div style="display:flex;align-items:center;gap:10px;background:var(--info-bg);border:1px solid #BFDBFE;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px;">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#1E40AF" style="flex-shrink:0;">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
@@ -539,10 +605,10 @@
               <span class="badge badge-info">entero</span>
               <span class="col-card-desc">Edad en años (18–100) · ej. <em>35</em></span>
             </div>
-            <div class="col-card col-card-required">
-              <code>ocupacion</code>
-              <span class="badge badge-info">texto</span>
-              <span class="col-card-desc">Ocupación del simpatizante · ej. <em>Comerciante</em></span>
+            <div class="col-card col-card-required" style="border-left-color:#F59E0B;">
+              <code>ocupacion_cod</code>
+              <span class="badge badge-warning">entero</span>
+              <span class="col-card-desc">Código numérico del catálogo de ocupaciones · ej. <em>12</em></span>
             </div>
             <div class="col-card col-card-required">
               <code>lugar_votacion</code>
@@ -592,6 +658,7 @@
           </div>
           <div class="format-legend">
             <div class="format-legend-item"><div class="legend-dot" style="background:var(--accent);"></div>Columna requerida</div>
+            <div class="format-legend-item"><div class="legend-dot" style="background:#F59E0B;"></div>Requiere código del catálogo</div>
             <div class="format-legend-item"><div class="legend-dot" style="background:var(--border);"></div>Columna opcional</div>
           </div>
         </div>
@@ -603,14 +670,11 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
             </svg>
             <span style="font-size:var(--font-size-xs);color:#065F46;font-weight:600;">
-              Este es un archivo de ejemplo. Úsalo como plantilla para preparar tu importación.
+              Usa este ejemplo como plantilla. La columna <code style="font-size:11px;">ocupacion_cod</code> debe contener el código numérico del catálogo.
             </span>
           </div>
           <div class="sample-wrap">
             <div class="sample-header">
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125h-1.5m2.625-12.75c0-.621-.504-1.125-1.125-1.125H4.5"/>
-              </svg>
               Ejemplo con 3 filas — columnas requeridas en <span style="color:var(--accent);font-weight:700;">azul</span>, opcionales en <em>cursiva</em>
             </div>
             <div class="sample-scroll">
@@ -620,7 +684,7 @@
                     <th class="required-col">nombre</th>
                     <th class="required-col">cedula</th>
                     <th class="required-col">edad</th>
-                    <th class="required-col">ocupacion</th>
+                    <th class="required-col" style="color:#D97706;">ocupacion_cod</th>
                     <th class="required-col">lugar_votacion</th>
                     <th class="required-col">puesto_votacion</th>
                     <th class="required-col">mesa_votacion</th>
@@ -637,7 +701,7 @@
                     <td>María García López</td>
                     <td>1098765432</td>
                     <td>35</td>
-                    <td>Comerciante</td>
+                    <td><strong>12</strong></td>
                     <td>Colegio San José</td>
                     <td>Puesto Norte</td>
                     <td>Mesa 12</td>
@@ -652,7 +716,7 @@
                     <td>Carlos Martínez Ruiz</td>
                     <td>1087654321</td>
                     <td>42</td>
-                    <td>Docente</td>
+                    <td><strong>7</strong></td>
                     <td>Instituto Técnico</td>
                     <td>Puesto Sur</td>
                     <td>Mesa 5</td>
@@ -667,7 +731,7 @@
                     <td>Luisa Fernanda Torres</td>
                     <td>1076543210</td>
                     <td>28</td>
-                    <td>Estudiante</td>
+                    <td><strong>3</strong></td>
                     <td>Universidad UIS</td>
                     <td>Puesto Central</td>
                     <td>Mesa 3</td>
@@ -683,7 +747,8 @@
             </div>
           </div>
           <div style="margin-top:12px;font-size:var(--font-size-xs);color:var(--text-muted);">
-            Las columnas opcionales pueden dejarse vacías o eliminarse del archivo. Los valores válidos para <code style="font-size:11px;">opinion_politica</code> son: SIMPATIZANTE, MILITANTE, INDECISO, OPOSITOR.
+            Valores válidos para <code style="font-size:11px;">opinion_politica</code>: SIMPATIZANTE, MILITANTE, INDECISO, OPOSITOR.
+            El campo <code style="font-size:11px;">ocupacion_cod</code> debe ser un entero del catálogo — filas con código inválido o inexistente serán rechazadas por el servidor.
           </div>
         </div>
 
@@ -751,21 +816,20 @@
 /* ──────────────────────────────────────────────────────────────
    CONFIGURACIÓN
    ────────────────────────────────────────────────────────────── */
-const API_BASE = '/eventos/api/';   // ajusta si el prefijo cambia
+const API_BASE = '/eventos/api/';
 
-const REQUIRED_COLS = ['nombre','cedula','edad','ocupacion','lugar_votacion','puesto_votacion','mesa_votacion'];
+const REQUIRED_COLS = ['nombre','cedula','edad','ocupacion_cod','lugar_votacion','puesto_votacion','mesa_votacion'];
 const OPTIONAL_COLS = ['telefono','email','direccion','organizacion','opinion_politica','barrio_id'];
-const ALL_COLS      = [...REQUIRED_COLS, ...OPTIONAL_COLS];
 
 const OPINION_VALUES = ['SIMPATIZANTE','MILITANTE','INDECISO','OPOSITOR'];
 
 /* ──────────────────────────────────────────────────────────────
    ESTADO
    ────────────────────────────────────────────────────────────── */
-let selectedFile   = null;
-let parsedRows     = [];   // array de objetos {col: valor}
-let columnsValid   = false;
-let importHistory  = [];
+let selectedFile  = null;
+let parsedRows    = [];
+let columnsValid  = false;
+let importHistory = [];
 
 /* ──────────────────────────────────────────────────────────────
    TABS
@@ -788,41 +852,33 @@ dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-ov
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
   dropZone.classList.remove('drag-over');
-  const f = e.dataTransfer.files[0];
-  if (f) handleFile(f);
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
-
 fileInput.addEventListener('change', () => {
   if (fileInput.files[0]) handleFile(fileInput.files[0]);
 });
-
 document.getElementById('btnRemoveFile').addEventListener('click', resetFile);
 
 /* ──────────────────────────────────────────────────────────────
-   LEER ARCHIVO (CSV / XLS / XLSX)
+   LEER ARCHIVO
    ────────────────────────────────────────────────────────────── */
 async function handleFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (!['csv','xls','xlsx'].includes(ext)) {
-    showToast('Formato no soportado. Usa CSV, XLS o XLSX.', 'error');
-    return;
+    showToast('Formato no soportado. Usa CSV, XLS o XLSX.', 'error'); return;
   }
   if (file.size > 10 * 1024 * 1024) {
-    showToast('El archivo supera los 10 MB.', 'error');
-    return;
+    showToast('El archivo supera los 10 MB.', 'error'); return;
   }
 
   selectedFile = file;
   document.getElementById('dropZone').style.display    = 'none';
   document.getElementById('filePreview').style.display = 'flex';
   document.getElementById('fileName').textContent = file.name;
-  document.getElementById('fileMeta').textContent =
-    (file.size / 1024).toFixed(1) + ' KB · ' + ext.toUpperCase();
-
+  document.getElementById('fileMeta').textContent = (file.size / 1024).toFixed(1) + ' KB · ' + ext.toUpperCase();
   document.getElementById('resultSummary').style.display = 'none';
   document.getElementById('importResult').innerHTML = '';
 
-  // Mostrar overlay mientras lee y escanea
   document.getElementById('loTitle').textContent    = 'Leyendo archivo';
   document.getElementById('loSubtitle').textContent = 'Analizando columnas…';
   document.getElementById('loFill').style.width     = '30%';
@@ -831,11 +887,7 @@ async function handleFile(file) {
   document.getElementById('loOverlay').classList.add('visible');
 
   try {
-    if (ext === 'csv') {
-      parsedRows = await parseCSV(file);
-    } else {
-      parsedRows = await parseExcel(file);
-    }
+    parsedRows = ext === 'csv' ? await parseCSV(file) : await parseExcel(file);
     validateColumns(parsedRows);
     renderPreview(parsedRows);
   } catch(err) {
@@ -852,7 +904,6 @@ function parseCSV(file) {
     reader.onload = e => {
       try {
         const text = e.target.result;
-        // Detectar separador (coma o punto y coma)
         const firstLine = text.split('\n')[0];
         const sep = firstLine.includes(';') ? ';' : ',';
         const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -891,14 +942,12 @@ function parseExcel(file) {
     const reader = new FileReader();
     reader.onload = async e => {
       try {
-        // Cargar SheetJS dinámicamente si no está
         if (typeof XLSX === 'undefined') {
           await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
         }
         const wb   = XLSX.read(e.target.result, { type: 'array' });
         const ws   = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        // Normalizar keys a minúsculas
         const rows = data.map(row => {
           const obj = {};
           Object.keys(row).forEach(k => { obj[k.trim().toLowerCase()] = String(row[k]).trim(); });
@@ -927,26 +976,25 @@ function validateColumns(rows) {
   const foundCols = rows.length ? Object.keys(rows[0]) : [];
   const check     = document.getElementById('columnsCheck');
   const list      = document.getElementById('colsList');
-
   check.style.display = 'block';
 
-  let html = '';
-  let allOk = true;
+  let html = ''; let allOk = true;
 
   REQUIRED_COLS.forEach(col => {
     const ok = foundCols.includes(col);
     if (!ok) allOk = false;
+    const isCode = col === 'ocupacion_cod';
     html += `<div class="col-row ${ok ? 'ok' : 'err'}">
       ${ok
         ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
         : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>'
       }
       <strong>${col}</strong>
+      ${isCode ? '<span style="font-size:10px;background:#FDE68A;color:#92400E;padding:1px 6px;border-radius:99px;font-weight:700;">código numérico</span>' : ''}
       <span style="font-size:var(--font-size-xs);color:inherit;opacity:.7;">${ok ? 'encontrada' : 'NO encontrada — requerida'}</span>
     </div>`;
   });
 
-  // Opcionales presentes
   OPTIONAL_COLS.forEach(col => {
     if (foundCols.includes(col)) {
       html += `<div class="col-row opt">
@@ -967,35 +1015,40 @@ function updateImportBtn() {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   VISTA PREVIA DEL ARCHIVO
+   VISTA PREVIA DEL ARCHIVO SUBIDO
    ────────────────────────────────────────────────────────────── */
 function renderPreview(rows) {
-  const head   = document.getElementById('previewHead');
-  const body   = document.getElementById('previewBody');
-  const empty  = document.getElementById('previewEmpty');
+  const wrap  = document.getElementById('previewWrap');
+  const table = document.getElementById('previewTable');
+  const head  = document.getElementById('previewHead');
+  const body  = document.getElementById('previewBody');
+  const empty = document.getElementById('previewEmpty');
+
+  wrap.style.display = 'block';
 
   if (!rows.length) {
-    head.innerHTML = ''; body.innerHTML = '';
+    table.style.display = 'none';
     empty.style.display = 'block';
     return;
   }
+
   empty.style.display = 'none';
+  table.style.display = '';
 
   const cols = Object.keys(rows[0]);
-  head.innerHTML = '<tr><th style="color:var(--text-muted);font-size:10px;">#</th>' +
+  head.innerHTML = '<th style="color:var(--text-muted);font-size:10px;">#</th>' +
     cols.map(c => {
       const isReq = REQUIRED_COLS.includes(c);
       const isOpt = OPTIONAL_COLS.includes(c);
-      return `<th class="${isReq ? 'required-col' : isOpt ? 'optional-col' : ''}">${c}</th>`;
-    }).join('') + '</tr>';
+      const cls   = isReq ? 'required-col' : isOpt ? 'optional-col' : '';
+      const extra = c === 'ocupacion_cod' ? ' style="color:#D97706;"' : '';
+      return `<th class="${cls}"${extra}>${c}</th>`;
+    }).join('');
 
-  const preview = rows.slice(0, 30);
-  body.innerHTML = preview.map((row, i) =>
-    `<tr><td style="color:var(--text-muted);font-size:10px;">${i+1}</td>` +
-    cols.map(c => {
-      const v = row[c];
-      return v ? `<td>${v}</td>` : `<td class="null-cell">—</td>`;
-    }).join('') + '</tr>'
+  body.innerHTML = rows.slice(0, 30).map((row, i) =>
+    `<tr><td style="color:var(--text-muted);font-size:10px;">${i + 1}</td>` +
+    cols.map(c => row[c] ? `<td>${row[c]}</td>` : `<td class="null-cell">—</td>`).join('') +
+    '</tr>'
   ).join('');
 }
 
@@ -1008,7 +1061,6 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   const btn = document.getElementById('btnImportar');
   btn.disabled = true;
 
-  // Mostrar overlay
   document.getElementById('loTitle').textContent    = 'Importando simpatizantes';
   document.getElementById('loSubtitle').textContent = 'Preparando registros…';
   document.getElementById('loFill').style.width     = '0%';
@@ -1017,29 +1069,27 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   document.getElementById('loOverlay').classList.add('visible');
 
   let creados = 0, errores = 0;
-  const total = parsedRows.length;
+  const total  = parsedRows.length;
   const errLog = [];
 
   for (let i = 0; i < total; i++) {
     const row = parsedRows[i];
-
-    // Progreso
     const pct = Math.round(((i + 1) / total) * 100);
-    document.getElementById('loFill').style.width = pct + '%';
-    document.getElementById('loPct').textContent  = pct + ' %';
-    document.getElementById('loStage').textContent = `fila ${i + 1} de ${total}`;
+    document.getElementById('loFill').style.width     = pct + '%';
+    document.getElementById('loPct').textContent      = pct + ' %';
+    document.getElementById('loStage').textContent    = `fila ${i + 1} de ${total}`;
     document.getElementById('loSubtitle').textContent = `Procesando: ${row.nombre || '—'}`;
 
-    // Validar campos obligatorios de la fila
-    const edad = parseInt(row.edad);
-    if (!row.nombre || !row.cedula || isNaN(edad) || !row.ocupacion ||
+    const edad          = parseInt(row.edad);
+    const ocupacion_cod = parseInt(row.ocupacion_cod);
+
+    if (!row.nombre || !row.cedula || isNaN(edad) || isNaN(ocupacion_cod) ||
         !row.lugar_votacion || !row.puesto_votacion || !row.mesa_votacion) {
       errores++;
-      errLog.push(`Fila ${i+2}: campos requeridos incompletos`);
+      errLog.push(`Fila ${i+2}: campos requeridos incompletos${isNaN(ocupacion_cod) ? ' (ocupacion_cod debe ser un número entero)' : ''}`);
       continue;
     }
 
-    // Validar opinion_politica si viene
     let opinion = row.opinion_politica ? row.opinion_politica.toUpperCase() : null;
     if (opinion && !OPINION_VALUES.includes(opinion)) opinion = null;
 
@@ -1047,16 +1097,16 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       nombre:           row.nombre.trim(),
       cedula:           row.cedula.trim(),
       edad:             edad,
-      ocupacion:        row.ocupacion.trim(),
+      ocupacion_cod:    ocupacion_cod,
       lugar_votacion:   row.lugar_votacion.trim(),
       puesto_votacion:  row.puesto_votacion.trim(),
       mesa_votacion:    row.mesa_votacion.trim(),
-      telefono:         row.telefono   ? row.telefono.trim()    : null,
-      email:            row.email      ? row.email.trim()       : null,
-      direccion:        row.direccion  ? row.direccion.trim()   : null,
+      telefono:         row.telefono     ? row.telefono.trim()     : null,
+      email:            row.email        ? row.email.trim()        : null,
+      direccion:        row.direccion    ? row.direccion.trim()    : null,
       organizacion:     row.organizacion ? row.organizacion.trim() : null,
       opinion_politica: opinion,
-      barrio_id:        row.barrio_id  ? row.barrio_id.trim()  : null,
+      barrio_id:        row.barrio_id    ? row.barrio_id.trim()   : null,
     };
 
     try {
@@ -1068,36 +1118,31 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       const d = await r.json();
       if (d.ok) { creados++; }
       else { errores++; errLog.push(`Fila ${i+2} (${row.nombre}): ${d.error || 'error desconocido'}`); }
-    } catch(e) {
+    } catch {
       errores++;
       errLog.push(`Fila ${i+2}: error de conexión`);
     }
   }
 
-  // Finalizar overlay
-  document.getElementById('loFill').style.width      = '100%';
-  document.getElementById('loPct').textContent       = '100 %';
-  document.getElementById('loStage').textContent     = 'completado';
-  document.getElementById('loSubtitle').textContent  = `${creados} creados · ${errores} errores`;
+  document.getElementById('loFill').style.width     = '100%';
+  document.getElementById('loPct').textContent      = '100 %';
+  document.getElementById('loStage').textContent    = 'completado';
+  document.getElementById('loSubtitle').textContent = `${creados} creados · ${errores} errores`;
   setTimeout(() => document.getElementById('loOverlay').classList.remove('visible'), 900);
 
-  // Mostrar resumen
   const summary = document.getElementById('resultSummary');
   summary.style.display = 'flex';
   summary.className = 'result-summary ' + (errores === 0 ? 'ok' : 'error');
   document.getElementById('rTotal').textContent   = total;
   document.getElementById('rCreados').textContent = creados;
   document.getElementById('rErrores').textContent = errores;
-
-  // Color de los números
   document.getElementById('rCreados').style.color = 'var(--success)';
   document.getElementById('rErrores').style.color = errores > 0 ? 'var(--danger)' : 'var(--text-muted)';
   document.getElementById('rTotal').style.color   = 'var(--text-primary)';
 
-  document.getElementById('importResult').innerHTML =
-    errores > 0
-      ? `<span style="color:var(--warning);font-weight:600;">${creados} creados, ${errores} errores</span>`
-      : `<span style="color:var(--success);font-weight:600;">✓ ${creados} simpatizantes importados</span>`;
+  document.getElementById('importResult').innerHTML = errores > 0
+    ? `<span style="color:var(--warning);font-weight:600;">${creados} creados, ${errores} errores</span>`
+    : `<span style="color:var(--success);font-weight:600;">✓ ${creados} simpatizantes importados</span>`;
 
   showToast(
     errores === 0
@@ -1106,15 +1151,17 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     errores === 0 ? 'ok' : 'error'
   );
 
-  // Guardar en historial local
   saveToHistory({ file: selectedFile.name, total, creados, errores, ts: new Date().toISOString(), errLog });
   renderHistory();
 
-  btn.disabled = false;
+  /* ── El botón queda desactivado tras importar.
+        Para volver a importar, el usuario debe usar "Limpiar" y cargar un nuevo archivo. ── */
+  btn.disabled = true;
+  btn.title    = 'Archivo ya importado. Usa "Limpiar" para cargar un nuevo archivo.';
 });
 
 /* ──────────────────────────────────────────────────────────────
-   HISTORIAL LOCAL (sessionStorage)
+   HISTORIAL LOCAL
    ────────────────────────────────────────────────────────────── */
 function saveToHistory(entry) {
   importHistory.unshift(entry);
@@ -1127,32 +1174,30 @@ function renderHistory() {
   if (skel) skel.remove();
 
   if (!importHistory.length) {
-    list.innerHTML = `
-      <div class="history-empty">
-        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="opacity:.3;margin:0 auto;">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
-        </svg>
-        <p>Aún no hay importaciones en esta sesión.</p>
-      </div>`;
+    list.innerHTML = `<div class="history-empty">
+      <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="opacity:.3;margin:0 auto;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/>
+      </svg>
+      <p>Aún no hay importaciones en esta sesión.</p>
+    </div>`;
     return;
   }
 
   list.innerHTML = importHistory.map((h, idx) => {
-    const dot = h.errores === 0 ? 'success' : h.creados === 0 ? 'error' : 'warning';
+    const dot   = h.errores === 0 ? 'success' : h.creados === 0 ? 'error' : 'warning';
     const badge = h.errores === 0
       ? '<span class="badge badge-success">Completado</span>'
       : h.creados === 0
         ? '<span class="badge badge-danger">Fallido</span>'
         : '<span class="badge badge-warning">Parcial</span>';
-    return `
-      <div class="history-item" onclick="openDetail(${idx})">
-        <div class="history-dot ${dot}"></div>
-        <div style="flex:1;min-width:0;">
-          <div class="history-item-name" title="${h.file}">${h.file}</div>
-          <div class="history-item-meta">${fmtDate(h.ts)} · ${h.total.toLocaleString('es-CO')} filas</div>
-        </div>
-        ${badge}
-      </div>`;
+    return `<div class="history-item" onclick="openDetail(${idx})">
+      <div class="history-dot ${dot}"></div>
+      <div style="flex:1;min-width:0;">
+        <div class="history-item-name" title="${h.file}">${h.file}</div>
+        <div class="history-item-meta">${fmtDate(h.ts)} · ${h.total.toLocaleString('es-CO')} filas</div>
+      </div>
+      ${badge}
+    </div>`;
   }).join('');
 }
 
@@ -1180,7 +1225,6 @@ function closeModal() { document.getElementById('importModal').classList.remove(
 document.getElementById('importModal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
 });
-
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 /* ──────────────────────────────────────────────────────────────
@@ -1188,15 +1232,20 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
    ────────────────────────────────────────────────────────────── */
 function resetFile() {
   selectedFile = null; parsedRows = []; columnsValid = false;
-  document.getElementById('dropZone').style.display    = '';
-  document.getElementById('filePreview').style.display = 'none';
-  document.getElementById('columnsCheck').style.display = 'none';
+  document.getElementById('dropZone').style.display      = '';
+  document.getElementById('filePreview').style.display   = 'none';
+  document.getElementById('columnsCheck').style.display  = 'none';
+  document.getElementById('previewWrap').style.display   = 'none';
+  document.getElementById('previewTable').style.display  = 'none';
+  document.getElementById('previewEmpty').style.display  = 'none';
   document.getElementById('resultSummary').style.display = 'none';
   document.getElementById('importResult').innerHTML = '';
   document.getElementById('fileInput').value = '';
   document.getElementById('previewHead').innerHTML = '';
   document.getElementById('previewBody').innerHTML = '';
-  document.getElementById('previewEmpty').style.display = 'none';
+  // Limpiar tooltip del botón al resetear
+  const btn = document.getElementById('btnImportar');
+  btn.title = '';
   updateImportBtn();
 }
 
@@ -1207,14 +1256,10 @@ document.getElementById('btnRefreshHistory').addEventListener('click', renderHis
    TOAST
    ────────────────────────────────────────────────────────────── */
 function showToast(msg, type = 'ok') {
-  // Reutiliza el sistema de toast de simpatizantes_admin si existe,
-  // si no, crea uno propio.
   if (typeof toast === 'function') { toast(msg, type === 'ok'); return; }
-
   let t = document.getElementById('_imp_toast');
   if (!t) {
-    t = document.createElement('div');
-    t.id = '_imp_toast';
+    t = document.createElement('div'); t.id = '_imp_toast';
     t.style.cssText = `position:fixed;bottom:24px;right:24px;background:var(--bg-card);
       border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 18px;
       font-size:var(--font-size-sm);color:var(--text-primary);box-shadow:var(--shadow-hover);
