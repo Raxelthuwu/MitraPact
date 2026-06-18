@@ -506,11 +506,10 @@ class AsignacionService(IAsignacionService):
         criterios: Dict[str, bool],
     ) -> List[Dict[str, Any]]:
         """
-        RF-EV-08 — Asignación automática respetando los criterios configurables.
-        Criterios soportados:
-          - usar_horario (bool): filtra por compatibilidad de horario
-          - usar_ocupacion (bool): prioriza la ocupación requerida por cobertura
-          - usar_participacion_previa (bool): excluye quienes ya participaron en el barrio
+        RF-EV-08 — Asignación automática.
+        MODO PRUEBA: solo filtra por horario compatible y excluye ya asignados.
+        Los filtros de barrio, ocupación y participación previa están desactivados
+        temporalmente para facilitar las pruebas con datos reales.
         """
         logger.debug("[AsignacionService] asignar_automatico: evento_id=%s criterios=%s", evento_id, criterios)
 
@@ -519,70 +518,36 @@ class AsignacionService(IAsignacionService):
             logger.error("[AsignacionService] asignar_automatico: evento_id=%s no encontrado", evento_id)
             raise ValueError("Evento no encontrado.")
 
-        # Candidatos base: todos los simpatizantes del barrio del evento
-        if evento["barrio_id"]:
-            candidatos = await sync_to_async(Simpatizante.get_by_barrio)(evento["barrio_id"])
-            logger.debug("[AsignacionService] asignar_automatico: %d candidatos en barrio_id=%s", len(candidatos), evento["barrio_id"])
-        else:
-            candidatos = await sync_to_async(Simpatizante.get_all)()
-            logger.debug("[AsignacionService] asignar_automatico: %d candidatos (sin filtro de barrio)", len(candidatos))
+        # Candidatos base: TODOS los simpatizantes (sin filtrar por barrio)
+        candidatos = await sync_to_async(Simpatizante.get_all)()
+        logger.debug("[AsignacionService] asignar_automatico: %d candidatos totales (sin filtro de barrio)", len(candidatos))
 
-        # Filtro por horario (RF-EV-22)
-        if criterios.get("usar_horario", True):
-            import datetime
-            fecha_dt = evento["fecha"]
-            if isinstance(fecha_dt, str):
-                fecha_dt = datetime.date.fromisoformat(fecha_dt)
-            dia_semana = fecha_dt.strftime("%A").upper()
-            disponibles_ids = {
-                str(d["id"])
-                for d in await sync_to_async(HorarioDisponible.get_disponibles_para_evento)(
-                    str(fecha_dt),
-                    dia_semana,
-                    str(evento["hora_inicio"]),
-                    str(evento["hora_fin"]),
-                )
-            }
-            candidatos = [c for c in candidatos if str(c["id"]) in disponibles_ids]
-            logger.debug("[AsignacionService] asignar_automatico: %d candidatos tras filtro de horario", len(candidatos))
+        # Filtro por horario (único filtro activo)
+        import datetime
+        fecha_dt = evento["fecha"]
+        if isinstance(fecha_dt, str):
+            fecha_dt = datetime.date.fromisoformat(fecha_dt)
+        dias_es = ["LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"]
+        dia_semana = dias_es[fecha_dt.weekday()]
+        disponibles_ids = {
+            str(d["id"])
+            for d in await sync_to_async(HorarioDisponible.get_disponibles_para_evento)(
+                str(fecha_dt),
+                dia_semana,
+                str(evento["hora_inicio"]),
+                str(evento["hora_fin"]),
+            )
+        }
+        candidatos = [c for c in candidatos if str(c["id"]) in disponibles_ids]
+        logger.debug("[AsignacionService] asignar_automatico: %d candidatos tras filtro de horario", len(candidatos))
 
-        # Filtro por participación previa en el barrio (RF-EV-23)
-        if criterios.get("usar_participacion_previa", True):
-            sin_conflicto = []
-            for c in candidatos:
-                barrios_recientes = await sync_to_async(Asignacion.get_barrios_recientes_simpatizante)(
-                    str(c["id"])
-                )
-                if not barrios_recientes:
-                    sin_conflicto.append(c)
-                else:
-                    logger.info(
-                        "[AsignacionService] asignar_automatico: simpatizante_id=%s omitido por participación territorial reciente",
-                        c["id"],
-                    )
-            candidatos = sin_conflicto
-            logger.debug("[AsignacionService] asignar_automatico: %d candidatos tras filtro participación previa", len(candidatos))
-
-        # Excluir ya asignados
+        # Excluir ya asignados al evento
         ya_asignados = {
             str(a["simpatizante_id"])
             for a in await sync_to_async(Asignacion.get_by_evento)(evento_id)
         }
         candidatos = [c for c in candidatos if str(c["id"]) not in ya_asignados]
         logger.debug("[AsignacionService] asignar_automatico: %d candidatos tras excluir ya asignados", len(candidatos))
-
-        # Ordenar por ocupación si se usa cobertura
-        # get_by_evento devuelve ocupacion_cod -> compatible con candidatos que también tienen ocupacion_cod
-        if criterios.get("usar_ocupacion", True):
-            coberturas = {
-                c["ocupacion_cod"]: c["requeridos"]
-                for c in await sync_to_async(Cobertura.get_by_evento)(evento_id)
-            }
-            candidatos.sort(
-                key=lambda c: coberturas.get(c["ocupacion_cod"], 0),
-                reverse=True,
-            )
-            logger.debug("[AsignacionService] asignar_automatico: candidatos ordenados por ocupacion_cod")
 
         # Asignar hasta completar capacidad del evento
         capacidad = evento.get("capacidad", 0)
