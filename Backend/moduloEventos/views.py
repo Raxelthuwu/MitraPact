@@ -384,6 +384,8 @@ class DisponiblesParaEventoView(View):
     RF-EV-06 — Consulta de disponibilidad para un evento.
     """
 
+    _DIAS_ES = ["LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"]
+
     async def get(self, request, evento_id):
         logger.debug("[DisponiblesParaEventoView] GET evento_id=%s", evento_id)
         async def _():
@@ -396,7 +398,8 @@ class DisponiblesParaEventoView(View):
                 fecha_dt = datetime.date.fromisoformat(fecha)
             else:
                 fecha_dt = fecha
-            dia_semana = fecha_dt.strftime("%A").upper()
+            # weekday(): 0=lunes ... 6=domingo. Mapeo fijo para no depender del locale del sistema.
+            dia_semana = self._DIAS_ES[fecha_dt.weekday()]
             disponibles = await _horario_svc.consultar_disponibles_para_evento(
                 str(fecha_dt), dia_semana, str(ev["hora_inicio"]), str(ev["hora_fin"])
             )

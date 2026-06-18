@@ -266,7 +266,9 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Ocupación requerida</label>
-        <input class="form-control" type="text" id="coberturaOcupacion" placeholder="Ej. Desarrolladores de software">
+        <select class="form-control form-select" id="coberturaOcupacion">
+          <option value="">Cargando ocupaciones…</option>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">Cantidad requerida</label>
@@ -388,10 +390,12 @@
   const API = '/eventos/api/';
   const EVENTO_ID = '{{ evento_id }}';   // inyectado desde la URL view de Django
   const MESES     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const DIAS      = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
   let eventoData    = null;
   let materialData  = null;
   let partData      = null;
+  let ocupacionesCatalogo = [];
 
   // ── Utilidades ──────────────────────────────────────────
   function toast(msg, tipo = 'success') {
@@ -428,7 +432,7 @@
   function formatFecha(iso) {
     if (!iso) return '—';
     const d = new Date(iso + 'T00:00:00');
-    return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+    return `${DIAS[d.getDay()]}, ${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
   }
 
   // ── Header del evento ───────────────────────────────────
@@ -448,7 +452,7 @@
         <div class="detalle-meta-row">
           <span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" width="14" height="14" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
-            ${formatFecha(ev.fecha_inicio)}${ev.fecha_fin && ev.fecha_fin !== ev.fecha_inicio ? ` – ${formatFecha(ev.fecha_fin)}` : ''}
+            ${formatFecha(ev.fecha)}
           </span>
           <span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" width="14" height="14" style="flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
@@ -772,17 +776,19 @@
 
   // ── Cobertura ───────────────────────────────────────────
   async function crearCobertura() {
-    const ocup = document.getElementById('coberturaOcupacion').value.trim();
-    const req  = parseInt(document.getElementById('coberturaRequeridos').value);
-    if (!ocup || !req) { toast('Completa todos los campos', 'error'); return; }
+    const ocupCod = parseInt(document.getElementById('coberturaOcupacion').value);
+    const req     = parseInt(document.getElementById('coberturaRequeridos').value);
+    if (!ocupCod || !req) { toast('Completa todos los campos', 'error'); return; }
     try {
       const r = await fetch(`${API}${EVENTO_ID}/cobertura/`, {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ ocupacion: ocup, requeridos: req }),
+        body: JSON.stringify({ ocupacion_cod: ocupCod, requeridos: req }),
       });
       const d = await r.json();
       if (!d.ok) throw new Error(d.error);
       closeModal('modalCobertura');
+      document.getElementById('coberturaOcupacion').value = '';
+      document.getElementById('coberturaRequeridos').value = 1;
       toast('Cobertura registrada');
       cargarCobertura();
     } catch (e) { toast('Error: ' + e.message, 'error'); }
@@ -921,6 +927,25 @@
     } catch { toast('Error cambiando estado', 'error'); }
   }
 
+  // ── Cargar ocupaciones para select de cobertura ────────
+  async function cargarOcupacionesCobertura() {
+    const sel = document.getElementById('coberturaOcupacion');
+    try {
+      const r = await fetch('/estadisticas/api/catalogos/ocupaciones/');
+      const d = await r.json();
+      ocupacionesCatalogo = d.data || [];
+      sel.innerHTML = '<option value="">Seleccionar ocupación…</option>';
+      ocupacionesCatalogo.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.codigo;
+        opt.textContent = o.descripcion;
+        sel.appendChild(opt);
+      });
+    } catch {
+      sel.innerHTML = '<option value="">Error cargando ocupaciones</option>';
+    }
+  }
+
   // ── Cargar simpatizantes para modal ────────────────────
   async function cargarSimpatizantes() {
     const sel = document.getElementById('asignarSimpatizante');
@@ -975,7 +1000,7 @@
       renderMaterial(dMat.data);
 
       await renderEstadoMaterial();
-      await cargarSimpatizantes();
+      await Promise.all([cargarSimpatizantes(), cargarOcupacionesCobertura()]);
 
     } catch (err) {
       console.error(err);
